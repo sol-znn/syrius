@@ -22,6 +22,7 @@ import time
 from . import windows_debug_loop as debug
 from . import windows_wallet_tour as shared
 from .windows_debug_process import IMAGE_NAMES
+from .hosted_chain321 import CODES as LAB_CODES
 
 
 PAGES = shared.PAGES
@@ -39,7 +40,10 @@ CHECKS = ('environment', 'source', 'unused_destinations', 'job_owned',
     'input_released', 'wallet_bound', 'tours_complete', 'locale_verified',
     'captures', 'close_ack', 'application_exit', 'entry_exit',
     'output_complete', 'source_unchanged', 'auxiliary_cleanup')
-CODES = shared.CODES | frozenset(('BINDING_REFUSED', 'INSPECTION_REFUSED'))
+CODES = shared.CODES | LAB_CODES | frozenset(('BINDING_REFUSED', 'INSPECTION_REFUSED',
+    'LAB_REVALIDATION_TIMEOUT_ERROR', 'LAB_REVALIDATION_CONNECTION_ERROR',
+    'LAB_REVALIDATION_KEY_ERROR', 'LAB_REVALIDATION_TYPE_ERROR',
+    'LAB_REVALIDATION_VALUE_ERROR', 'LAB_REVALIDATION_OS_ERROR'))
 STAGES = frozenset(('unused_destinations', 'build', 'start', 'input', 'window',
     'onboarding', 'signing_policy', 'onboarding_logs', 'address_selection',
     'wallet_binding', 'tour_dark', 'tour_light', 'home_catalog', 'finish'))
@@ -54,6 +58,28 @@ class Refused(Exception):
 def need(value, code='INSPECTION_REFUSED'):
     if not value:
         raise Refused(code)
+
+
+def inspection_failure_code(error, phase):
+    """Retain only fixed failure labels, never exception text or class names."""
+    try:
+        code = getattr(error, 'code', None)
+    except Exception:
+        code = None
+    if code is None and type(error) is debug.ProcessRefused and len(error.args) == 1:
+        code = error.args[0]
+    if type(code) is str and code in CODES:
+        return code
+    if phase == 'lab_revalidation':
+        for kind, label in ((TimeoutError, 'LAB_REVALIDATION_TIMEOUT_ERROR'),
+            (ConnectionError, 'LAB_REVALIDATION_CONNECTION_ERROR'),
+            (KeyError, 'LAB_REVALIDATION_KEY_ERROR'),
+            (TypeError, 'LAB_REVALIDATION_TYPE_ERROR'),
+            (ValueError, 'LAB_REVALIDATION_VALUE_ERROR'),
+            (OSError, 'LAB_REVALIDATION_OS_ERROR')):
+            if isinstance(error, kind):
+                return label
+    return 'INTERNAL_ERROR'
 
 
 def read_original(path, cap):
@@ -609,6 +635,7 @@ def run(repo, parent, runtime, lab_root, observation, revalidate):
             original.stdin.flush()
 
         def lab_current():
+            report['phase'] = 'lab_revalidation'
             runtime.healthy()
             now = revalidate()
             need(now['chain'] == observation['chain'] == 321
@@ -784,13 +811,7 @@ def run(repo, parent, runtime, lab_root, observation, revalidate):
         report['checks']['auxiliary_cleanup'] = True
         report['phase'] = 'complete'
     except (Exception, KeyboardInterrupt) as error:
-        try:
-            code = getattr(error, 'code', None)
-        except Exception:
-            code = None
-        if code is None and type(error) is debug.ProcessRefused and len(error.args) == 1:
-            code = error.args[0]
-        report['errors'].append(code if type(code) is str and code in CODES else 'INTERNAL_ERROR')
+        report['errors'].append(inspection_failure_code(error, report['phase']))
     finally:
         if job is not None:
             if job.application is not None and not close_attempted:

@@ -95,6 +95,40 @@ def jobs(*, positive=True):
 
 
 class ReaderTests(unittest.TestCase):
+    def test_actual_http_client_keeps_default_and_full_capture_request_budgets(self):
+        class Response:
+            status = 200
+            headers = {'Content-Encoding': 'identity'}
+            def __init__(self):
+                self.body = io.BytesIO(b'{}')
+            def __enter__(self):
+                return self
+            def __exit__(self, *args):
+                self.body.close()
+            def read1(self, size):
+                return self.body.read(size)
+        class Opener:
+            def __init__(self):
+                self.calls = 0
+            def open(self, request, timeout):
+                self.calls += 1
+                return Response()
+        url = reader.archive.API + '/git/commits/' + 'a' * 40
+        for maximum in (12, 14):
+            opener = Opener()
+            with mock.patch.object(reader.archive.urllib.request, 'build_opener',
+                    return_value=opener):
+                client = (reader.archive.Client('synthetic-control-token') if maximum == 12
+                          else reader.archive.Client('synthetic-control-token', max_calls=14))
+                for _ in range(maximum):
+                    self.assertEqual(client.read(url), b'{}')
+                with self.assertRaises(reader.archive.Refused):
+                    client.read(url)
+                self.assertEqual(opener.calls, maximum)
+        for maximum in (True, False, 0, -1, 13, 15, 14.0, '14', None):
+            with self.assertRaises(reader.archive.Refused):
+                reader.archive.Client('synthetic-control-token', max_calls=maximum)
+
     def inspect(self, child, lab, files):
         raw = packed(files)
         parent = reader.owned_lab(lab, 'a' * 40, 'b' * 40, 1)
@@ -445,12 +479,16 @@ class ReaderTests(unittest.TestCase):
         observed_runs = 0
 
         class Client:
-            def __init__(self, token):
+            def __init__(self, token, *, max_calls=12):
                 self.token = token
+                self.maximum = max_calls
+                if max_calls != 14:
+                    raise AssertionError('Unexpected full-reader request budget')
 
             def json(self, path):
                 nonlocal observed_runs
                 calls.append(('json', path))
+                reader.archive.need(len(calls) <= self.maximum)
                 if path == '/actions/runs/1':
                     observed_runs += 1
                     return dict(id=1, head_sha='a' * 40, run_attempt=2 if mutate_after and observed_runs > 1 else 1,
@@ -467,6 +505,7 @@ class ReaderTests(unittest.TestCase):
 
             def read(self, url, **options):
                 calls.append(('read', url, options))
+                reader.archive.need(len(calls) <= self.maximum)
                 if '?recursive=1' in url:
                     return encode(tree)
                 if url == reader.archive.API + '/git/blobs/' + blob:

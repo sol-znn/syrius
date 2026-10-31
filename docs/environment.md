@@ -1,17 +1,19 @@
 # Redesign build environment
 
-## Current qualification status (2026-10-31T19:22Z)
+## Current qualification status (2026-10-31T19:38Z)
 
-Source257 b8a445ad1fbe / 41231392557 qualifies 713 ordinary Dart passes,
-zero selected findings and 911 Python controls/three original skips. Native
-41231991847 fails lab revalidation before onboarding input release. Independent
-41233307044 passes 90 controls but refuses producer_source; neither retained
-archive is qualified. The original failures and exact-cause limits remain.
-Source258 fixes the workflow's sparse-checkout source path through a bounded,
-immutable Git blob; 447 candidate memory controls pass. Fresh applied controls
-and reader-only inspection remain required. Runtime/producer bytes stay fixed.
-Latest qualified native/images remain Source251 and broad Windows Source249.
-Main progress stays 71/80 with zero accepted visual matches out of 94.
+Source258 c21ec0aacb98 / 41234273027 passes 91 reader controls and
+independently qualifies both original Source257 failure archives and all 28
+producer source files. Original native and reader failures remain failed,
+with unexported exact causes NOT_ESTABLISHED. No original runtime is replayed.
+Source259 prepares an explicit fourteen-request full reader budget and finite
+lab-revalidation failure labels. All 449 candidate memory controls pass;
+914 Python cases are registered and the independent reader expects 92.
+Fresh applied controls and a bounded hosted diagnostic native run remain
+required. Dart selections stay 713/715 and product UI/SDK inputs stay fixed.
+Latest focused/native/broad evidence stays Source257/Source251/Source249.
+Main progress remains 71/80 with zero accepted visual matches out of 94.
+
 
 ## Qualified PNG capture and Welcome border inset follow-up (2026-10-30T19:37Z)
 

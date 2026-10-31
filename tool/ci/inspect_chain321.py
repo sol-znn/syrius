@@ -83,13 +83,15 @@ class NoRedirect(urllib.request.HTTPRedirectHandler):
 
 
 class Client:
-    def __init__(self, token):
+    def __init__(self, token, *, max_calls=12):
+        need(type(max_calls) is int and max_calls in (12, 14))
+        self.max_calls = max_calls
         self.token, self.end, self.calls = token, time.monotonic() + 120, 0
         self.opener = urllib.request.build_opener(urllib.request.ProxyHandler({}), NoRedirect())
 
     def read(self, url, *, authenticated=True, redirect=False, cap=256 * 1024):
         self.calls += 1
-        need(self.calls <= 12 and time.monotonic() < self.end)
+        need(self.calls <= self.max_calls and time.monotonic() < self.end)
         req = request_for(url, self.token if authenticated else None)
         try:
             response = self.opener.open(req, timeout=15)

@@ -387,7 +387,7 @@ def main(parent=None):
     text, head = parent.get('WALLET_INSPECT_RUN', ''), parent.get('WALLET_INSPECT_HEAD', '')
     need(type(text) is str and re.fullmatch('[1-9][0-9]{0,19}', text) and digest(head, 40))
     run_id = int(text)
-    client = archive.Client(parent.get('GH_TOKEN'))
+    client = archive.Client(parent.get('GH_TOKEN'), max_calls=14)
     PHASE = 'producer_metadata'
     run = client.json('/actions/runs/' + text)
     need(type(run.get('id')) is int and run['id'] == run_id and run.get('head_sha') == head

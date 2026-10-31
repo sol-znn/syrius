@@ -111,6 +111,39 @@ class _Output(io.StringIO):
 
 
 class InspectionTests(unittest.TestCase):
+    def test_lab_failure_projection_retains_only_fixed_codes_and_refuses_success(self):
+        labels = []
+        for code in inspection.LAB_CODES:
+            error = RuntimeError('Synthetic private exception text')
+            error.code = code
+            self.assertEqual(inspection.inspection_failure_code(error,
+                'lab_revalidation'), code)
+            labels.append(code)
+        for error, label in ((TimeoutError('private'), 'LAB_REVALIDATION_TIMEOUT_ERROR'),
+            (ConnectionError('private'), 'LAB_REVALIDATION_CONNECTION_ERROR'),
+            (KeyError('private'), 'LAB_REVALIDATION_KEY_ERROR'),
+            (TypeError('private'), 'LAB_REVALIDATION_TYPE_ERROR'),
+            (ValueError('private'), 'LAB_REVALIDATION_VALUE_ERROR'),
+            (OSError('private'), 'LAB_REVALIDATION_OS_ERROR')):
+            observed = inspection.inspection_failure_code(error, 'lab_revalidation')
+            self.assertEqual(observed, label)
+            self.assertEqual(inspection.inspection_failure_code(error,
+                'onboarding_and_inspection'), 'INTERNAL_ERROR')
+            self.assertFalse(inspection.completed({**report(), 'errors': [observed]}))
+            labels.append(observed)
+        class PrivateCode(ValueError):
+            @property
+            def code(self):
+                raise RuntimeError('Synthetic private code lookup')
+        self.assertEqual(inspection.inspection_failure_code(PrivateCode('private'),
+            'lab_revalidation'), 'LAB_REVALIDATION_VALUE_ERROR')
+        self.assertEqual(inspection.inspection_failure_code(
+            inspection.debug.ProcessRefused('TOOL_REFUSED'), 'admission'), 'TOOL_REFUSED')
+        for error in (RuntimeError('private'), KeyboardInterrupt('private')):
+            self.assertEqual(inspection.inspection_failure_code(error,
+                'lab_revalidation'), 'INTERNAL_ERROR')
+        self.assertNotIn('private', json.dumps(labels))
+
     def test_home_catalog_privacy_geometry_and_fixed_files_are_independent(self):
         pixels = png()
         original = home_manifest(pixels)
