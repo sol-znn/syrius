@@ -25,6 +25,7 @@ enum ReadonlyViewportStep {
   arabicDisplay,
   arabicMenu,
   arabicOpen,
+  arabicOptionReady,
   arabicChoice,
   arabicLocale,
   arabicHome,
@@ -39,6 +40,7 @@ enum ReadonlyViewportStep {
   englishDisplay,
   englishMenu,
   englishOpen,
+  englishOptionReady,
   englishChoice,
   englishLocale,
   englishHome,
@@ -153,6 +155,11 @@ Future<Map<String, Object>> captureReadonlyViewportProbe({
         : ReadonlyViewportStep.englishOpen);
     await call(<String, Object?>{
       'cmd': 'tap', 'key': 'display_language_menu',
+    });
+    enter(arabic ? ReadonlyViewportStep.arabicOptionReady
+        : ReadonlyViewportStep.englishOptionReady);
+    await call(<String, Object?>{
+      'cmd': 'wait', 'text': name, 'exact': true, 'timeoutMs': 5000,
     });
     enter(arabic ? ReadonlyViewportStep.arabicChoice
         : ReadonlyViewportStep.englishChoice);

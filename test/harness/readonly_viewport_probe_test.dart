@@ -26,7 +26,8 @@ void main() {
   test('viewport shots stay bound, restore and stop on an original refusal',
       () async {
     for (final String fault in <String>[
-      'unbound', 'none', 'fresh-path', 'negative-shot', 'negative-locale',
+      'unbound', 'none', 'fresh-path', 'negative-shot',
+      'negative-ready', 'negative-locale',
       'wrong-client', 'wrong-pixels',
     ]) {
       final Directory root = Directory.systemTemp.createTempSync(
@@ -55,7 +56,9 @@ void main() {
           expect(timeout, lessThanOrEqualTo(const Duration(seconds: 30)));
           commands.add(command);
           final Object? name = command['cmd'];
-          if ((name == 'shot' && fault == 'negative-shot') ||
+          if ((name == 'wait' && command['text'] != null &&
+                  fault == 'negative-ready') ||
+              (name == 'shot' && fault == 'negative-shot') ||
               (name == 'tap' && command['text'] != null &&
                   fault == 'negative-locale')) {
             return negative;
@@ -175,6 +178,7 @@ void main() {
           'unbound': ReadonlyViewportStep.admission,
           'fresh-path': ReadonlyViewportStep.destination,
           'negative-shot': ReadonlyViewportStep.minimumCapture,
+          'negative-ready': ReadonlyViewportStep.arabicOptionReady,
           'negative-locale': ReadonlyViewportStep.arabicChoice,
           'wrong-client': ReadonlyViewportStep.minimumPixels,
           'wrong-pixels': ReadonlyViewportStep.minimumPixels,

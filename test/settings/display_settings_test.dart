@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:io';
 
 import 'package:flutter/foundation.dart';
@@ -23,6 +24,29 @@ import 'package:zenon_syrius_wallet_flutter/widgets/modular_widgets/settings_wid
 import 'package:zenon_syrius_wallet_flutter/widgets/modular_widgets/settings_widgets/settings_parts.dart';
 import 'package:zenon_syrius_wallet_flutter/widgets/modular_widgets/settings_widgets/settings_switch.dart';
 import 'package:zenon_syrius_wallet_flutter/widgets/shell/rail.dart';
+
+import '../../harness/app/agent.dart';
+
+Future<T> _driveHarness<T>(WidgetTester tester, Future<T> command) async {
+  bool done = false;
+  T? result;
+  Object? failure;
+  StackTrace? trace;
+  unawaited(command.then((T value) {
+    result = value;
+    done = true;
+  }, onError: (Object error, StackTrace stack) {
+    failure = error;
+    trace = stack;
+    done = true;
+  }));
+  for (int i = 0; i < 160 && !done; i++) {
+    await tester.pump(const Duration(milliseconds: 40));
+  }
+  expect(done, isTrue, reason: 'the original pointer command did not finish');
+  if (failure != null) Error.throwWithStackTrace(failure!, trace!);
+  return result as T;
+}
 
 void main() {
   late Directory scratch;
@@ -187,6 +211,54 @@ void main() {
     expect(menu().enabled, isFalse);
     expect(requests, 0);
     await tester.pumpWidget(const SizedBox.shrink());
+  });
+
+  testWidgets('language options accept original harness pointer commands', (
+    WidgetTester tester,
+  ) async {
+    final HarnessAgent agent = HarnessAgent.forTest();
+    for (final double height in <double>[600, 540]) {
+      for (final bool light in <bool>[false, true]) {
+        theme.changeThemeMode(light ? ThemeMode.light : ThemeMode.dark);
+        await show(tester);
+        tester.view.physicalSize = Size(1200, height);
+        await tester.pumpAndSettle();
+        for (final AppLanguage next in <AppLanguage>[
+          AppLanguage.arabic, AppLanguage.english,
+        ]) {
+          await _driveHarness(
+            tester,
+            agent.commandForTest(<String, dynamic>{
+              'cmd': 'tap', 'key': 'display_language_menu',
+            }),
+          );
+          await _driveHarness(
+            tester,
+            agent.commandForTest(<String, dynamic>{
+              'cmd': 'wait', 'text': next.nativeName, 'exact': true,
+              'timeoutMs': 5000,
+            }),
+          );
+          await _driveHarness(
+            tester,
+            agent.commandForTest(<String, dynamic>{
+              'cmd': 'tap', 'text': next.nativeName, 'exact': true,
+            }),
+          );
+          await tester.pumpAndSettle();
+          expect(language.currentLanguage, next);
+          expect(
+            Directionality.of(tester.element(find.byType(DisplayWidget))),
+            next == AppLanguage.arabic
+                ? TextDirection.rtl : TextDirection.ltr,
+          );
+          expect(app.sharedPrefsService!.get(kLanguageKey), next.toString());
+          expect(tester.takeException(), isNull);
+        }
+        expect(requests, 0);
+        await tester.pumpWidget(const SizedBox.shrink());
+      }
+    }
   });
 
   for (final bool light in <bool>[false, true]) {
