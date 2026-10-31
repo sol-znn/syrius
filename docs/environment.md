@@ -1,5 +1,16 @@
 # Redesign build environment
 
+## Current qualification status (2026-10-31T18:48Z)
+
+Source256 e92466ed706f has clean selected analysis and 911 Python controls with
+three original skips. Original 41230365167 exits normally at zero, but its
+TEST_EVENTS_INVALID leaves Dart counts unqualified. The candidate captures
+CLI stdout only inside the synthetic test. Fresh 713-case qualification is
+required before native admission; no literal Home pixels are produced yet.
+Latest qualified focused/native/broad evidence remains separately bound to
+Source255/Source251/Source249. Dated sections below retain their original scope.
+Main progress stays 71/80, with zero accepted visual matches out of 94.
+
 ## Qualified PNG capture and Welcome border inset follow-up (2026-10-30T19:37Z)
 
 [Source221 a9b63d649a4f / focused 41110062902](https://github.com/edgepillar/syrius/actions/runs/41110062902)
@@ -10485,3 +10496,12 @@ All original nineteen generic checks remain; successful generic completion addit
 One synthetic Dart wiring case and two Python controls are added while preserving every original case and assertion. Exact ordinary/startup expectations become 713/715, registered Python/memory/reader expectations 911/446/90. All 446 selected unapplied memory controls pass without failure, error, skip, blocked write/network/native attempt, scratch or shared-store access. The header-only Dart transport fixture has not run and is not an actual rendered image. An earlier local memory admission still expected 909 registrations and refused before executing its suite; that failure and its missing original blocked-attempt detail remain recorded. Fresh applied-source controls, hosted zero-findings analysis/713-case engine qualification, original native capture and independent archive inspection remain required. No new Home pixels are yet produced or viewed.
 
 The latest actual native/image evidence remains Source251 and its successful closed 24-image review; the latest broad Windows baseline remains Source249 with 4825 passes/two skips and 1296 root infos. Source251 caption samples withdraw its initial approximate y4 estimate; older Source246 pixels remain unmeasured. Main progress stays 71/80 (88.75 percent by rows), zero accepted matches out of 94, nineteen unqualified preparations and ninety missing catalog outputs. P03/P09/F06/V01-V06, Docker/lab, native seams, minimum-window/Arabic, motion/shaders/frame time and independent comparison remain open. All prior failures, ownership HOLD and UNKNOWNs remain; Native101 send and Native103 Token confirmation/effect remain UNKNOWN. Local transport of this separate literal Home image family requires its own concrete storage authority; the earlier generic-page family approval does not cover it.
+
+
+## Source257: isolate CLI stdout in the synthetic Home capture test
+
+2026-10-31T18:48Z: Original [Source256 e92466ed706f / Windows controls 41230365167](https://github.com/edgepillar/syrius/actions/runs/41230365167) passes 911 Python controls/three original skips, fourteen asset phases and zero-findings selected analysis. The actual Dart command exits zero normally and unforced in 217.219 seconds with complete 362544-byte output (SHA-256 14cf34bd1a3ec6b0d8395107b5574e7f6a3216868341c01d849bf399d57bd80f). The strict reader refuses TEST_EVENTS_INVALID, leaves counts null and does not qualify 713 passes. Both entry refusals and three startup gates pass. Native wallet/lab stages are not selected and no artifacts are produced. This original run remains FAILURE. Its first offending line is unexported; the exact cause remains NOT_ESTABLISHED.
+
+The new fixture calls the real CLI, which reports directly to stdout. A bounded source-only control confirms these plain lines are refused by the unchanged parser. Following the existing unlock-test pattern, only the fixture wraps capture in IOOverrides and retains stdout lines in memory. It checks zero lines before binding, six after the negative shot and twelve after completed dark/light capture. Original script requests, assertions, synthetic headers and negative-session retirement checks remain. Production code, parser, counts, workflow, scripts, deadlines, dependencies and ordinary/financial/seed/reopen inputs are unchanged. Expected ordinary/startup, Python/memory/reader totals remain 713/715, 911/446/90; no case is removed or registered.
+
+Fresh applied-source memory and hosted zero-findings/713-case qualification remain required; no new native run is admitted. Latest qualified focused/native/broad evidence remains bound separately to Source255/Source251/Source249. Main progress remains 71/80 (88.75 percent by rows), zero accepted matches out of 94, nineteen unqualified preparations and ninety missing catalog outputs. P03/P09/F06/V01-V06 and all original failures, ownership HOLD and UNKNOWNs remain. Native101 send and Native103 Token confirmation/effect remain UNKNOWN; Native104 is not admitted.

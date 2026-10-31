@@ -34,6 +34,13 @@ class _JsonReentry {
   }
 }
 
+class _CatalogStdout extends Fake implements Stdout {
+  final List<Object?> lines = <Object?>[];
+
+  @override
+  void writeln([Object? object = '']) => lines.add(object);
+}
+
 void main() {
   test('the real Home script stays bound across capture and refusal',
       () async {
@@ -48,6 +55,7 @@ void main() {
       ..setUint32(16, 1280)
       ..setUint32(20, 780);
     for (final String fault in <String>['unbound', 'none', 'negative']) {
+      final _CatalogStdout output = _CatalogStdout();
       final Directory repository = Directory.systemTemp.createTempSync(
         'syrius-readonly-catalog-',
       );
@@ -118,18 +126,24 @@ void main() {
           };
         },
       );
-      if (fault == 'unbound') {
-        await expectLater(captureReadonlyHomeRest(
+      // The real CLI reports to stdout; keep its lines out of test events.
+      Future<Map<String, Object>> capture() =>
+          IOOverrides.runZoned<Future<Map<String, Object>>>(
+        () => captureReadonlyHomeRest(
           repository: repository, session: session,
-        ), throwsA(isA<ReadonlyInspectionRefused>()));
+        ),
+        stdout: () => output,
+      );
+      if (fault == 'unbound') {
+        await expectLater(capture(),
+            throwsA(isA<ReadonlyInspectionRefused>()));
         expect(commands, isEmpty);
+        expect(output.lines, isEmpty);
         continue;
       }
       await session.bindWallet();
       if (fault == 'negative') {
-        await expectLater(captureReadonlyHomeRest(
-          repository: repository, session: session,
-        ), throwsA(isA<ScreenCaptureError>()));
+        await expectLater(capture(), throwsA(isA<ScreenCaptureError>()));
         expect(commands.last['cmd'], 'shot');
         expect(commands.where((Map<String, Object?> value) =>
             value['cmd'] == 'shot').length, 1);
@@ -139,9 +153,7 @@ void main() {
         expect(restoredWindow, isFalse);
         expect(expanded, isFalse);
       } else {
-        final Map<String, Object> receipt = await captureReadonlyHomeRest(
-          repository: repository, session: session,
-        );
+        final Map<String, Object> receipt = await capture();
         expect(receipt['scope'], 'readonly_native_home_catalog_capture');
         expect(receipt['capture_returned'], isTrue);
         expect(receipt['files'], <String>[
@@ -160,6 +172,9 @@ void main() {
         expect(mode, 'light');
         expect(restoredWindow, isTrue);
       }
+      expect(output.lines.length, fault == 'negative' ? 6 : 12);
+      expect(output.lines.every((Object? line) => line is String &&
+          line.startsWith('ok')), isTrue);
       expect(commands.every((Map<String, Object?> value) => <String>{
         'readonly-wallet-bind', 'state', 'tree', 'tap', 'theme', 'window',
         'wait', 'assert', 'shot',
