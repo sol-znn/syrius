@@ -760,3 +760,8 @@ The latest actual native/image evidence remains Source251 and its successful clo
 ### Source257 synthetic CLI output boundary
 
 2026-10-31T18:48Z: [Source256 controls](https://github.com/edgepillar/syrius/actions/runs/41230365167) have zero selected findings and 911 Python controls/three skips. The normal zero-exit Dart command is refused as TEST_EVENTS_INVALID and counts remain unqualified. The real Home-script test now captures CLI stdout in a test-only IOOverrides zone and verifies its original zero/six/twelve-line boundary. The production CLI, strict parser, script, original requests and 713/715 selection remain unchanged. Fresh engine qualification is required; no native run or literal Home pixels are yet admitted. Original failures and financial UNKNOWNs remain.
+
+
+### Source258 independent workflow source binding
+
+2026-10-31T19:22Z: Source257 focused controls qualify 713 Dart passes and zero selected findings. Its native 41231991847 fails lab_revalidation before onboarding input release; reader 41233307044 passes 90 controls but refuses producer_source. Both failures remain. The reader now obtains the workflow omitted by sparse checkout from its exact producer-tree blob. Bounded canonical Base64, declared size and Git-blob SHA-1 must agree; the other 27 producer files and all archive checks remain. One new control prepares 912/447/91 Python/memory/reader counts; 447 candidate memory controls pass. No producer, Dart, SDK, workflow or financial/seed/reopen bytes change. Fresh applied qualification and a reader-only inspection are required; no new native runtime or local binary transfer is admitted. All original UNKNOWNs and visual gates remain.

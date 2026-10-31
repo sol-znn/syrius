@@ -19,6 +19,9 @@ from . import windows_wallet_inspection as producer
 MAX_ARCHIVE = producer.MAX_CAPTURE_TOTAL + producer.MAX_MANIFEST + 65536
 MAX_HOME_ARCHIVE = producer.MAX_HOME_CAPTURE_TOTAL + producer.MAX_HOME_MANIFEST + 65536
 MAX_TREE = 2 * 1024**2
+WORKFLOW_SOURCE = '.github/workflows/public-contribution-qualification.yml'
+MAX_WORKFLOW_SOURCE = 128 * 1024
+MAX_WORKFLOW_RESPONSE = 256 * 1024
 JOB = 'Windows readonly inspection with owned chain-321'
 PREFLIGHT = ('Test all isolated controllers before SDK allocation',
     'Analyze the gated wallet entry and tour',
@@ -289,7 +292,7 @@ def unpack_home_catalog(raw, expected_sha, expected_size, head, tree, run_id,
         seed_admitted=False, financial_send_qualified=False, visual_matches=0)
 
 
-def source_files(repo, value, tree):
+def source_files(repo, value, tree, *, read_workflow_blob=None):
     need(type(value) is dict and value.get('sha') == tree and value.get('truncated') is False
          and type(value.get('tree')) is list and len(value['tree']) <= 10000)
     entries = {}
@@ -301,7 +304,24 @@ def source_files(repo, value, tree):
     need(set(entries) == set(SOURCE_FILES))
     digests = {}
     for name in SOURCE_FILES:
-        raw = producer.read_original(repo / name, MAX_TREE)
+        if name == WORKFLOW_SOURCE and read_workflow_blob is not None:
+            # The sparse checkout omits workflows. Read the exact producer blob,
+            # including when the independent reader is from a later revision.
+            need(callable(read_workflow_blob))
+            value = read_workflow_blob(entries[name]['sha'])
+            need(type(value) is dict and value.get('sha') == entries[name]['sha']
+                 and value.get('encoding') == 'base64'
+                 and type(value.get('size')) is int
+                 and 0 < value['size'] <= MAX_WORKFLOW_SOURCE
+                 and type(value.get('content')) is str
+                 and 0 < len(value['content']) <= MAX_WORKFLOW_RESPONSE
+                 and re.fullmatch(r'[A-Za-z0-9+/=\n]+', value['content']) is not None)
+            encoded = value['content'].replace('\n', '')
+            raw = base64.b64decode(encoded, validate=True)
+            need(len(raw) == value['size']
+                 and base64.b64encode(raw).decode('ascii') == encoded)
+        else:
+            raw = producer.read_original(repo / name, MAX_TREE)
         blob = hashlib.sha1(b'blob ' + str(len(raw)).encode('ascii') + b'\0' + raw).hexdigest()
         need(blob == entries[name]['sha'])
         digests[name] = archive.sha(raw)
@@ -379,7 +399,9 @@ def main(parent=None):
     tree = commit['tree']['sha']
     PHASE = 'producer_source'
     source_digests = source_files(Path(parent['GITHUB_WORKSPACE']), decode(client.read(
-        archive.API + '/git/trees/' + tree + '?recursive=1', cap=MAX_TREE)), tree)
+        archive.API + '/git/trees/' + tree + '?recursive=1', cap=MAX_TREE)), tree,
+        read_workflow_blob=lambda blob: decode(client.read(
+            archive.API + '/git/blobs/' + blob, cap=MAX_WORKFLOW_RESPONSE)))
     jobs = client.json('/actions/runs/' + text + '/attempts/1/jobs?per_page=50')
     job = selected_job(jobs, head, run_id)
     need((run.get('conclusion') == 'success') is (job['conclusion'] == 'success'))

@@ -1,5 +1,6 @@
 """Synthetic in-memory reader cases; no native producer, SDK or network runs."""
 
+import base64
 import contextlib
 import copy
 import hashlib
@@ -303,6 +304,49 @@ class ReaderTests(unittest.TestCase):
             with self.subTest(fault=fault), self.assertRaises((reader.archive.Refused, reader.producer.Refused)):
                 self.inspect(child, lab, files)
 
+    def test_original_workflow_blob_is_bound_outside_the_sparse_checkout(self):
+        source = b'public original source'
+        workflow = b'name: public original workflow\n'
+        def blob(data):
+            return hashlib.sha1(b'blob ' + str(len(data)).encode() + b'\0' + data).hexdigest()
+        tree = dict(sha='b' * 40, truncated=False, tree=[dict(path=name,
+            mode='100644', type='blob', sha=blob(workflow if name == reader.WORKFLOW_SOURCE else source))
+            for name in reader.SOURCE_FILES])
+        encoded = base64.b64encode(workflow).decode('ascii')
+        response = dict(sha=blob(workflow), encoding='base64', size=len(workflow),
+            content='\n'.join(encoded[i:i+60] for i in range(0, len(encoded), 60)) + '\n')
+        calls = []
+        def local(path, cap):
+            if str(path).endswith(reader.WORKFLOW_SOURCE):
+                raise FileNotFoundError('Synthetic sparse workflow omission')
+            return source
+        def remote(sha):
+            calls.append(sha)
+            return copy.deepcopy(response)
+        with mock.patch.object(reader.producer, 'read_original', side_effect=local):
+            with self.assertRaises(FileNotFoundError):
+                reader.source_files(Path('/fixture'), tree, 'b' * 40)
+            observed = reader.source_files(Path('/fixture'), tree, 'b' * 40,
+                read_workflow_blob=remote)
+            self.assertEqual(len(observed), len(reader.SOURCE_FILES))
+            self.assertEqual(observed[reader.WORKFLOW_SOURCE], reader.archive.sha(workflow))
+            self.assertEqual(calls, [blob(workflow)])
+            for change in ({'sha': 'c' * 40}, {'encoding': 'raw'}, {'size': True},
+                {'size': len(workflow) + 1}, {'size': reader.MAX_WORKFLOW_SOURCE + 1},
+                {'content': 'Synthetic private text'}, {'content': encoded + '!'},
+                {'content': base64.b64encode(b'x' * len(workflow)).decode('ascii')},
+                {'content': b'private'}, {'content': 'A' * (reader.MAX_WORKFLOW_RESPONSE + 1)}):
+                with self.subTest(fields=list(change)), self.assertRaises((reader.archive.Refused, ValueError)):
+                    reader.source_files(Path('/fixture'), tree, 'b' * 40,
+                        read_workflow_blob=lambda _: {**response, **change})
+            changed = copy.deepcopy(tree)
+            changed['tree'].pop()
+            calls.clear()
+            with self.assertRaises(reader.archive.Refused):
+                reader.source_files(Path('/fixture'), changed, 'b' * 40,
+                    read_workflow_blob=remote)
+            self.assertEqual(calls, [])
+
     def test_source_blob_compatibility_refuses_partial_changed_or_truncated_trees(self):
         raw = b'synthetic source'
         blob = hashlib.sha1(b'blob ' + str(len(raw)).encode() + b'\0' + raw).hexdigest()
@@ -425,6 +469,9 @@ class ReaderTests(unittest.TestCase):
                 calls.append(('read', url, options))
                 if '?recursive=1' in url:
                     return encode(tree)
+                if url == reader.archive.API + '/git/blobs/' + blob:
+                    return encode(dict(sha=blob, encoding='base64', size=len(source),
+                        content=base64.b64encode(source).decode('ascii') + '\n'))
                 if url.startswith(reader.archive.API + '/actions/artifacts/'):
                     self_id = int(url.split('/')[-2])
                     return 'https://fixture.blob.core.windows.net/' + str(self_id)
