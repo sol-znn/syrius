@@ -40,8 +40,10 @@ class _InspectionInstance extends cli.Instance {
     repository: Directory(cli.repo), session: _session,
   );
 
-  Future<Map<String, Object>> captureViewport() => captureReadonlyViewportProbe(
-    repository: Directory(cli.repo), session: _session,
+  Future<Map<String, Object>> captureViewport({
+    void Function(ReadonlyViewportStep step)? onStep,
+  }) => captureReadonlyViewportProbe(
+    repository: Directory(cli.repo), session: _session, onStep: onStep,
   );
 }
 
@@ -70,6 +72,7 @@ Future<void> main() async {
     stdin.transform(utf8.decoder).transform(const LineSplitter()),
   );
   String stage = 'admission';
+  ReadonlyViewportStep? lastViewportStep;
   try {
     final Map<String, String> environment = Platform.environment;
     final String name = environment['SYRIUS_CI_INSPECTION_INSTANCE'] ?? '';
@@ -223,7 +226,9 @@ Future<void> main() async {
     final Map<String, Object> catalog = await instance.captureHomeRest();
     await marker('SYRIUS_INSPECTION_CATALOG:${jsonEncode(catalog)}');
     stage = 'viewport';
-    final Map<String, Object> viewport = await instance.captureViewport();
+    final Map<String, Object> viewport = await instance.captureViewport(
+      onStep: (ReadonlyViewportStep value) => lastViewportStep = value,
+    );
     await marker('SYRIUS_INSPECTION_VIEWPORT:${jsonEncode(viewport)}');
     await marker('CI_INSPECT_DONE');
     stage = 'finish';
@@ -239,9 +244,16 @@ Future<void> main() async {
           : error is WalletRecipeRefused &&
               RegExp(r'^wallet-recipe-[a-z-]{1,80}$').hasMatch(error.code)
           ? error.code : null;
-      final Map<String, Object>? diagnostic = error is WalletRecipeRefused
+      Map<String, Object>? diagnostic = error is WalletRecipeRefused
           ? walletRecipePublicDiagnostic(error.diagnostic)
           : error is cli.WalletTourFailure ? error.diagnostic : null;
+      final ReadonlyViewportStep? observed = lastViewportStep;
+      if (stage == 'viewport' && observed != null) {
+        diagnostic = <String, Object>{
+          'schema': 1, 'kind': 'readonly_viewport_failure',
+          'last_entered_step': observed.name,
+        };
+      }
       stdout.writeln('CI_INSPECT_ERROR:${jsonEncode(<String, Object?>{
         'stage': stage, 'code': code, 'diagnostic': ?diagnostic,
       })}');

@@ -385,6 +385,14 @@ def entry_failure(value):
     if 'diagnostic' in value:
         if value['stage'] in ('onboarding', 'address_selection'):
             shared.entry_failure(value)
+        elif value['stage'] == 'viewport':
+            need(value['code'] is None or value['code'] in {
+                'inspection-' + reason for reason in
+                ('process', 'retired', 'command', 'reply', 'binding')}, 'ENTRY_REFUSED')
+            try:
+                viewport.failure_diagnostic(value['diagnostic'])
+            except viewport.Refused:
+                need(False, 'ENTRY_REFUSED')
         else:
             need(value['stage'] in ('tour_dark', 'tour_light')
                  and value['code'] is None, 'ENTRY_REFUSED')

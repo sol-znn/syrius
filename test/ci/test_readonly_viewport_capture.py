@@ -11,6 +11,7 @@ import zipfile
 import zlib
 
 from tool.ci import readonly_viewport_capture as viewport
+from tool.ci import windows_wallet_inspection as inspection
 
 
 def encode(value):
@@ -65,6 +66,25 @@ def reference(manifest):
 
 
 class ViewportCaptureTests(unittest.TestCase):
+    def test_viewport_failure_steps_are_closed_and_cannot_change_original_outcome(self):
+        for step in inspection.viewport.STEPS:
+            for code in (None, 'inspection-reply'):
+                value = dict(stage='viewport', code=code, diagnostic=dict(
+                    schema=1, kind='readonly_viewport_failure', last_entered_step=step))
+                self.assertIs(inspection.entry_failure(value), value)
+                self.assertEqual(set(value), {'stage', 'code', 'diagnostic'})
+        value = dict(stage='viewport', code=None, diagnostic=dict(
+            schema=1, kind='readonly_viewport_failure', last_entered_step='minimumCapture'))
+        for change in ({'schema': True}, {'kind': 'synthetic private kind'},
+            {'last_entered_step': 'synthetic private path'}, {'last_entered_step': None},
+            {'message': 'synthetic private exception'}, {'success': True}):
+            with self.subTest(fields=list(change)), self.assertRaises(inspection.Refused):
+                inspection.entry_failure(dict(value, diagnostic=dict(value['diagnostic'], **change)))
+        for change in ({'stage': 'home_catalog'}, {'code': 'wallet-recipe-command-refused'},
+                       {'success': True}):
+            with self.subTest(fields=list(change)), self.assertRaises(inspection.Refused):
+                inspection.entry_failure(dict(value, **change))
+
     def test_closed_metadata_preserves_original_parent_and_saved_locale_limits(self):
         value, _ = fixture()
         self.assertIs(viewport.public_manifest(value), value)

@@ -25,6 +25,50 @@ MAX_MANIFEST = 64 * 1024
 MAX_ARCHIVE = MAX_CAPTURE_TOTAL + MAX_MANIFEST + 16384
 
 
+STEPS = (
+    'admission',
+    'destination',
+    'initialHome',
+    'railState',
+    'themeState',
+    'windowState',
+    'prepareRail',
+    'minimumHome',
+    'minimumResize',
+    'minimumTheme',
+    'minimumReady',
+    'minimumCapture',
+    'minimumPixels',
+    'minimumWrite',
+    'arabicPage',
+    'arabicDisplay',
+    'arabicMenu',
+    'arabicOpen',
+    'arabicChoice',
+    'arabicLocale',
+    'arabicHome',
+    'arabicLayout',
+    'arabicResize',
+    'arabicTheme',
+    'arabicReady',
+    'arabicCapture',
+    'arabicPixels',
+    'arabicWrite',
+    'englishPage',
+    'englishDisplay',
+    'englishMenu',
+    'englishOpen',
+    'englishChoice',
+    'englishLocale',
+    'englishHome',
+    'restoreTheme',
+    'restoreWindow',
+    'restoreRail',
+    'finalHome',
+    'complete',
+)
+
+
 class Refused(Exception):
     code = 'CAPTURE_REFUSED'
 
@@ -32,6 +76,15 @@ class Refused(Exception):
 def need(value):
     if not value:
         raise Refused()
+
+
+def failure_diagnostic(value):
+    need(type(value) is dict and set(value) == {'schema', 'kind', 'last_entered_step'}
+         and type(value['schema']) is int and value['schema'] == 1
+         and value['kind'] == 'readonly_viewport_failure'
+         and type(value['last_entered_step']) is str
+         and value['last_entered_step'] in STEPS)
+    return value
 
 
 def digest(value, size=64):

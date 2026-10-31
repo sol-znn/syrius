@@ -5,6 +5,50 @@ import 'dart:typed_data';
 import 'harness.dart' as cli;
 import 'readonly_inspection_session.dart';
 
+/// Source-defined steps disclose no command arguments or error text.
+enum ReadonlyViewportStep {
+  admission,
+  destination,
+  initialHome,
+  railState,
+  themeState,
+  windowState,
+  prepareRail,
+  minimumHome,
+  minimumResize,
+  minimumTheme,
+  minimumReady,
+  minimumCapture,
+  minimumPixels,
+  minimumWrite,
+  arabicPage,
+  arabicDisplay,
+  arabicMenu,
+  arabicOpen,
+  arabicChoice,
+  arabicLocale,
+  arabicHome,
+  arabicLayout,
+  arabicResize,
+  arabicTheme,
+  arabicReady,
+  arabicCapture,
+  arabicPixels,
+  arabicWrite,
+  englishPage,
+  englishDisplay,
+  englishMenu,
+  englishOpen,
+  englishChoice,
+  englishLocale,
+  englishHome,
+  restoreTheme,
+  restoreWindow,
+  restoreRail,
+  finalHome,
+  complete,
+}
+
 const String _output = '.harness/ci-viewport-observations';
 const int _pixelCap = 4 * 1024 * 1024;
 
@@ -30,13 +74,17 @@ class _ViewportInstance extends cli.Instance {
 Future<Map<String, Object>> captureReadonlyViewportProbe({
   required Directory repository,
   required ReadonlyInspectionSession session,
+  void Function(ReadonlyViewportStep step)? onStep,
 }) async {
+  void enter(ReadonlyViewportStep step) => onStep?.call(step);
+  enter(ReadonlyViewportStep.admission);
   Never refuse() => throw const ReadonlyInspectionRefused(
     ReadonlyInspectionReason.reply,
   );
   if (!session.walletBound) {
     throw const ReadonlyInspectionRefused(ReadonlyInspectionReason.binding);
   }
+  enter(ReadonlyViewportStep.destination);
   final Directory output = Directory('${repository.path}/$_output');
   void parents() {
     if (FileSystemEntity.typeSync(repository.path, followLinks: false) !=
@@ -73,31 +121,51 @@ Future<Map<String, Object>> captureReadonlyViewportProbe({
       refuse();
     }
   }
+  enter(ReadonlyViewportStep.initialHome);
   await home('en', 'ltr');
+  enter(ReadonlyViewportStep.railState);
   final bool originalRail = await session.railExpanded();
+  enter(ReadonlyViewportStep.themeState);
   final Map<String, dynamic> originalTheme = await call(
     <String, Object?>{'cmd': 'theme'},
   );
+  enter(ReadonlyViewportStep.windowState);
   final Map<String, dynamic> originalWindow = await call(
     <String, Object?>{'cmd': 'window'},
   );
+  enter(ReadonlyViewportStep.prepareRail);
   await session.prepareScreenHome();
 
   Future<void> language(String name, String locale, String direction) async {
+    final bool arabic = locale == 'ar';
+    enter(arabic ? ReadonlyViewportStep.arabicPage
+        : ReadonlyViewportStep.englishPage);
     await cli.goto(instance, 'settings');
+    enter(arabic ? ReadonlyViewportStep.arabicDisplay
+        : ReadonlyViewportStep.englishDisplay);
     await call(<String, Object?>{'cmd': 'tap', 'key': 'settings_display'});
+    enter(arabic ? ReadonlyViewportStep.arabicMenu
+        : ReadonlyViewportStep.englishMenu);
     await call(<String, Object?>{
       'cmd': 'wait', 'key': 'display_language_menu', 'timeoutMs': 5000,
     });
+    enter(arabic ? ReadonlyViewportStep.arabicOpen
+        : ReadonlyViewportStep.englishOpen);
     await call(<String, Object?>{
       'cmd': 'tap', 'key': 'display_language_menu',
     });
+    enter(arabic ? ReadonlyViewportStep.arabicChoice
+        : ReadonlyViewportStep.englishChoice);
     await call(<String, Object?>{
       'cmd': 'tap', 'text': name, 'exact': true,
     });
+    enter(arabic ? ReadonlyViewportStep.arabicLocale
+        : ReadonlyViewportStep.englishLocale);
     await cli.until(instance, (Map<String, dynamic> state) =>
         state['locale'] == locale && state['direction'] == direction,
         'viewport locale', seconds: 5);
+    enter(arabic ? ReadonlyViewportStep.arabicHome
+        : ReadonlyViewportStep.englishHome);
     await cli.goto(instance, 'dashboard');
     await home(locale, direction);
   }
@@ -112,22 +180,36 @@ Future<Map<String, Object>> captureReadonlyViewportProbe({
     required String locale,
     required String direction,
   }) async {
+    final bool minimum = width == 1200;
+    void point(ReadonlyViewportStep small, ReadonlyViewportStep arabic) =>
+        enter(minimum ? small : arabic);
+    point(ReadonlyViewportStep.minimumHome, ReadonlyViewportStep.arabicLayout);
     await home(locale, direction);
+    point(ReadonlyViewportStep.minimumResize,
+        ReadonlyViewportStep.arabicResize);
     final Map<String, dynamic> window = await call(<String, Object?>{
       'cmd': 'window', 'do': 'show', 'width': width, 'height': height,
     });
     if (window['clientMatched'] != true) refuse();
+    point(ReadonlyViewportStep.minimumTheme,
+        ReadonlyViewportStep.arabicTheme);
     final Map<String, dynamic> themed = await call(<String, Object?>{
       'cmd': 'theme', 'mode': theme,
     });
     if (themed['mode'] != theme || themed['brightness'] != theme) refuse();
+    point(ReadonlyViewportStep.minimumReady,
+        ReadonlyViewportStep.arabicReady);
     await call(<String, Object?>{
       'cmd': 'wait', 'key': 'home_hero', 'timeoutMs': 5000,
     });
+    point(ReadonlyViewportStep.minimumCapture,
+        ReadonlyViewportStep.arabicCapture);
     final Map<String, dynamic> result = await call(<String, Object?>{
       'cmd': 'shot', 'width': width, 'height': height, 'theme': theme,
       'expect': <String, Object>{'key': 'home_hero', 'exact': true},
     });
+    point(ReadonlyViewportStep.minimumPixels,
+        ReadonlyViewportStep.arabicPixels);
     final Object? client = result['client'];
     final Object? encoded = result['png'];
     if (result['asserted'] != true || result['scale'] != 1 ||
@@ -151,6 +233,8 @@ Future<Map<String, Object>> captureReadonlyViewportProbe({
     bytes += pixels.length;
     if (bytes > _pixelCap) refuse();
     await home(locale, direction);
+    point(ReadonlyViewportStep.minimumWrite,
+        ReadonlyViewportStep.arabicWrite);
     parents();
     output.createSync(recursive: true);
     final File image = File('${output.path}/$name');
@@ -181,18 +265,23 @@ Future<Map<String, Object>> captureReadonlyViewportProbe({
   }
   // A failure propagates before further UI input; no capture is replayed.
   await language('English', 'en', 'ltr');
+  enter(ReadonlyViewportStep.restoreTheme);
   final Map<String, dynamic> themed = await call(<String, Object?>{
     'cmd': 'theme', 'restore': originalTheme,
   });
   for (final String key in <String>['mode', 'brightness', 'savedMode']) {
     if (themed[key] != originalTheme[key]) refuse();
   }
+  enter(ReadonlyViewportStep.restoreWindow);
   final Map<String, dynamic> restored = await call(<String, Object?>{
     'cmd': 'window', 'restoreState': originalWindow,
   });
   if (restored['restored'] != true) refuse();
+  enter(ReadonlyViewportStep.restoreRail);
   await session.restoreScreenRail(expanded: originalRail);
+  enter(ReadonlyViewportStep.finalHome);
   await home('en', 'ltr');
+  enter(ReadonlyViewportStep.complete);
   return <String, Object>{
     'schema': 1, 'scope': 'readonly_native_viewport_observation',
     'captures': captures, 'rendered_locale_restored': true,

@@ -126,12 +126,23 @@ void main() {
         },
       );
       if (fault != 'unbound') await session.bindWallet();
+      final List<ReadonlyViewportStep> steps = <ReadonlyViewportStep>[];
       Future<Map<String, Object>> capture() => captureReadonlyViewportProbe(
-        repository: root, session: session,
+        repository: root, session: session, onStep: steps.add,
       );
       if (fault == 'none') {
         final Map<String, Object> receipt = await capture();
         expect(receipt['scope'], 'readonly_native_viewport_observation');
+        expect(steps.first, ReadonlyViewportStep.admission);
+        expect(steps.last, ReadonlyViewportStep.complete);
+        expect(steps, containsAllInOrder(<ReadonlyViewportStep>[
+          ReadonlyViewportStep.minimumCapture,
+          ReadonlyViewportStep.arabicChoice,
+          ReadonlyViewportStep.arabicCapture,
+          ReadonlyViewportStep.englishChoice,
+          ReadonlyViewportStep.restoreWindow,
+          ReadonlyViewportStep.complete,
+        ]));
         expect(receipt['rendered_locale_restored'], isTrue);
         expect(receipt['theme_window_and_rail_restored'], isTrue);
         expect(receipt['locale_preference_restoration_qualified'], isFalse);
@@ -159,6 +170,15 @@ void main() {
       } else {
         await expectLater(capture(), throwsA(fault.startsWith('negative-')
             ? isA<cli.Fail>() : isA<ReadonlyInspectionRefused>()));
+        expect(steps.first, ReadonlyViewportStep.admission);
+        expect(steps.last, <String, ReadonlyViewportStep>{
+          'unbound': ReadonlyViewportStep.admission,
+          'fresh-path': ReadonlyViewportStep.destination,
+          'negative-shot': ReadonlyViewportStep.minimumCapture,
+          'negative-locale': ReadonlyViewportStep.arabicChoice,
+          'wrong-client': ReadonlyViewportStep.minimumPixels,
+          'wrong-pixels': ReadonlyViewportStep.minimumPixels,
+        }[fault]);
         if (fault == 'unbound') expect(commands, isEmpty);
         if (fault == 'fresh-path') expect(commands.length, 1);
         if (fault.startsWith('negative-')) {

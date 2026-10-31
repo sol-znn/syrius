@@ -1,22 +1,30 @@
 # Redesign build environment
 
-## Current qualification status (2026-10-31T20:23Z)
+## Current qualification status (2026-10-31T20:53Z)
 
-Source261 f3a9564f7d34 / 41237919395 passes 917 Python controls/three
-original skips and fourteen asset phases. Its normal complete zero-exit
-analyzer has zero errors/warnings and eight brace infos, correctly refused
-by the strict gate. Engine, entry/startup, node/wallet runtime and exports
-are skipped; there are no artifacts. Source262 adds only braces around
-those eight original statements, retaining every other token and assertion.
-722/724 Dart, 917/452/94 Python/memory/reader and thirty source pins stay fixed.
-Fresh applied, hosted engine/analysis, native viewport/archive and image
-viewing qualification remain required. Latest successful engine/native
-evidence remains Source260 with 713 passes, zero selected findings, 92 reader
-controls, 24 generic PNGs and two literal Home originals. Home viewing is
-pending; zero of 94 matches are accepted and 88 catalog outputs remain missing.
-Source251 retains the last completed generic review and Source249 its separate
-broad Windows baseline. Main progress stays 71/80. Original failures, ownership
-HOLD, financial/seed UNKNOWNs and separate acceptance gates remain.
+Source262 e3989669a940 / 41238977735 passes 917 Python controls/three
+original skips, fourteen asset phases, zero-findings selected analysis and
+its first 722-case engine selection. The engine exits normally, completely
+and unforced at zero in 187.250 seconds with 367025 bytes. Both entry
+refusals and three startup gates pass; the 724-case fidelity selection
+remains unexecuted. Native entry then exits one at viewport after both
+twelve-page tours. The inner code is null and exact inner cause is
+NOT_ESTABLISHED. Required wallet closure remains unqualified despite a
+separate zero cleanup application exit and five normal complete unforced
+zero node exits. No PNG is exported from this failure. Reader 41240488104
+passes all 94 controls and independently verifies both negative archives
+and all thirty producer source files without runtime replay.
+
+Source263 adds only finite entered-step diagnostics with the original UI
+commands, waits, byte limits and closure rules retained. Expectations are
+722/724 Dart, 918/453/95 Python/memory/reader and thirty source pins. All
+453 candidate memory controls pass; fresh applied and hosted qualification
+remain required. Latest positive native/Home evidence remains Source260,
+Home viewing is pending, zero of 94 matches are accepted and 88 catalog
+outputs remain missing. Source251 retains the last completed generic
+review and Source249 its separate broad Windows baseline. Main progress
+stays 71/80. Original failures, ownership HOLD, financial/seed UNKNOWNs
+and separate acceptance gates remain.
 
 
 ## Qualified PNG capture and Welcome border inset follow-up (2026-10-30T19:37Z)
