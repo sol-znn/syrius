@@ -27,6 +27,9 @@ import 'package:zenon_syrius_wallet_flutter/widgets/reusable_widgets/app_lottie.
 import 'package:zenon_syrius_wallet_flutter/widgets/reusable_widgets/buttons/primary_pill.dart';
 import 'package:znn_sdk_dart/znn_sdk_dart.dart';
 
+import '../../harness/app/agent.dart';
+import '../../harness/app/readonly_sdk_admission.dart';
+
 const String _prices = '{"zenon-2":{"usd":0.62},"quasar":{"usd":0.031}}';
 const MethodChannel _window = MethodChannel('window_manager');
 
@@ -197,6 +200,31 @@ void main() {
       WidgetTester tester,
     ) async {
       await show(tester, light: light);
+      final Object captureOwner = Object();
+      bool automaticDisabled = false;
+      final HarnessAgent capture = HarnessAgent.forTest()
+        ..reserveReadonlyNative();
+      capture.attachReadonlyNative(await ReadonlySdkAdmission.seal(
+        sdkOwner: captureOwner,
+        ownersCurrent: () => true,
+        automaticDisabled: () => automaticDisabled,
+        disableAutomatic: () async { automaticDisabled = true; },
+      ));
+      capture.booted = true;
+      for (final String key in <String>['home_hero', 'home_znn']) {
+        final Map<String, Object?> result = await capture.commandForTest(
+          <String, dynamic>{'cmd': 'assert', 'key': key},
+        );
+        expect(result['asserted'], isTrue);
+        final Map<String, Object?> target =
+            result['target']! as Map<String, Object?>;
+        final Rect observed = tester.getRect(find.byKey(Key(key)));
+        expect(target['rect'], <int>[
+          observed.left.round(), observed.top.round(),
+          observed.width.round(), observed.height.round(),
+        ]);
+        expect(target['kind'], 'region');
+      }
       expect(find.text('1,204.5'), findsOneWidget);
       expect(find.text('12,880'), findsOneWidget);
       expect(find.text('ZNN'), findsOneWidget);

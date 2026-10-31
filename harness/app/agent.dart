@@ -3672,6 +3672,56 @@ class HarnessAgent {
 
   // -------------------------------------------------------------------- wait
 
+  // Passive regions are absent when text is folded into a button. Only
+  // the readonly lane observes these fixed keys; input/ref matching stays.
+  List<_Node>? _readonlyPositiveKeyNodes(Map<String, dynamic> command) {
+    final Object? key = command['key'];
+    if (_readonlyNative == null || key is! String ||
+        !const <String>{'home_hero', 'home_znn', 'rail_label_dashboard'}
+            .contains(key)) {
+      return null;
+    }
+    const Set<String> fields = <String>{
+      'cmd', 'key', 'exact', 'timeoutMs', 'ready',
+    };
+    if (command.keys.any((String name) => !fields.contains(name))) {
+      throw HarnessError('readonly region needs a positive key selector');
+    }
+    final Element? root = WidgetsBinding.instance.rootElement;
+    if (root == null) return <_Node>[];
+    final List<Element> matches = <Element>[];
+    int visited = 0;
+    bool overflow = false;
+    void visit(Element element) {
+      if (overflow || matches.length > 1) return;
+      if (++visited > 16384) {
+        overflow = true;
+        return;
+      }
+      final Widget widget = element.widget;
+      if (widget is Offstage && widget.offstage) return;
+      if (widget is Visibility && !widget.visible) return;
+      if (widget.key == ValueKey<String>(key)) matches.add(element);
+      element.debugVisitOnstageChildren(visit);
+    }
+    visit(root);
+    if (overflow || matches.length != 1 || !matches.single.mounted) {
+      return <_Node>[];
+    }
+    final Rect? rect = _rectOf(matches.single);
+    if (rect == null || rect.width <= 0 || rect.height <= 0 ||
+        <double>[rect.left, rect.top, rect.right, rect.bottom].any(
+          (double value) => !value.isFinite || value.abs() > 32768,
+        ) || rect.intersect(Offset.zero & _viewSize()) != rect) {
+      return <_Node>[];
+    }
+    // No durable control ref is cached or added to the original snapshot.
+    return <_Node>[
+      _Node('region', matches.single.widget.runtimeType.toString(),
+          matches.single, rect, const <String>[])..key = key,
+    ];
+  }
+
   Future<Map<String, Object?>> _wait(Map<String, dynamic> c) async {
     final int timeout = c['timeoutMs'] as int? ?? 10000;
     final bool gone = c['gone'] == true;
@@ -3681,7 +3731,7 @@ class HarnessAgent {
     }
     final Stopwatch sw = Stopwatch()..start();
     while (true) {
-      final List<_Node> hits = _matches(
+      final List<_Node> hits = _readonlyPositiveKeyNodes(c) ?? _matches(
         c,
         kinds: const <String>[
           'button',
@@ -3781,7 +3831,13 @@ class HarnessAgent {
     if (errors.isNotEmpty) {
       throw HarnessError('error widget on screen', errors.first.toJson());
     }
-    final _Node node = _find(<String, dynamic>{...c, 'exact': true});
+    final List<_Node>? regions = _readonlyPositiveKeyNodes(c);
+    if (regions != null && regions.length != 1) {
+      throw HarnessError('readonly region is not uniquely visible');
+    }
+    final _Node node = regions == null
+        ? _find(<String, dynamic>{...c, 'exact': true})
+        : regions.single;
     if (!_reachable(node, node.center)) {
       throw HarnessError('assert target is covered', node.toJson());
     }

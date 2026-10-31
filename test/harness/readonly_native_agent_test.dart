@@ -3,6 +3,8 @@ import 'dart:convert';
 import 'dart:io';
 import 'dart:typed_data';
 
+import 'package:flutter/widgets.dart';
+
 import 'package:flutter_test/flutter_test.dart';
 import 'package:zenon_syrius_wallet_flutter/utils/original_publications.dart';
 
@@ -104,6 +106,126 @@ class _Request extends Stream<Uint8List> implements HttpRequest {
 }
 
 void main() {
+  testWidgets('readonly regions retain actual widget keys', (
+    WidgetTester tester,
+  ) async {
+    await tester.pumpWidget(Directionality(
+      textDirection: TextDirection.ltr,
+      child: Align(
+        alignment: Alignment.topLeft,
+        child: Column(mainAxisSize: MainAxisSize.min, children: <Widget>[
+          const ColoredBox(key: Key('home_hero'), color: Color(0xff222222),
+            child: SizedBox(width: 200, height: 100,
+              child: Text('Synthetic amount', key: Key('home_znn')))),
+          GestureDetector(
+            onTap: () => fail('Passive observation must not tap'),
+            child: const Text('Synthetic rail',
+              key: Key('rail_label_dashboard')),
+          ),
+        ]),
+      ),
+    ));
+    final HarnessAgent ordinary = HarnessAgent.forTest()..booted = true;
+    await expectLater(ordinary.commandForTest(<String, dynamic>{
+      'cmd': 'assert', 'key': 'home_hero',
+    }), throwsA(isA<HarnessError>()));
+    final _Scope scope = _Scope();
+    await scope.open();
+    for (final String key in <String>[
+      'home_hero', 'home_znn', 'rail_label_dashboard',
+    ]) {
+      final Map<String, Object?> result = await scope.agent.commandForTest(
+        <String, dynamic>{'cmd': 'assert', 'key': key},
+      );
+      expect(result['asserted'], isTrue);
+      final Map<String, Object?> target =
+          result['target']! as Map<String, Object?>;
+      final Rect rect = tester.getRect(find.byKey(Key(key)));
+      expect(target['key'], key);
+      expect(target['kind'], 'region');
+      expect(target['rect'], <int>[
+        rect.left.round(), rect.top.round(),
+        rect.width.round(), rect.height.round(),
+      ]);
+      final Map<String, Object?> waited = await scope.agent.commandForTest(
+        <String, dynamic>{'cmd': 'wait', 'key': key,
+          'ready': true, 'timeoutMs': 0},
+      );
+      expect((waited['target']! as Map<String, Object?>)['key'], key);
+    }
+    final Map<String, Object?> tree = await scope.agent.commandForTest(
+      <String, dynamic>{'cmd': 'tree'},
+    );
+    final List<Map<String, Object?>> nodes =
+        tree['nodes']! as List<Map<String, Object?>>;
+    expect(nodes.where((Map<String, Object?> node) =>
+        node['kind'] == 'region'), isEmpty);
+    expect(OriginalPublications.snapshot(scope.sdk), isEmpty);
+  });
+
+  testWidgets('hidden or duplicate regions provide no positive state', (
+    WidgetTester tester,
+  ) async {
+    final _Scope scope = _Scope();
+    await scope.open();
+    const Widget region = ColoredBox(key: Key('home_hero'),
+      color: Color(0xff222222), child: SizedBox(width: 200, height: 80));
+    for (final String fault in <String>[
+      'duplicate', 'offstage', 'hidden', 'zero',
+    ]) {
+      final Widget content = switch (fault) {
+        'duplicate' => const Column(children: <Widget>[
+          SizedBox(child: region), SizedBox(child: region),
+        ]),
+        'offstage' => const Offstage(child: region),
+        'hidden' => const Visibility(visible: false, maintainSize: true,
+          maintainAnimation: true, maintainState: true, child: region),
+        _ => const SizedBox.shrink(child: region),
+      };
+      await tester.pumpWidget(Directionality(
+        textDirection: TextDirection.ltr,
+        child: Align(alignment: Alignment.topLeft, child: content),
+      ));
+      await expectLater(scope.agent.commandForTest(<String, dynamic>{
+        'cmd': 'assert', 'key': 'home_hero',
+      }), throwsA(isA<HarnessError>()));
+      await expectLater(scope.agent.commandForTest(<String, dynamic>{
+        'cmd': 'wait', 'key': 'home_hero', 'timeoutMs': 0, 'ready': true,
+      }), throwsA(isA<HarnessError>()));
+      expect(tester.takeException(), isNull);
+    }
+    expect((await scope.ping())['booted'], isTrue);
+    expect(OriginalPublications.snapshot(scope.sdk), isEmpty);
+  });
+
+  testWidgets('covered regions cannot assert or become controls', (
+    WidgetTester tester,
+  ) async {
+    await tester.pumpWidget(const Directionality(
+      textDirection: TextDirection.ltr,
+      child: Stack(children: <Widget>[
+        Positioned(left: 0, top: 0, width: 200, height: 100,
+          child: ColoredBox(key: Key('home_hero'), color: Color(0xff222222),
+            child: Text('Synthetic amount', key: Key('home_znn')))),
+        Positioned.fill(child: ColoredBox(color: Color(0xff444444))),
+      ]),
+    ));
+    final _Scope scope = _Scope();
+    await scope.open();
+    for (final Map<String, dynamic> command in <Map<String, dynamic>>[
+      <String, dynamic>{'cmd': 'assert', 'key': 'home_hero'},
+      <String, dynamic>{'cmd': 'wait', 'key': 'home_hero',
+        'timeoutMs': 0, 'ready': true},
+      <String, dynamic>{'cmd': 'tap', 'key': 'home_hero'},
+      <String, dynamic>{'cmd': 'assert', 'key': 'home_hero', 'nth': 1},
+      <String, dynamic>{'cmd': 'wait', 'key': 'home_hero', 'gone': true},
+    ]) {
+      await expectLater(scope.agent.commandForTest(command),
+          throwsA(isA<HarnessError>()));
+    }
+    expect(OriginalPublications.snapshot(scope.sdk), isEmpty);
+  });
+
   test('inspection entry refuses foreign nodes and chains before UI access',
       () async {
     final _Scope scope = _Scope();
