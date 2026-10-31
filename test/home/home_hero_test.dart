@@ -203,14 +203,14 @@ void main() {
       final Object captureOwner = Object();
       bool automaticDisabled = false;
       final HarnessAgent capture = HarnessAgent.forTest()
-        ..reserveReadonlyNative();
-      capture.attachReadonlyNative(await ReadonlySdkAdmission.seal(
-        sdkOwner: captureOwner,
-        ownersCurrent: () => true,
-        automaticDisabled: () => automaticDisabled,
-        disableAutomatic: () async { automaticDisabled = true; },
-      ));
-      capture.booted = true;
+        ..reserveReadonlyNative()
+        ..attachReadonlyNative(await ReadonlySdkAdmission.seal(
+          sdkOwner: captureOwner,
+          ownersCurrent: () => true,
+          automaticDisabled: () => automaticDisabled,
+          disableAutomatic: () async { automaticDisabled = true; },
+        ))
+        ..booted = true;
       for (final String key in <String>['home_hero', 'home_znn']) {
         final Map<String, Object?> result = await capture.commandForTest(
           <String, dynamic>{'cmd': 'assert', 'key': key},
