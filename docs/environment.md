@@ -1,41 +1,39 @@
 # Redesign build environment
 
-## Current qualification status (2026-10-31T22:54Z)
+## Current qualification status (2026-10-31T23:34Z)
 
-Source266 / 41249583868 remains FAILURE before native admission: 918 Python
-controls/three original skips, fourteen asset phases and zero selected
-analysis findings pass. Its original engine exits one normally, completely
-and unforced with 744 passes and one failed bound Home transport case.
-That test retains the old output count/command set after the real script
-adds three pointer/text-wait commands per theme. Native, wallet build and
-lab are skipped; zero artifacts or PNGs exist.
+Source267 passes 918 Python controls/three original skips, fourteen asset
+phases, selected analysis with zero findings and all 746 ordinary Dart cases
+with zero failures/errors/skips. Its original engine exits zero normally,
+completely and unforced in 209.844 seconds. Native entry then fails at
+home_catalog with a null finite inner code after 24 visited pages; zero PNGs
+are exported and required wallet actor closure is unqualified. Reader
+41251749359 passes 95 controls and independently verifies both negative
+archives/all thirty sources. The exact original inner cause is NOT_ESTABLISHED.
 
-Source267 aligns the transport test, preserves all original negative
-and binding/closure assertions, and additionally checks exact hover/wait
-request maps. No production source, script, workflow, SDK authority, test
-registration or selection changes. The existing real link case is required
-in hosted Windows; missing privilege fails. Nonhosted Windows retains its
-original skip, and the strict zero-skip CI gate remains. Fresh expectations
-remain 746/748 Dart
-and 918/453/95 Python/memory/reader with thirty unchanged producer source
-pins. Applied and hosted qualification is required; actual tooltip frames
-and hidden-balance native capture remain unqualified.
+The four actual Source265 V04 images have been viewed in both themes at
+1200x600 minimum and 1280x780 Arabic locale. The owned review closes SUCCESS
+with controller exit zero and its verified archive retained. Main controls
+fit in these static frames and RTL mirrors; English fallback and missing
+Arabic copy remain X414. Full Arabic glyph/localization quality, exact saved
+locale preference and atomic restoration remain separate and unqualified.
+The original V04 viewing gate is complete: main progress is 72/80 by rows.
 
-Source265 retains independently qualified native/reader evidence: 723
-focused passes, 24 generic plus two literal Home plus four V04 PNGs, and
-required normal complete unforced wallet/five-node closure. Its separate
-broad Windows suite has 4838 passes/two original skips and all twelve checks.
-Root analysis has zero errors/warnings and 1296 infos; vendored is clean.
-Debug/Release are normal complete unforced zero at 131.813/182.000 seconds.
-These remain Source265 evidence, not qualification of the current source.
+Source268 narrows harness extraction for empty semantic container spans with
+children and strengthens the existing real rail pointer case. Production UI,
+assets, scripts, dependencies, SDK authority and original input/hit-test guards
+are unchanged. Fresh applied memory and harness-only qualification are required
+first: 746/748 Dart and 918/453/95 Python/memory/reader, thirty producer pins.
+Native and broad current-source qualification follow only after that gate.
+No local SDK, wallet or node executes.
 
-Source260 actual Home review is complete with zero accepted matches. V04
-actual viewing is pending; saved locale preference and atomic frame remain
-separate unqualified observations. All original failures/HOLD/UNKNOWNs
-remain, including Source264/263/262 and Source265 local failures. Main
-progress stays 71/80, zero matches out of 94 and 88 missing catalog outputs.
-Native101 send and Native103 Token effect stay UNKNOWN; Native104 is not
-admitted. No local SDK/wallet/node executes. The PR remains Draft.
+Source265 retains the latest positive native thirty-PNG observation with
+required normal complete unforced closure and its separate 4838-pass/two-skip
+broad baseline. Root analysis retains zero errors/warnings and 1296 infos;
+vendored is clean. Source260 Home and Source251 generic visual reviews accept
+zero matches. Zero of 94 matches, nineteen preparations and 88 missing catalog
+outputs remain. All original failures/HOLD/UNKNOWNs remain. Native101 send and
+Native103 Token effect stay UNKNOWN; Native104 is not admitted. The PR is Draft.
 
 
 ## Qualified PNG capture and Welcome border inset follow-up (2026-10-30T19:37Z)

@@ -2869,8 +2869,8 @@ class HarnessAgent {
     } else if (w is Text || (w is RichText && !n.inText)) {
       final String text = _clean(
         w is Text
-            ? (w.data ?? w.textSpan?.toPlainText() ?? '')
-            : (w as RichText).text.toPlainText(),
+            ? (w.data ?? _spanText(w.textSpan))
+            : _spanText((w as RichText).text),
       );
       // Inside a TextField the hint, label and error are reported on the
       // field itself.
@@ -2949,6 +2949,17 @@ class HarnessAgent {
       return;
     }
     e.debugVisitOnstageChildren((Element child) => _visit(child, next, out));
+  }
+
+  // A semantic label on an empty container span is not extra painted text.
+  // Preserve the original extraction for ordinary spans and plain Text data.
+  static String _spanText(InlineSpan? span) {
+    if (span == null) return '';
+    final bool semanticContainer = span is TextSpan &&
+        span.text == '' &&
+        span.semanticsLabel != null &&
+        span.children?.isNotEmpty == true;
+    return span.toPlainText(includeSemanticsLabels: !semanticContainer);
   }
 
   /// Icon fonts draw glyphs from the private use areas; as text they are

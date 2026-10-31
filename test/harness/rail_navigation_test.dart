@@ -17,8 +17,11 @@ Future<void> _mount(
   required ValueChanged<Tabs> onSelected,
   Tabs selected = Tabs.dashboard,
   BellController? bell,
+  bool light = false,
+  Size size = const Size(1280, 780),
+  Widget page = const SizedBox.expand(),
 }) async {
-  prepareWelcomeViewport(tester);
+  prepareWelcomeViewport(tester, size: size);
   final RailCollapse collapse = RailCollapse()
     ..setCollapsed(collapsed: collapsed);
   addTearDown(() async {
@@ -42,13 +45,36 @@ Future<void> _mount(
                 ),
               ),
             ),
-            const Expanded(child: SizedBox.expand()),
+            Expanded(child: page),
           ],
         ),
       ),
+      light: light,
+      size: size,
     ),
   );
   await tester.pump(const Duration(milliseconds: 500));
+}
+
+Future<T> _driveHarness<T>(WidgetTester tester, Future<T> command) async {
+  bool done = false;
+  T? result;
+  Object? failure;
+  StackTrace? trace;
+  unawaited(command.then((T value) {
+    result = value;
+    done = true;
+  }, onError: (Object error, StackTrace stack) {
+    failure = error;
+    trace = stack;
+    done = true;
+  }));
+  for (int i = 0; i < 160 && !done; i++) {
+    await tester.pump(const Duration(milliseconds: 40));
+  }
+  expect(done, isTrue, reason: 'the original pointer command did not finish');
+  if (failure != null) Error.throwWithStackTrace(failure!, trace!);
+  return result as T;
 }
 
 Future<List<Map<String, Object?>>> _controls(HarnessAgent agent) async {
@@ -164,6 +190,69 @@ void main() {
       expect(target['kind'], 'button');
       expect(target['tab'], 'settings');
       expect(opened, <Tabs>[Tabs.settings]);
+      if (collapsed) {
+        for (final bool light in <bool>[false, true]) {
+          for (final Size size in <Size>[
+            const Size(1280, 780), const Size(1200, 600),
+          ]) {
+            await _mount(tester, collapsed: true, locked: false,
+              light: light, size: size, onSelected: opened.add);
+            await _driveHarness(tester, agent.commandForTest(<String, dynamic>{
+              'cmd': 'hover', 'at': <int>[0, 0], 'settleMs': 0,
+            }));
+            await _driveHarness(tester, agent.commandForTest(<String, dynamic>{
+              'cmd': 'hover', 'key': 'nav_notifications',
+            }));
+            await tester.pump(const Duration(milliseconds: 1000));
+            final Finder painted = find.byWidgetPredicate((Widget widget) =>
+                widget is RichText && widget.text.toPlainText(
+                  includeSemanticsLabels: false) == 'Notifications');
+            expect(painted, findsOneWidget);
+            final RichText tooltip = tester.widget<RichText>(painted);
+            // Reproduce the parent's actual extraction on the rendered span.
+            expect(tooltip.text.toPlainText(),
+                'NotificationsNotifications');
+            final Map<String, Object?> observed = await agent.commandForTest(
+              <String, dynamic>{'cmd': 'tree'},
+            );
+            final List<Map<String, Object?>> rows =
+                observed['nodes']! as List<Map<String, Object?>>;
+            expect(rows.where((Map<String, Object?> row) =>
+                row['kind'] == 'text' && row['label'] == 'Notifications'),
+                hasLength(1));
+            await _driveHarness(tester, agent.commandForTest(<String, dynamic>{
+              'cmd': 'wait', 'text': 'Notifications', 'kind': 'text',
+              'exact': true, 'timeoutMs': 5000,
+            }));
+            expect(find.byKey(const Key('bell_panel')), findsNothing);
+            expect(opened, <Tabs>[Tabs.settings]);
+          }
+        }
+        await _mount(tester, collapsed: true, locked: false,
+          onSelected: opened.add, page: const Column(children: <Widget>[
+            Text('ordinary', key: Key('label_plain')),
+            Text.rich(TextSpan(text: 'leaf', semanticsLabel: 'spoken leaf'),
+              key: Key('label_leaf')),
+            Text.rich(TextSpan(text: '', children: <InlineSpan>[
+              TextSpan(text: 'nested'),
+            ]), key: Key('label_nested')),
+            Text.rich(TextSpan(text: 'prefix', semanticsLabel: 'spoken prefix',
+              children: <InlineSpan>[TextSpan(text: ' child')]),
+              key: Key('label_prefix')),
+          ]));
+        final Map<String, Object?> originalKinds = await agent.commandForTest(
+          <String, dynamic>{'cmd': 'tree'},
+        );
+        final List<Map<String, Object?>> rows =
+            originalKinds['nodes']! as List<Map<String, Object?>>;
+        for (final MapEntry<String, String> value in <String, String>{
+          'label_plain': 'ordinary', 'label_leaf': 'spoken leaf',
+          'label_nested': 'nested', 'label_prefix': 'spoken prefix child',
+        }.entries) {
+          expect(rows.singleWhere((Map<String, Object?> row) =>
+              row['key'] == value.key)['label'], value.value);
+        }
+      }
     });
   }
 
