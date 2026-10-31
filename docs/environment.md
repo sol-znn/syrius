@@ -1,29 +1,41 @@
 # Redesign build environment
 
-## Current qualification status (2026-10-31T21:57Z)
+## Current qualification status (2026-10-31T22:42Z)
 
-Source264 / 41245052686 remains FAILURE: 918 Python controls/three original
-skips, fourteen asset phases and selected analysis with zero findings pass.
-The normal complete unforced Flutter command exits one after 208.110 seconds
-with 722 passes and one failed real pointer case. The retained source location
-is the covered-target refusal at agent.dart line 3343. Wallet build, native
-entry and lab are skipped with zero artifacts. Source265 excludes the pinned
-DropdownMenu body measurement-only children and strengthens the same pointer
-case without changing test counts, original inputs or hit-test guards.
-Fresh applied/hosted qualification is required: 723/725 Dart, 918/453/95
-Python/memory/reader, thirty producer source pins. No local SDK is executed.
+Source265 has four terminal successful independently qualified CI runs.
+Native 41246130776 and reader 41247342231 qualify 918 Python controls with
+three original skips, fourteen asset phases, selected analysis with zero
+findings, and 723 focused Dart passes. The original native flow retains
+24 generic, two literal Home and four V04 PNGs. All required wallet actors
+and five nodes close normally, completely, unforced and zero. Auxiliary
+VCTIP telemetry cleanup is separate. V04 actual viewing is pending; its
+exact saved locale preference and atomic-frame observations are separate
+and unqualified. SDK publication is paused; automatic receive is disabled.
 
-Source263/262 negative native archives remain independently qualified failures;
-their original inner causes are NOT_ESTABLISHED. Latest positive native stays
-Source260 with 24 generic plus two literal Home images and required closure.
-The two actual Home originals have a closed successful visual review, but no
-match is accepted. X411 distinguishes missing hover preparation from the
-inert selected-address Activity badge. The separate Home capture-state
-candidate remains unapplied. Source251 generic review and Source249 broad
-Windows baseline remain source-bound. Main progress stays 71/80; 88 catalog
-outputs are missing. All original failures/HOLD/UNKNOWNs and acceptance gates
-remain. Native101 send and Native103 Token confirmation/effect stay UNKNOWN;
-Native104 is not admitted.
+Source265 full Windows 41246690485 and inspector 41248885882 qualify
+4838 passes with two original skips and all twelve checks. Root analysis
+has zero errors/warnings and 1296 infos; vendored analysis is clean. Debug
+and Release complete normally, unforced and zero in 131.813/182.000 seconds.
+Generation/localization and source correspondence remain unchanged. This
+non-chain baseline does not qualify DLL initialization or later revisions.
+
+Source266 applies positive-shot balance restoration and real Notifications
+hover preparation to Home capture scripts. All twenty old and three new
+capture cases are selected, and strict analysis includes runner and tests.
+Fresh expectations are 746/748 Dart and 918/453/95 Python/memory/reader with
+thirty producer source pins. Applied memory and hosted/native qualification
+remain required. Actual hidden-balance native capture remains unwired.
+No local SDK, wallet or node executes; no workflow or SDK authority changes.
+
+Source264/263/262 original failures remain; the earlier native inner causes
+stay NOT_ESTABLISHED. Source265 local ref-kind qualification failure and
+observer-exit UNKNOWN remain distinct from later successful API/CI results.
+Source260 retains a closed actual two-image Home review with zero matches;
+Activity has an inert selected-address badge. Source251 retains the generic
+24-image review. Main progress stays 71/80; zero matches out of 94 and
+88 missing catalog outputs remain. All original failures/HOLD/UNKNOWNs and
+acceptance gates remain. Native101 send and Native103 Token effect stay
+UNKNOWN; Native104 is not admitted. The PR remains Draft.
 
 
 ## Qualified PNG capture and Welcome border inset follow-up (2026-10-30T19:37Z)

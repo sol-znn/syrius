@@ -146,6 +146,67 @@ void main() {
     repository.deleteSync(recursive: true);
   });
 
+  for (final bool failSecond in <bool>[false, true]) {
+    test('hidden balance capture restores only completed shots $failSecond',
+        () async {
+      final String source = File('harness/screens/home-hidden.txt')
+          .readAsStringSync();
+      writeScript('home-hidden', source);
+      bool hidden = false;
+      int restores = 0;
+      final List<bool> observedAtShot = <bool>[];
+      agent.failSecondShot = failSecond;
+      capture = ScreenCapture(
+        repository: repository,
+        call: (Map<String, Object?> command) async {
+          if (command['cmd'] == 'shot') observedAtShot.add(hidden);
+          return agent.call(command);
+        },
+        prepareHome: agent.prepareHome,
+        runLine: (List<String> words) async {
+          if (words.first == 'tap' && words[1] == 'Hide balances') {
+            if (hidden) throw StateError('visible starting state missing');
+            hidden = true;
+          } else if (words.first == 'tap' && words[1] == 'Show balances') {
+            if (!hidden) throw StateError('hidden capture state missing');
+            hidden = false;
+            restores++;
+          }
+          await agent.runLine(words);
+        },
+        assertionFor: (List<String> words) =>
+            cli.assertionArgs(cli.Args(words.sublist(1))),
+      );
+      if (failSecond) {
+        await expectLater(capture.capture('home-hidden'),
+            throwsA(isA<ScreenCaptureError>()));
+        expect(hidden, isTrue);
+        expect(restores, 1);
+      } else {
+        expect(await capture.capture('home-hidden'), hasLength(2));
+        expect(hidden, isFalse);
+        expect(restores, 2);
+      }
+      expect(observedAtShot, <bool>[true, true]);
+    });
+  }
+
+  test('after-capture metadata refuses invalid input before UI effects', () {
+    for (final String source in <String>[
+      '# after-capture: tap "Show balances"\nassert --key page',
+      'assert --key page\n# after-capture:',
+      'assert --key page\n# after-capture: quit',
+      'assert --key page\n# after-capture: tap --instance other',
+      'assert --key page\n# after-capture: tap eye\ntap other',
+    ]) {
+      writeScript('home-hidden', source);
+      expect(() => capture.preflight('home-hidden'),
+          throwsA(isA<ScreenCaptureError>()));
+      expect(agent.commands, isEmpty);
+      expect(agent.lines, isEmpty);
+    }
+  });
+
   test('authored page scripts finish with a valid stable assertion', () {
     final List<File> scripts = Directory('harness/screens')
         .listSync(followLinks: false)

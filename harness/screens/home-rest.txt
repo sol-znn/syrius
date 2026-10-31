@@ -5,4 +5,8 @@ wait --key home_hero --timeout 30
 wait --key home_znn --timeout 30
 assert --key home_send
 assert --key home_receive
+# Match the reference pointer state without opening the panel.
+hover @0,0 --settle 0
+hover --key nav_notifications
+wait "Notifications" --kind text --exact --timeout 5
 assert --key home_hero

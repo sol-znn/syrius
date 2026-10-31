@@ -134,10 +134,13 @@ List<String> scriptWords(String line) {
 }
 
 class ScreenScript {
-  const ScreenScript(this.screen, this.lines, this.assertion);
+  const ScreenScript(this.screen, this.lines, this.assertion, {
+    this.afterCapture = const <ScreenLine>[],
+  });
 
   final ScreenSpec screen;
   final List<ScreenLine> lines;
+  final List<ScreenLine> afterCapture;
   final Map<String, Object?> assertion;
 }
 
@@ -168,6 +171,8 @@ class ScreenCapture {
   final AssertionParser assertionFor;
   final Future<bool> Function()? readRailState;
   final Future<void> Function({required bool expanded})? restoreRailState;
+
+  static const String _afterCapturePrefix = '# after-capture:';
 
   static const Set<String> _uiCommands = <String>{
     'tap',
@@ -240,10 +245,12 @@ class ScreenCapture {
     }
     final List<String> source = File(_join(fileParts)).readAsLinesSync();
     final List<ScreenLine> lines = <ScreenLine>[];
+    final List<ScreenLine> afterCapture = <ScreenLine>[];
     for (int i = 0; i < source.length; i++) {
       final String text = source[i].trim();
       if (text.isEmpty) continue;
-      if (text.startsWith('#')) {
+      final bool after = text.startsWith(_afterCapturePrefix);
+      if (text.startsWith('#') && !after) {
         if (text.startsWith('# prerequisite:') &&
             text != '# prerequisite: unlocked-home') {
           throw ScreenCaptureError('${screen.id}: ${text.substring(2)}');
@@ -251,14 +258,30 @@ class ScreenCapture {
         continue;
       }
       try {
-        final List<String> words = scriptWords(text);
-        if (!_uiCommands.contains(words.first) ||
+        final List<String> words = scriptWords(
+          after ? text.substring(_afterCapturePrefix.length).trim() : text,
+        );
+        if (words.isEmpty || !_uiCommands.contains(words.first) ||
             words.any(
               (String w) => w == '--instance' || w.startsWith('--instance='),
             )) {
           throw const ScreenCaptureError('not a screen UI command');
         }
-        lines.add(ScreenLine(i + 1, words));
+        if (after) {
+          if (lines.isEmpty || lines.last.words.first != 'assert') {
+            throw const ScreenCaptureError(
+              'after-capture needs a completed assertion',
+            );
+          }
+          afterCapture.add(ScreenLine(i + 1, words));
+        } else {
+          if (afterCapture.isNotEmpty) {
+            throw const ScreenCaptureError(
+              'capture commands cannot follow after-capture',
+            );
+          }
+          lines.add(ScreenLine(i + 1, words));
+        }
       } on ScreenCaptureError catch (e) {
         throw ScreenCaptureError('${screen.id}:${i + 1}: $e');
       }
@@ -266,7 +289,9 @@ class ScreenCapture {
     if (lines.isEmpty || lines.last.words.first != 'assert') {
       throw ScreenCaptureError('${screen.id}: finish the script with assert');
     }
-    return ScreenScript(screen, lines, assertionFor(lines.last.words));
+    return ScreenScript(screen, lines, assertionFor(lines.last.words),
+      afterCapture: afterCapture,
+    );
   }
 
   /// Applies the actual script parser before any theme or window effect.
@@ -410,6 +435,17 @@ class ScreenCapture {
             ..createSync(exclusive: true)
             ..writeAsBytesSync(bytes, flush: true);
           captured.add(path.join('/'));
+          // These real UI inputs run once after a fully retained positive shot.
+          // A refusal propagates; neither capture nor restoration is replayed.
+          for (final ScreenLine line in script.afterCapture) {
+            try {
+              await runLine(line.words);
+            } on Object catch (e) {
+              throw ScreenCaptureError(
+                '${script.screen.id}:${line.number}: $e',
+              );
+            }
+          }
         }
       }
     } on Object catch (e) {
