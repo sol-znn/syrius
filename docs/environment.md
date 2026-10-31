@@ -1,17 +1,19 @@
 # Redesign build environment
 
-## Current qualification status (2026-10-31T19:38Z)
+## Current qualification status (2026-10-31T19:44Z)
 
-Source258 c21ec0aacb98 / 41234273027 passes 91 reader controls and
-independently qualifies both original Source257 failure archives and all 28
-producer source files. Original native and reader failures remain failed,
-with unexported exact causes NOT_ESTABLISHED. No original runtime is replayed.
-Source259 prepares an explicit fourteen-request full reader budget and finite
-lab-revalidation failure labels. All 449 candidate memory controls pass;
-914 Python cases are registered and the independent reader expects 92.
-Fresh applied controls and a bounded hosted diagnostic native run remain
-required. Dart selections stay 713/715 and product UI/SDK inputs stay fixed.
-Latest focused/native/broad evidence stays Source257/Source251/Source249.
+Source259 d40409251dee / 41235368397 fails one of 914 Python controls
+with zero failures and three original skips. All fourteen asset phases pass.
+SDK allocation, analysis, engine, node/wallet runtime and export are skipped;
+there are no artifacts. Source260 changes only that synthetic sparse-workflow
+fixture to recognize Windows separators and retains all original checks for
+both platform and pure Windows paths. All 449 candidate memory controls pass;
+914/449/92 Python/memory/reader and 713/715 Dart selections stay fixed.
+All producer, reader, SDK, workflow and product bytes stay Source259. Fresh
+applied controls and hosted Windows qualification are required. Original
+failures remain failed with unexported exact causes NOT_ESTABLISHED. Source258
+qualifies the two original Source257 negative archives without runtime replay.
+Latest successful focused/native/broad evidence stays Source257/251/249.
 Main progress remains 71/80 with zero accepted visual matches out of 94.
 
 

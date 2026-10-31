@@ -6,7 +6,7 @@ import copy
 import hashlib
 import io
 import json
-from pathlib import Path
+from pathlib import Path, PureWindowsPath
 import stat
 import unittest
 from unittest import mock
@@ -351,35 +351,36 @@ class ReaderTests(unittest.TestCase):
             content='\n'.join(encoded[i:i+60] for i in range(0, len(encoded), 60)) + '\n')
         calls = []
         def local(path, cap):
-            if str(path).endswith(reader.WORKFLOW_SOURCE):
+            if path.as_posix().endswith(reader.WORKFLOW_SOURCE):
                 raise FileNotFoundError('Synthetic sparse workflow omission')
             return source
         def remote(sha):
             calls.append(sha)
             return copy.deepcopy(response)
-        with mock.patch.object(reader.producer, 'read_original', side_effect=local):
-            with self.assertRaises(FileNotFoundError):
-                reader.source_files(Path('/fixture'), tree, 'b' * 40)
-            observed = reader.source_files(Path('/fixture'), tree, 'b' * 40,
-                read_workflow_blob=remote)
-            self.assertEqual(len(observed), len(reader.SOURCE_FILES))
-            self.assertEqual(observed[reader.WORKFLOW_SOURCE], reader.archive.sha(workflow))
-            self.assertEqual(calls, [blob(workflow)])
-            for change in ({'sha': 'c' * 40}, {'encoding': 'raw'}, {'size': True},
-                {'size': len(workflow) + 1}, {'size': reader.MAX_WORKFLOW_SOURCE + 1},
-                {'content': 'Synthetic private text'}, {'content': encoded + '!'},
-                {'content': base64.b64encode(b'x' * len(workflow)).decode('ascii')},
-                {'content': b'private'}, {'content': 'A' * (reader.MAX_WORKFLOW_RESPONSE + 1)}):
-                with self.subTest(fields=list(change)), self.assertRaises((reader.archive.Refused, ValueError)):
-                    reader.source_files(Path('/fixture'), tree, 'b' * 40,
-                        read_workflow_blob=lambda _: {**response, **change})
-            changed = copy.deepcopy(tree)
-            changed['tree'].pop()
-            calls.clear()
-            with self.assertRaises(reader.archive.Refused):
-                reader.source_files(Path('/fixture'), changed, 'b' * 40,
+        for repo in (Path('/fixture'), PureWindowsPath('C:/fixture')):
+            with mock.patch.object(reader.producer, 'read_original', side_effect=local):
+                with self.assertRaises(FileNotFoundError):
+                    reader.source_files(repo, tree, 'b' * 40)
+                observed = reader.source_files(repo, tree, 'b' * 40,
                     read_workflow_blob=remote)
-            self.assertEqual(calls, [])
+                self.assertEqual(len(observed), len(reader.SOURCE_FILES))
+                self.assertEqual(observed[reader.WORKFLOW_SOURCE], reader.archive.sha(workflow))
+                self.assertEqual(calls, [blob(workflow)])
+                for change in ({'sha': 'c' * 40}, {'encoding': 'raw'}, {'size': True},
+                    {'size': len(workflow) + 1}, {'size': reader.MAX_WORKFLOW_SOURCE + 1},
+                    {'content': 'Synthetic private text'}, {'content': encoded + '!'},
+                    {'content': base64.b64encode(b'x' * len(workflow)).decode('ascii')},
+                    {'content': b'private'}, {'content': 'A' * (reader.MAX_WORKFLOW_RESPONSE + 1)}):
+                    with self.subTest(fields=list(change)), self.assertRaises((reader.archive.Refused, ValueError)):
+                        reader.source_files(repo, tree, 'b' * 40,
+                            read_workflow_blob=lambda _: {**response, **change})
+                changed = copy.deepcopy(tree)
+                changed['tree'].pop()
+                calls.clear()
+                with self.assertRaises(reader.archive.Refused):
+                    reader.source_files(repo, changed, 'b' * 40,
+                        read_workflow_blob=remote)
+                self.assertEqual(calls, [])
 
     def test_source_blob_compatibility_refuses_partial_changed_or_truncated_trees(self):
         raw = b'synthetic source'

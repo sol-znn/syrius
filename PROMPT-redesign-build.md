@@ -392,14 +392,14 @@ macOS; Windows provision and acceptance remain pending. See
 
 ### Now
 
-- Updated: 2026-10-31T19:38Z
-- Current work: Source258 independently qualifies both original Source257 failure archives through 91 reader controls. Source259 corrects two source-confirmed gaps: an explicit fourteen-request full reader budget and finite lab error labels. Fresh applied controls and hosted diagnostic qualification remain pending
+- Updated: 2026-10-31T19:44Z
+- Current work: Source259 / 41235368397 fails one of 914 Python controls before SDK allocation; no analysis, engine or native runtime starts and no artifacts are produced. Source260 corrects only its synthetic Windows path selector and retains all assertions for both path styles. Fresh applied memory and hosted Windows qualification remain required
 - Main ledger: 71 of 80 main rows are done, or 88.75 percent by rows. P03, P09, F06 and V01-V06 remain open
 - Latest qualified focused result: Source257 / 41231392557 has 713 Dart passes, zero failures/errors/skips, zero selected findings, 911 Python controls/three original skips, fourteen asset phases, two entry refusals and three startup gates. Its normal complete unforced zero exit is 205.844 seconds/361586 bytes. The 715-case startup selection is unexecuted; Source256 invalid events remain failed
 - Current native limits: Source257 / 41231991847 remains FAILURE before private onboarding input release, with zero revalidations or accepted PNGs and forced required wallet actors. Its five nodes exit normally at zero separately. Original reader 41233307044 remains failed at producer_source; corrected Source258 reader 41234273027 verifies its retained negative archives without replay. Original exact causes remain NOT_ESTABLISHED
 - Latest qualified native and visual evidence: Source251 / 41220083078 and independent 41221571770 retain 24 original PNGs and normal required app/entry/five-node exits. All 24 are viewed under a closed successful task. Bounded caption samples withdraw its approximate y4 estimate; Source246 pixels remain unmeasured. Zero of 94 matches are accepted, nineteen preparations and ninety catalog outputs remain open. No literal Home pixels are yet qualified
 - Latest broad Windows baseline: Source249 / 41215021211 and independent 41217328796 qualify 4825 passes/two existing skips, twelve checks, unchanged generation/localization and normal unforced Debug/Release. Root analysis has zero errors/warnings and 1296 infos; vendored analysis is clean. Current-source and DLL-initialization qualification remain separate
-- Publication and limits: All 348 published identities through Source258 are edgepillar with no-reply emails and UTC dates. The PR stays Draft. Original failures, ownership HOLD and UNKNOWNs remain; Native101 send and Native103 Token confirmation/effect stay UNKNOWN and Native104 is not admitted. The minimum-window/Arabic candidate is unapplied. Separate local literal Home transfer authority is pending
+- Publication and limits: All 349 published identities through Source259 are edgepillar with no-reply emails and UTC dates. The PR stays Draft. Original failures, ownership HOLD and UNKNOWNs remain; Native101 send and Native103 Token confirmation/effect stay UNKNOWN and Native104 is not admitted. The minimum-window/Arabic candidate is unapplied. Separate local literal Home transfer authority is pending
 
 
 ### Rows
