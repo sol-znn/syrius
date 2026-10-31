@@ -172,12 +172,35 @@ void main() {
         expect(mode, 'light');
         expect(restoredWindow, isTrue);
       }
-      expect(output.lines.length, fault == 'negative' ? 6 : 12);
+      final List<Map<String, Object?>> pointer = commands
+          .where((Map<String, Object?> value) => value['cmd'] == 'hover')
+          .toList();
+      final List<Map<String, Object?>> expectedPointer = <Map<String, Object?>>[
+        <String, Object?>{'cmd': 'hover', 'at': <int>[0, 0], 'settleMs': 0},
+        <String, Object?>{'cmd': 'hover', 'key': 'nav_notifications'},
+      ];
+      expect(pointer, <Map<String, Object?>>[
+        ...expectedPointer,
+        if (fault == 'none') ...expectedPointer,
+      ]);
+      final List<Map<String, Object?>> tooltip = commands
+          .where((Map<String, Object?> value) => value['cmd'] == 'wait' &&
+              value['text'] == 'Notifications')
+          .toList();
+      final Map<String, Object?> expectedTooltip = <String, Object?>{
+        'cmd': 'wait', 'text': 'Notifications', 'kind': 'text',
+        'exact': true, 'timeoutMs': 5000,
+      };
+      expect(tooltip, <Map<String, Object?>>[
+        expectedTooltip,
+        if (fault == 'none') expectedTooltip,
+      ]);
+      expect(output.lines.length, fault == 'negative' ? 9 : 18);
       expect(output.lines.every((Object? line) => line is String &&
           line.startsWith('ok')), isTrue);
       expect(commands.every((Map<String, Object?> value) => <String>{
         'readonly-wallet-bind', 'state', 'tree', 'tap', 'theme', 'window',
-        'wait', 'assert', 'shot',
+        'wait', 'assert', 'shot', 'hover',
       }.contains(value['cmd'])), isTrue);
     }
   });

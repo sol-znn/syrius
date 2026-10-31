@@ -548,7 +548,11 @@ void main() {
       expect(source.readAsStringSync(), contains('assert'));
       expect(agent.commands, isEmpty);
     },
-    skip: Platform.isWindows
+    // Hosted CI must exercise real link refusal; missing privilege fails.
+    // Other Windows sessions retain the explicit platform skip.
+    skip: Platform.isWindows &&
+        (Platform.environment['GITHUB_ACTIONS'] != 'true' ||
+            Platform.environment['RUNNER_ENVIRONMENT'] != 'github-hosted')
         ? 'Windows symlink privilege is not assumed'
         : false,
   );
