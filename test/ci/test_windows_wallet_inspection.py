@@ -16,6 +16,7 @@ import zlib
 
 from tool.ci import hosted_chain321 as lab
 from tool.ci import windows_wallet_inspection as inspection
+import test_readonly_viewport_capture as viewport_fixtures
 
 
 def sdk():
@@ -78,6 +79,8 @@ def report():
         stalls={t: dict(schema=1, scope='readonly_native_stalls_observation', theme=t,
             events=0, longest_ms=0) for t in inspection.THEMES},
         sdk_admission=sdk(), wallet_admission=wallet(), home_catalog=home_reference(),
+        viewport=dict(schema=1, scope='readonly_native_viewport_reference',
+                      captured=4, manifest_sha256='e' * 64),
         address_selection=dict(index=1, members=2, generated=False, selected=True, persisted=True),
         lab_revalidations=2, forced_cleanup=False, required_actor_forced_cleanup=False,
         auxiliary_cleanup=dict(scope=inspection.debug.HELPER_SCOPE, status='PASSED',
@@ -437,17 +440,24 @@ class InspectionTests(unittest.TestCase):
         script = Path('harness/screens/home-rest.txt').read_bytes()
         home = home_manifest(pixels or b'x', script)
         home_raw = json.dumps(home).encode('ascii')
+        viewport_manifest, viewport_images = viewport_fixtures.fixture()
+        viewport_manifest['probe_sha256'] = hashlib.sha256(script).hexdigest()
+        viewport_raw = json.dumps(viewport_manifest).encode('ascii')
         if value['success']:
             value['home_catalog'] = home_reference(hashlib.sha256(home_raw).hexdigest())
+            value['viewport']['manifest_sha256'] = hashlib.sha256(viewport_raw).hexdigest()
         manifest = json.dumps(value).encode()
         output = _Output()
         reads = []
 
         def read(path, cap):
             reads.append(path)
-            if path == Path('/fixture') / inspection.HOME_SCRIPT:
+            if path in (Path('/fixture') / inspection.HOME_SCRIPT,
+                        Path('/fixture') / inspection.viewport.PROBE):
                 self.assertEqual(cap, 65536)
                 return script
+            if path.parent == Path('/fixture') / inspection.viewport.OUTPUT:
+                return viewport_raw if path.name == 'manifest.json' else viewport_images[path.name]
             if path.parent == Path('/fixture') / inspection.HOME_OUTPUT:
                 if path.name == 'manifest.json':
                     self.assertEqual(cap, inspection.MAX_HOME_MANIFEST)
@@ -471,7 +481,8 @@ class InspectionTests(unittest.TestCase):
                 mock.patch.object(inspection, 'read_original', side_effect=read), \
                 mock.patch.object(Path, 'open', return_value=output), \
                 mock.patch.object(inspection, 'output_bytes', return_value=len(pixels or b'') * 24), \
-                mock.patch.object(inspection, 'home_output_bytes', return_value=len(home_raw) + len(pixels or b'') * 2):
+                mock.patch.object(inspection, 'home_output_bytes', return_value=len(home_raw) + len(pixels or b'') * 2), \
+                mock.patch.object(inspection.viewport, 'output_bytes', return_value=0):
             paths = inspection.artifact_paths(parent)
         return paths, reads, output.getvalue()
 
@@ -494,12 +505,15 @@ class InspectionTests(unittest.TestCase):
         paths, reads, output = self.artifact_case(value, pixels=pixels)
         self.assertEqual(len(paths), 25)
         self.assertEqual(len(set(paths)), 25)
-        self.assertEqual(len(reads), 29)
+        self.assertEqual(len(reads), 35)
         self.assertIn('captures/dark/dashboard.png', output)
         self.assertIn('captures/light/walletConnect.png', output)
         self.assertIn('catalog_paths<<HOME_CATALOG_PATHS_V1', output)
         self.assertIn('ci-home-catalog/01-home-rest-dark.png', output)
         self.assertIn('ci-home-catalog/01-home-rest-light.png', output)
+        self.assertIn('viewport_paths<<VIEWPORT_PATHS_V1', output)
+        for filename in inspection.viewport.FILES:
+            self.assertIn('ci-viewport-observations/' + filename, output)
 
     def test_artifacts_cannot_borrow_another_source_run_or_private_manifest(self):
         for change in ({'source_sha': 'c' * 40}, {'run_attempt': '2'},

@@ -16,6 +16,7 @@ import zipfile
 from tool.ci import inspect_wallet_inspection as reader
 import test_inspect_chain321 as lab_fixtures
 import test_windows_wallet_inspection as wallet_fixtures
+import test_readonly_viewport_capture as viewport_fixtures
 
 
 def lab_report():
@@ -114,18 +115,18 @@ class ReaderTests(unittest.TestCase):
                 self.calls += 1
                 return Response()
         url = reader.archive.API + '/git/commits/' + 'a' * 40
-        for maximum in (12, 14):
+        for maximum in (12, 14, 16):
             opener = Opener()
             with mock.patch.object(reader.archive.urllib.request, 'build_opener',
                     return_value=opener):
                 client = (reader.archive.Client('synthetic-control-token') if maximum == 12
-                          else reader.archive.Client('synthetic-control-token', max_calls=14))
+                          else reader.archive.Client('synthetic-control-token', max_calls=maximum))
                 for _ in range(maximum):
                     self.assertEqual(client.read(url), b'{}')
                 with self.assertRaises(reader.archive.Refused):
                     client.read(url)
                 self.assertEqual(opener.calls, maximum)
-        for maximum in (True, False, 0, -1, 13, 15, 14.0, '14', None):
+        for maximum in (True, False, 0, -1, 13, 15, 14.0, '14', None, 17, 16.0, '16'):
             with self.assertRaises(reader.archive.Refused):
                 reader.archive.Client('synthetic-control-token', max_calls=maximum)
 
@@ -457,9 +458,15 @@ class ReaderTests(unittest.TestCase):
         home_pixels = wallet_fixtures.png()
         home = wallet_fixtures.home_manifest(home_pixels, source)
         home_manifest = encode(home)
+        viewport_manifest, viewport_images = viewport_fixtures.fixture()
+        viewport_manifest['probe_sha256'] = hashlib.sha256(source).hexdigest()
+        viewport_manifest_raw = encode(viewport_manifest)
         if not child_missing:
             child['home_catalog'] = (wallet_fixtures.home_reference(reader.archive.sha(home_manifest))
                                      if positive else None)
+            child['viewport'] = (dict(schema=1, scope='readonly_native_viewport_reference',
+                captured=4, manifest_sha256=reader.archive.sha(viewport_manifest_raw))
+                if positive else None)
             bind(lab, child)
             files[0] = ('manifest.json', encode(child), stat.S_IFREG)
         original_success = positive and not parent_failed and not child_missing
@@ -467,10 +474,11 @@ class ReaderTests(unittest.TestCase):
         root_raw = packed([('manifest.json', encode(lab), stat.S_IFREG)])
         home_raw = packed([('manifest.json', home_manifest, stat.S_IFREG)] +
             [(row['file'], home_pixels, stat.S_IFREG) for row in home['captures']])
-        blobs = {1: root_raw, 2: wallet_raw, 3: home_raw}
-        artifact_ids = (1,) if child_missing else (1, 2, 3) if positive else (1, 2)
+        viewport_raw = viewport_fixtures.packed(viewport_manifest, viewport_images)
+        blobs = {1: root_raw, 2: wallet_raw, 3: home_raw, 4: viewport_raw}
+        artifact_ids = (1,) if child_missing else (1, 2, 3, 4) if positive else (1, 2)
         listing = dict(total_count=len(artifact_ids), artifacts=[dict(id=i,
-            name={1: 'chain321-native-', 2: 'wallet-inspection-', 3: 'home-catalog-'}[i] + 'a' * 40 + '-1-1',
+            name={1: 'chain321-native-', 2: 'wallet-inspection-', 3: 'home-catalog-', 4: 'viewport-observation-'}[i] + 'a' * 40 + '-1-1',
             expired=False, size_in_bytes=len(blobs[i]), digest='sha256:' + reader.archive.sha(blobs[i]),
             workflow_run=dict(id=1, head_sha='a' * 40)) for i in artifact_ids])
         blob = hashlib.sha1(b'blob ' + str(len(source)).encode() + b'\0' + source).hexdigest()
@@ -483,7 +491,7 @@ class ReaderTests(unittest.TestCase):
             def __init__(self, token, *, max_calls=12):
                 self.token = token
                 self.maximum = max_calls
-                if max_calls != 14:
+                if max_calls != 16:
                     raise AssertionError('Unexpected full-reader request budget')
 
             def json(self, path):
@@ -562,7 +570,19 @@ class ReaderTests(unittest.TestCase):
                 self.assertFalse(value['runtime_started'])
                 self.assertIs(value['forced_cleanup'], forced)
                 self.assertIs(value['required_actor_forced_cleanup'], False)
-                self.assertLessEqual(len(calls), 14)
+                self.assertLessEqual(len(calls), 16)
+                self.assertEqual(len(calls), 16)
+                self.assertEqual(value['verified_viewport_png_count'], 4)
+                viewport_notices = [line.split('::', 2)[-1] for line in text.splitlines()
+                    if line.startswith('::notice title=Retained readonly viewport observation::')]
+                self.assertEqual(len(viewport_notices), 1)
+                viewport_observed = json.loads(viewport_notices[0])
+                self.assertTrue(viewport_observed['viewport_observation_qualified'])
+                self.assertTrue(viewport_observed['parent_closure_qualified'])
+                self.assertTrue(viewport_observed['metadata_revalidated'])
+                self.assertFalse(viewport_observed['locale_preference_restoration_qualified'])
+                self.assertFalse(viewport_observed['atomic_frame_qualified'])
+                self.assertEqual(viewport_observed['visual_matches'], 0)
                 self.assertNotIn('private_profile', text)
                 self.assertNotIn('synthetic private token', text)
                 self.assertNotIn('/fixture', text)

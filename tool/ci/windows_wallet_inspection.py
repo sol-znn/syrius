@@ -21,6 +21,7 @@ import time
 
 from . import windows_debug_loop as debug
 from . import windows_wallet_tour as shared
+from . import readonly_viewport_capture as viewport
 from .windows_debug_process import IMAGE_NAMES
 from .hosted_chain321 import CODES as LAB_CODES
 
@@ -46,7 +47,7 @@ CODES = shared.CODES | LAB_CODES | frozenset(('BINDING_REFUSED', 'INSPECTION_REF
     'LAB_REVALIDATION_VALUE_ERROR', 'LAB_REVALIDATION_OS_ERROR'))
 STAGES = frozenset(('unused_destinations', 'build', 'start', 'input', 'window',
     'onboarding', 'signing_policy', 'onboarding_logs', 'address_selection',
-    'wallet_binding', 'tour_dark', 'tour_light', 'home_catalog', 'finish'))
+    'wallet_binding', 'tour_dark', 'tour_light', 'home_catalog', 'viewport', 'finish'))
 
 
 class Refused(Exception):
@@ -410,6 +411,7 @@ def completed(report):
     try:
         capture_records(report['captures'])
         home_catalog_reference(report['home_catalog'])
+        viewport.reference(report['viewport'])
         sdk_receipt(report['sdk_admission'])
         wallet_receipt(report['wallet_admission'])
         return (report['phase'] == 'complete' and not report['errors']
@@ -430,7 +432,7 @@ def completed(report):
             and report['entry_output']['output_complete'] and not report['entry_output']['overflow']
             and debug.helper_cleanup_complete(report['auxiliary_cleanup'])
             and report['forced_cleanup'] is report['auxiliary_cleanup']['forced'])
-    except (Refused, KeyError, TypeError):
+    except (Refused, viewport.Refused, KeyError, TypeError):
         return False
 
 
@@ -460,7 +462,7 @@ def public_manifest(value):
         'forced_cleanup', 'required_actor_forced_cleanup', 'financial_send_qualified',
         'motion_baseline_compared', 'arabic_or_minimum_window_qualified'}
     required = flags | {'schema', 'scope', 'visual_matches', 'checks', 'errors', 'phase',
-        'captures', 'tours', 'locales', 'stalls', 'home_catalog', 'sdk_admission', 'wallet_admission',
+        'captures', 'tours', 'locales', 'stalls', 'home_catalog', 'viewport', 'sdk_admission', 'wallet_admission',
         'address_selection', 'lab_revalidations', 'auxiliary_cleanup', 'min_free_bytes',
         'workspace_cap_bytes', 'storage_scope', 'storage', 'cleanup'}
     optional = {'source_sha', 'source_tree', 'run_id', 'run_attempt', 'input_attempted',
@@ -503,6 +505,9 @@ def public_manifest(value):
     if value['home_catalog'] is not None:
         home_catalog_reference(value['home_catalog'])
     need(not value['success'] or value['home_catalog'] is not None, 'OUTPUT_REFUSED')
+    if value['viewport'] is not None:
+        viewport.reference(value['viewport'])
+    need(not value['success'] or value['viewport'] is not None, 'OUTPUT_REFUSED')
     capture_records(value['captures'], complete=value['success'])
     if value['sdk_admission'] is not None:
         sdk_receipt(value['sdk_admission'])
@@ -573,7 +578,7 @@ def run(repo, parent, runtime, lab_root, observation, revalidate):
     report = dict(schema=1, scope='owned_chain321_wallet_inspection', success=False,
         inspection_qualified=False, wallet_qualified=False, seed_admitted=False, visual_matches=0,
         checks=dict.fromkeys(CHECKS, False), errors=[], phase='admission', captures=[],
-        tours={}, locales={}, stalls={}, home_catalog=None,
+        tours={}, locales={}, stalls={}, home_catalog=None, viewport=None,
         sdk_admission=None, wallet_admission=None,
         address_selection=None, lab_revalidations=0, forced_cleanup=False,
         required_actor_forced_cleanup=False, auxiliary_cleanup=None,
@@ -584,7 +589,7 @@ def run(repo, parent, runtime, lab_root, observation, revalidate):
         motion_baseline_compared=False, arabic_or_minimum_window_qualified=False)
     original = lines = job = output = transport = token = None
     close_attempted = False
-    catalog_receipt = None
+    catalog_receipt = viewport_receipt = None
     try:
         parent, source = debug.entry.require_ci(parent, None, platform=os.name)
         need(parent.get('GITHUB_EVENT_NAME') == 'workflow_dispatch'
@@ -608,7 +613,7 @@ def run(repo, parent, runtime, lab_root, observation, revalidate):
         debug.bounded.check_no_existing(repo, parent)
         name = 'ci-inspect-' + secrets.token_hex(12)
         home, app, build = root / name, root / 'app', repo / 'build/windows/x64'
-        need(not any(p.exists() or p.is_symlink() for p in (home, app, build, repo / HOME_OUTPUT)), 'PROFILE_REFUSED')
+        need(not any(p.exists() or p.is_symlink() for p in (home, app, build, repo / HOME_OUTPUT, repo / viewport.OUTPUT)), 'PROFILE_REFUSED')
         report['checks']['unused_destinations'] = True
         profile = debug.entry.new_profile(repo)
         profile_identity = shared.directory_identity(profile.lstat())
@@ -646,7 +651,7 @@ def run(repo, parent, runtime, lab_root, observation, revalidate):
             report['lab_revalidations'] += 1
 
         def wait(marker, *, seconds=None):
-            nonlocal next_sample, ready, catalog_receipt
+            nonlocal next_sample, ready, catalog_receipt, viewport_receipt
             limit = deadline if seconds is None else min(deadline, time.monotonic() + seconds)
             while True:
                 runtime.healthy()
@@ -657,6 +662,7 @@ def run(repo, parent, runtime, lab_root, observation, revalidate):
                         expected_profile=profile_identity)
                     logical += output_bytes(output)
                     logical += home_output_bytes(repo / HOME_OUTPUT)
+                    logical += viewport.output_bytes(repo / viewport.OUTPUT)
                     need(logical <= shared.WORK_CAP, 'STORAGE_REFUSED')
                     free = shutil.disk_usage(repo).free
                     storage = report['storage']
@@ -718,12 +724,16 @@ def run(repo, parent, runtime, lab_root, observation, revalidate):
                          and 'wallet' in used and set(report['stalls']) == set(THEMES),
                          'ENTRY_REFUSED')
                     catalog_receipt = home_capture_receipt(json.loads(line.partition(b':')[2]))
+                elif line.startswith(b'SYRIUS_INSPECTION_VIEWPORT:'):
+                    need(marker == b'CI_INSPECT_DONE' and viewport_receipt is None
+                         and catalog_receipt is not None, 'ENTRY_REFUSED')
+                    viewport_receipt = viewport.receipt(json.loads(line.partition(b':')[2]))
                 elif line.startswith(b'CI_INSPECT_ERROR:'):
                     report['entry_failure'] = entry_failure(json.loads(line.partition(b':')[2]))
                     raise Refused('ENTRY_FAILED')
                 elif line == b'CI_INSPECT_DONE':
                     need(marker == line and set(report['stalls']) == set(THEMES)
-                         and catalog_receipt is not None, 'ENTRY_REFUSED')
+                         and catalog_receipt is not None and viewport_receipt is not None, 'ENTRY_REFUSED')
                     return
                 elif line.startswith((b'CI_INSPECT_', b'SYRIUS_INSPECTION_',
                         b'CI_WALLET_', b'SYRIUS_LAB_SEND:', b'SYRIUS_WALLET_TOUR:')):
@@ -783,6 +793,8 @@ def run(repo, parent, runtime, lab_root, observation, revalidate):
         report['checks']['captures'] = True
         report['home_catalog'] = collect_home_catalog(
             repo, catalog_receipt, source, tree, parent)
+        report['viewport'] = viewport.collect(repo, viewport_receipt, source, tree, parent,
+            read_original=read_original)
         lab_current()
         report['phase'] = 'ordinary_close'
         close_attempted = True
@@ -868,8 +880,9 @@ def run(repo, parent, runtime, lab_root, observation, revalidate):
             with (output / 'manifest.json').open('x', encoding='ascii') as stream:
                 stream.write(text)
         summary = {key: value for key, value in report.items()
-                   if key not in ('captures', 'tours', 'locales', 'stalls', 'home_catalog')}
-        summary.update(catalog_captured=2 if report['home_catalog'] is not None else 0,
+                   if key not in ('captures', 'tours', 'locales', 'stalls', 'home_catalog', 'viewport')}
+        summary.update(viewport_captured=4 if report['viewport'] is not None else 0,
+            catalog_captured=2 if report['home_catalog'] is not None else 0,
             home_catalog_manifest_sha256=(report['home_catalog']['manifest_sha256']
                 if report['home_catalog'] is not None else None),
             captured_pages=len(report['captures']),
@@ -907,12 +920,16 @@ def artifact_paths(parent):
             debug.entry.png_bytes(base64.b64encode(raw).decode('ascii'))
             paths.append(str(relative).replace('\\', '/'))
     home_paths = home_artifact_paths(repo, value)
+    viewport_paths = viewport.artifact_paths(repo, value, parent_completed=completed,
+        read_original=read_original)
     output = Path(parent['GITHUB_OUTPUT'])
     debug.bounded.plain(output)
     with output.open('a', encoding='utf-8') as stream:
         stream.write('paths<<INSPECTION_PATHS_V1\n' + '\n'.join(paths) + '\nINSPECTION_PATHS_V1\n')
         stream.write('catalog_paths<<HOME_CATALOG_PATHS_V1\n'
             + '\n'.join(home_paths) + '\nHOME_CATALOG_PATHS_V1\n')
+        stream.write('viewport_paths<<VIEWPORT_PATHS_V1\n'
+            + '\n'.join(viewport_paths) + '\nVIEWPORT_PATHS_V1\n')
     return paths
 
 

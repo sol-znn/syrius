@@ -474,9 +474,13 @@ def child_environment(parent, profile, port, token):
     return env
 
 
-def png_bytes(encoded):
+def png_bytes(encoded, *, dimensions=(1280, 780)):
     """Admit bounded screenshot pixels, never textual/private PNG metadata."""
     try:
+        if (type(dimensions) is not tuple or len(dimensions) != 2
+                or any(type(value) is not int for value in dimensions)
+                or dimensions not in ((1280, 780), (1200, 600))):
+            raise ValueError()
         if not isinstance(encoded, str) or not 0 < len(encoded) <= MAX_BASE64:
             raise ValueError()
         data = base64.b64decode(encoded, validate=True)
@@ -504,7 +508,7 @@ def png_bytes(encoded):
                 width, height, depth, colors, comp, filt, interlace = struct.unpack(
                     ">IIBBBBB", payload,
                 )
-                if (width, height, depth, comp, filt, interlace) != (1280, 780, 8, 0, 0, 0):
+                if (width, height, depth, comp, filt, interlace) != (*dimensions, 8, 0, 0, 0):
                     raise ValueError()
                 if colors not in (2, 6):
                     raise ValueError()
@@ -532,13 +536,13 @@ def png_bytes(encoded):
             offset += length + 12
         if not ended or offset != len(data):
             raise ValueError()
-        stride = 1280 * (4 if colors == 6 else 3) + 1
-        expected = stride * 780
+        stride = width * (4 if colors == 6 else 3) + 1
+        expected = stride * height
         decoder = zlib.decompressobj()
         pixels = decoder.decompress(compressed, expected + 1)
         if (len(pixels) != expected or not decoder.eof
                 or decoder.unused_data or decoder.unconsumed_tail
-                or any(pixels[row * stride] > 4 for row in range(780))):
+                or any(pixels[row * stride] > 4 for row in range(height))):
             raise ValueError()
         return data
     except (ValueError, TypeError, UnicodeError, binascii.Error, struct.error, zlib.error):

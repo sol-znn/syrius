@@ -7,6 +7,7 @@ import '../wallet_recipe_failure.dart' show walletRecipePublicDiagnostic;
 import 'harness.dart' as cli;
 import 'readonly_home_catalog.dart';
 import 'readonly_inspection_session.dart';
+import 'readonly_viewport_probe.dart';
 import 'wallet_recipe.dart';
 
 class _InspectionInstance extends cli.Instance {
@@ -36,6 +37,10 @@ class _InspectionInstance extends cli.Instance {
   Future<Map<String, dynamic>> bindWallet() => _session.bindWallet();
 
   Future<Map<String, Object>> captureHomeRest() => captureReadonlyHomeRest(
+    repository: Directory(cli.repo), session: _session,
+  );
+
+  Future<Map<String, Object>> captureViewport() => captureReadonlyViewportProbe(
     repository: Directory(cli.repo), session: _session,
   );
 }
@@ -217,6 +222,9 @@ Future<void> main() async {
     stage = 'home_catalog';
     final Map<String, Object> catalog = await instance.captureHomeRest();
     await marker('SYRIUS_INSPECTION_CATALOG:${jsonEncode(catalog)}');
+    stage = 'viewport';
+    final Map<String, Object> viewport = await instance.captureViewport();
+    await marker('SYRIUS_INSPECTION_VIEWPORT:${jsonEncode(viewport)}');
     await marker('CI_INSPECT_DONE');
     stage = 'finish';
     if (!await input.moveNext() || input.current != 'FINISH') {

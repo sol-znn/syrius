@@ -12,8 +12,8 @@ import unittest
 
 
 FILES = ('test_inspect_chain321.py', 'test_inspect_wallet_inspection.py',
-         'test_run_readonly_reader_tests.py')
-EXPECTED = 92
+         'test_run_readonly_reader_tests.py', 'test_readonly_viewport_capture.py')
+EXPECTED = 94
 DIRECTORY = Path(__file__).absolute().parents[2] / 'test/ci'
 
 

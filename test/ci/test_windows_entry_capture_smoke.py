@@ -934,6 +934,43 @@ class DiagnosticProjectionTests(unittest.TestCase):
 
 
 class ParserTests(unittest.TestCase):
+    def test_viewport_png_dimensions_are_explicit_bounded_and_private(self):
+        for width, height in ((1280, 780), (1200, 600)):
+            for colors, channels in ((2, 3), (6, 4)):
+                header = struct.pack('>IIBBBBB', width, height, 8, colors, 0, 0, 0)
+                rows = (b'\0' + bytes(width * channels)) * height
+                def image(payload=rows):
+                    return (b'\x89PNG\r\n\x1a\n' + chunk(b'IHDR', header)
+                        + chunk(b'IDAT', zlib.compress(payload)) + chunk(b'IEND', b''))
+                original = image()
+                encoded = base64.b64encode(original).decode('ascii')
+                self.assertEqual(smoke.png_bytes(encoded,
+                    dimensions=(width, height)), original)
+                if (width, height) == (1280, 780):
+                    self.assertEqual(smoke.png_bytes(encoded), original)
+                else:
+                    with self.assertRaises(smoke.Failure) as caught:
+                        smoke.png_bytes(encoded)
+                    self.assertEqual(caught.exception.code, 'PNG_INVALID')
+                for offered in (None, [], [width, height], (width,),
+                    (True, height), (str(width), height), (width, float(height)),
+                    (0, height), (16384, 16384),
+                    (1200, 780), (1280, 600)):
+                    with self.assertRaises(smoke.Failure) as caught:
+                        smoke.png_bytes(encoded, dimensions=offered)
+                    self.assertEqual(caught.exception.code, 'PNG_INVALID')
+                other = (1200, 600) if width == 1280 else (1280, 780)
+                with self.assertRaises(smoke.Failure):
+                    smoke.png_bytes(encoded, dimensions=other)
+                for invalid in (original[:-1] + bytes([original[-1] ^ 1]),
+                    original[:33] + chunk(b'tEXt', b'private') + original[33:],
+                    image(rows[:-(width * channels + 1)]),
+                    image((b'\5' + bytes(width * channels)) * height)):
+                    with self.assertRaises(smoke.Failure) as caught:
+                        smoke.png_bytes(base64.b64encode(invalid).decode('ascii'),
+                            dimensions=(width, height))
+                    self.assertEqual(caught.exception.code, 'PNG_INVALID')
+
     def test_reference_artwork_requires_exact_original_kind_frame_and_time(self):
         for screen in ('welcome', 'import'):
             value = capture_reply(screen)

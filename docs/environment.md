@@ -1,20 +1,24 @@
 # Redesign build environment
 
-## Current qualification status (2026-10-31T19:44Z)
+## Current qualification status (2026-10-31T20:08Z)
 
-Source259 d40409251dee / 41235368397 fails one of 914 Python controls
-with zero failures and three original skips. All fourteen asset phases pass.
-SDK allocation, analysis, engine, node/wallet runtime and export are skipped;
-there are no artifacts. Source260 changes only that synthetic sparse-workflow
-fixture to recognize Windows separators and retains all original checks for
-both platform and pure Windows paths. All 449 candidate memory controls pass;
-914/449/92 Python/memory/reader and 713/715 Dart selections stay fixed.
-All producer, reader, SDK, workflow and product bytes stay Source259. Fresh
-applied controls and hosted Windows qualification are required. Original
-failures remain failed with unexported exact causes NOT_ESTABLISHED. Source258
-qualifies the two original Source257 negative archives without runtime replay.
-Latest successful focused/native/broad evidence stays Source257/251/249.
-Main progress remains 71/80 with zero accepted visual matches out of 94.
+Source260 82e29feb67e1 / 41235727833 and independent 41236776174 qualify
+713 ordinary Dart passes, zero selected findings, 914 Python controls/three
+original skips, all 92 reader controls, three original archives and 28 source
+files. Required app/entry/five-node exits are normal complete unforced zero;
+auxiliary VCTIP termination is separate. The first two literal Home PNGs
+qualify source/run/script/digest and parent closure; actual viewing is pending.
+Zero of 94 matches are accepted and 88 catalog outputs remain missing.
+Source261 adds a separately bounded four-PNG minimum-window/Arabic observation
+through the original bound session. All 452 complete candidate memory controls
+pass. Exact selections become 722/724 Dart, 917 Python and 94 reader cases.
+Fresh applied, hosted engine/analysis and native viewport/archive/viewing
+qualification remain required. No new Dart/SDK/native execution occurs here.
+Original Source259/257/256 failures remain source-bound; original unexported
+inner causes remain NOT_ESTABLISHED. Source251 remains the last completed
+generic image review; Source249 retains its separate broad Windows baseline.
+Main progress stays 71/80. Saved locale-preference restoration, financial/seed,
+Docker Desktop/lab.sh, motion/seams and other acceptance gates remain open.
 
 
 ## Qualified PNG capture and Welcome border inset follow-up (2026-10-30T19:37Z)

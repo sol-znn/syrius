@@ -190,6 +190,28 @@ void main() {
   });
 
   for (final bool light in <bool>[false, true]) {
+    testWidgets('the real language menu changes direction, light $light', (
+      WidgetTester tester,
+    ) async {
+      theme.changeThemeMode(light ? ThemeMode.light : ThemeMode.dark);
+      await show(tester);
+      for (final AppLanguage next in <AppLanguage>[
+        AppLanguage.arabic, AppLanguage.english,
+      ]) {
+        await tester.tap(find.byKey(const Key('display_language_menu')));
+        await tester.pumpAndSettle();
+        await tester.tap(find.text(next.nativeName).last);
+        await tester.pumpAndSettle();
+        expect(language.currentLanguage, next);
+        expect(Directionality.of(tester.element(find.byType(DisplayWidget))),
+            next == AppLanguage.arabic ? TextDirection.rtl : TextDirection.ltr);
+        expect(app.sharedPrefsService!.get(kLanguageKey), next.toString());
+        expect(tester.takeException(), isNull);
+      }
+      expect(requests, 0);
+      await tester.pumpWidget(const SizedBox.shrink());
+    });
+
     testWidgets('large Arabic controls scroll without overflow, light $light', (
       WidgetTester tester,
     ) async {

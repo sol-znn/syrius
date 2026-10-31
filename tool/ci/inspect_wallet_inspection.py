@@ -29,6 +29,7 @@ PREFLIGHT = ('Test all isolated controllers before SDK allocation',
 RUNTIME = 'Build, observe and stop the original isolated lab'
 SOURCE_FILES = (
     'tool/ci/windows_wallet_inspection.py', 'tool/ci/hosted_chain321.py',
+    'tool/ci/readonly_viewport_capture.py', 'harness/bin/readonly_viewport_probe.dart',
     'tool/ci/run_harness_tour_tests.py', 'tool/ci/windows_debug_loop.py',
     'tool/ci/windows_debug_process.py', 'tool/ci/windows_entry_capture_smoke.py',
     'tool/ci/windows_presentation_smoke.py', 'tool/ci/windows_wallet_tour.py',
@@ -236,6 +237,7 @@ def unpack(raw, expected_sha, expected_size, head, tree, run_id, lab, lab_summar
             summary['verified_png_count'] = 24
             summary['_layout_observation'] = layout_projection(report, head, tree, run_id)
             summary['_home_catalog_reference'] = report['home_catalog']
+            summary['_viewport_reference'] = report['viewport']
         else:
             need(names == ['manifest.json'])
     summary.update(archive_sha256=archive.sha(raw), manifest_sha256=archive.sha(manifest))
@@ -387,7 +389,7 @@ def main(parent=None):
     text, head = parent.get('WALLET_INSPECT_RUN', ''), parent.get('WALLET_INSPECT_HEAD', '')
     need(type(text) is str and re.fullmatch('[1-9][0-9]{0,19}', text) and digest(head, 40))
     run_id = int(text)
-    client = archive.Client(parent.get('GH_TOKEN'), max_calls=14)
+    client = archive.Client(parent.get('GH_TOKEN'), max_calls=16)
     PHASE = 'producer_metadata'
     run = client.json('/actions/runs/' + text)
     need(type(run.get('id')) is int and run['id'] == run_id and run.get('head_sha') == head
@@ -439,8 +441,9 @@ def main(parent=None):
             and summary['original_lab_closure_qualified'] and summary['verified_png_count'] == 24
             and job['conclusion'] == 'success')
     need(job['conclusion'] != 'success' or summary['native_inspection_qualified'])
-    catalog = None
+    catalog = viewport_observation = None
     reference = summary.pop('_home_catalog_reference', None)
+    viewport_reference = summary.pop('_viewport_reference', None)
     if summary['native_inspection_qualified']:
         PHASE = 'home_catalog_artifact'
         need(reference is not None)
@@ -448,6 +451,12 @@ def main(parent=None):
         catalog = unpack_home_catalog(download(item, MAX_HOME_ARCHIVE), item['digest'][7:],
             item['size_in_bytes'], head, tree, run_id, reference,
             source_digests['harness/screens/home-rest.txt'])
+        PHASE = 'viewport_artifact'
+        need(viewport_reference is not None)
+        item = artifact(listing, 'viewport-observation-' + head + '-' + text + '-1', head, run_id)
+        viewport_observation = producer.viewport.unpack(download(item, producer.viewport.MAX_ARCHIVE),
+            item['digest'][7:], item['size_in_bytes'], head, tree, run_id, viewport_reference,
+            source_digests['harness/bin/readonly_viewport_probe.dart'])
     PHASE = 'metadata_after'
     after = client.json('/actions/runs/' + text)
     need(all(after.get(k) == run.get(k) for k in ('id', 'head_sha', 'run_attempt', 'workflow_id', 'status', 'conclusion')))
@@ -457,7 +466,8 @@ def main(parent=None):
     layout = summary.pop('_layout_observation', None)
     for component, frame in archive.restored_wallet_run.notice_frames(lab_summary):
         emit('Readonly inspection parent' + (' ' + component if component else ''), frame)
-    summary.update(verified_catalog_png_count=2 if catalog is not None else 0,
+    summary.update(verified_viewport_png_count=4 if viewport_observation is not None else 0,
+        verified_catalog_png_count=2 if catalog is not None else 0,
         producer_job_id=job['id'], producer_conclusion=job['conclusion'],
         producer_source_files_verified=len(SOURCE_FILES), metadata_revalidated=True)
     emit('Retained readonly wallet inspection', summary)
@@ -474,6 +484,11 @@ def main(parent=None):
             producer_source_files_verified=len(SOURCE_FILES),
             all_original_png_digests_verified=True)
         emit('Retained readonly Home catalog', catalog)
+    if viewport_observation is not None:
+        viewport_observation.update(viewport_observation_qualified=True, parent_closure_qualified=True,
+            producer_job_id=job['id'], metadata_revalidated=True,
+            producer_source_files_verified=len(SOURCE_FILES), all_original_png_digests_verified=True)
+        emit('Retained readonly viewport observation', viewport_observation)
     return summary
 
 
