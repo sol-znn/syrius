@@ -57,7 +57,9 @@ void main() {
           final Object? name = command['cmd'];
           if ((name == 'shot' && fault == 'negative-shot') ||
               (name == 'tap' && command['text'] != null &&
-                  fault == 'negative-locale')) return negative;
+                  fault == 'negative-locale')) {
+            return negative;
+          }
           if (name == 'tap') {
             if (command['tab'] case final String value) tab = value;
             if (command['key'] == 'rail_toggle') expanded = !expanded;

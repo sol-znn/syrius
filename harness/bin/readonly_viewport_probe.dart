@@ -40,7 +40,9 @@ Future<Map<String, Object>> captureReadonlyViewportProbe({
   final Directory output = Directory('${repository.path}/$_output');
   void parents() {
     if (FileSystemEntity.typeSync(repository.path, followLinks: false) !=
-        FileSystemEntityType.directory) refuse();
+        FileSystemEntityType.directory) {
+      refuse();
+    }
     for (final String path in <String>[
       '${repository.path}/.harness', output.path,
     ]) {
@@ -48,12 +50,16 @@ Future<Map<String, Object>> captureReadonlyViewportProbe({
         path, followLinks: false,
       );
       if (type != FileSystemEntityType.directory &&
-          type != FileSystemEntityType.notFound) refuse();
+          type != FileSystemEntityType.notFound) {
+        refuse();
+      }
     }
   }
   parents();
   if (FileSystemEntity.typeSync(output.path, followLinks: false) !=
-      FileSystemEntityType.notFound) refuse();
+      FileSystemEntityType.notFound) {
+    refuse();
+  }
 
   final _ViewportInstance instance = _ViewportInstance(session);
   Future<Map<String, dynamic>> call(Map<String, Object?> value) =>
@@ -63,7 +69,9 @@ Future<Map<String, Object>> captureReadonlyViewportProbe({
     if (state['walletUnlocked'] != true ||
         state['walletInitCompleted'] != true ||
         state['tab'] != 'dashboard' || state['locale'] != locale ||
-        state['direction'] != direction) refuse();
+        state['direction'] != direction) {
+      refuse();
+    }
   }
   await home('en', 'ltr');
   final bool originalRail = await session.railExpanded();
@@ -126,7 +134,9 @@ Future<Map<String, Object>> captureReadonlyViewportProbe({
         result['width'] != width || result['height'] != height ||
         result['theme'] != theme || client is! List || client.length != 2 ||
         client[0] != width || client[1] != height ||
-        encoded is! String || encoded.length > 6 * 1024 * 1024) refuse();
+        encoded is! String || encoded.length > 6 * 1024 * 1024) {
+      refuse();
+    }
     final Uint8List pixels = base64Decode(encoded);
     const List<int> signature = <int>[137, 80, 78, 71, 13, 10, 26, 10];
     if (pixels.length < 33 || pixels.length > _pixelCap ||
@@ -135,7 +145,9 @@ Future<Map<String, Object>> captureReadonlyViewportProbe({
         ByteData.sublistView(pixels).getUint32(8) != 13 ||
         ascii.decode(pixels.sublist(12, 16), allowInvalid: true) != 'IHDR' ||
         ByteData.sublistView(pixels).getUint32(16) != width ||
-        ByteData.sublistView(pixels).getUint32(20) != height) refuse();
+        ByteData.sublistView(pixels).getUint32(20) != height) {
+      refuse();
+    }
     bytes += pixels.length;
     if (bytes > _pixelCap) refuse();
     await home(locale, direction);
@@ -143,7 +155,9 @@ Future<Map<String, Object>> captureReadonlyViewportProbe({
     output.createSync(recursive: true);
     final File image = File('${output.path}/$name');
     if (FileSystemEntity.typeSync(image.path, followLinks: false) !=
-        FileSystemEntityType.notFound) refuse();
+        FileSystemEntityType.notFound) {
+      refuse();
+    }
     // A fresh cooperative directory is owned by this probe only.
     image..createSync(exclusive: true)
         ..writeAsBytesSync(pixels, flush: true);

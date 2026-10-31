@@ -1,24 +1,22 @@
 # Redesign build environment
 
-## Current qualification status (2026-10-31T20:08Z)
+## Current qualification status (2026-10-31T20:23Z)
 
-Source260 82e29feb67e1 / 41235727833 and independent 41236776174 qualify
-713 ordinary Dart passes, zero selected findings, 914 Python controls/three
-original skips, all 92 reader controls, three original archives and 28 source
-files. Required app/entry/five-node exits are normal complete unforced zero;
-auxiliary VCTIP termination is separate. The first two literal Home PNGs
-qualify source/run/script/digest and parent closure; actual viewing is pending.
-Zero of 94 matches are accepted and 88 catalog outputs remain missing.
-Source261 adds a separately bounded four-PNG minimum-window/Arabic observation
-through the original bound session. All 452 complete candidate memory controls
-pass. Exact selections become 722/724 Dart, 917 Python and 94 reader cases.
-Fresh applied, hosted engine/analysis and native viewport/archive/viewing
-qualification remain required. No new Dart/SDK/native execution occurs here.
-Original Source259/257/256 failures remain source-bound; original unexported
-inner causes remain NOT_ESTABLISHED. Source251 remains the last completed
-generic image review; Source249 retains its separate broad Windows baseline.
-Main progress stays 71/80. Saved locale-preference restoration, financial/seed,
-Docker Desktop/lab.sh, motion/seams and other acceptance gates remain open.
+Source261 f3a9564f7d34 / 41237919395 passes 917 Python controls/three
+original skips and fourteen asset phases. Its normal complete zero-exit
+analyzer has zero errors/warnings and eight brace infos, correctly refused
+by the strict gate. Engine, entry/startup, node/wallet runtime and exports
+are skipped; there are no artifacts. Source262 adds only braces around
+those eight original statements, retaining every other token and assertion.
+722/724 Dart, 917/452/94 Python/memory/reader and thirty source pins stay fixed.
+Fresh applied, hosted engine/analysis, native viewport/archive and image
+viewing qualification remain required. Latest successful engine/native
+evidence remains Source260 with 713 passes, zero selected findings, 92 reader
+controls, 24 generic PNGs and two literal Home originals. Home viewing is
+pending; zero of 94 matches are accepted and 88 catalog outputs remain missing.
+Source251 retains the last completed generic review and Source249 its separate
+broad Windows baseline. Main progress stays 71/80. Original failures, ownership
+HOLD, financial/seed UNKNOWNs and separate acceptance gates remain.
 
 
 ## Qualified PNG capture and Welcome border inset follow-up (2026-10-30T19:37Z)
