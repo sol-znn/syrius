@@ -2935,6 +2935,19 @@ class HarnessAgent {
     }
 
     final _Ctx next = n;
+    // material_ui 1.6.0 lays out extra DropdownMenu children for width only.
+    // Its render object paints and hit-tests only the first child (the field).
+    // The real open options are visited separately in their overlay.
+    if (type == '_DropdownMenuBody' && w is MultiChildRenderObjectWidget) {
+      bool anchorVisited = false;
+      e.debugVisitOnstageChildren((Element child) {
+        if (!anchorVisited) {
+          anchorVisited = true;
+          _visit(child, next, out);
+        }
+      });
+      return;
+    }
     e.debugVisitOnstageChildren((Element child) => _visit(child, next, out));
   }
 

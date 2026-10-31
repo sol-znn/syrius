@@ -1,27 +1,29 @@
 # Redesign build environment
 
-## Current qualification status (2026-10-31T21:38Z)
+## Current qualification status (2026-10-31T21:57Z)
 
-Source263 / 41241250391 passes 918 Python controls/three original skips,
-fourteen asset phases, zero selected analysis findings and 722 ordinary Dart
-cases. Native entry fails at arabicChoice; exact inner cause and selection
-effect are NOT_ESTABLISHED. Independent reader 41242681521 passes all 95
-controls and verifies both negative archives/all thirty producer source files
-without replay. Required wallet closure stays unqualified and zero PNGs
-are verified from this failure.
+Source264 / 41245052686 remains FAILURE: 918 Python controls/three original
+skips, fourteen asset phases and selected analysis with zero findings pass.
+The normal complete unforced Flutter command exits one after 208.110 seconds
+with 722 passes and one failed real pointer case. The retained source location
+is the covered-target refusal at agent.dart line 3343. Wallet build, native
+entry and lab are skipped with zero artifacts. Source265 excludes the pinned
+DropdownMenu body measurement-only children and strengthens the same pointer
+case without changing test counts, original inputs or hit-test guards.
+Fresh applied/hosted qualification is required: 723/725 Dart, 918/453/95
+Python/memory/reader, thirty producer source pins. No local SDK is executed.
 
-Source264 adds a five-second exact-option readiness wait and one real harness
-pointer widget case, retaining prior assertions and strict stale counts.
-Expectations are exactly 723/725 Dart, 918/453/95 Python/memory/reader and
-thirty source pins. All 453 corrected candidate controls pass; fresh applied
-and hosted qualification remain required. Both literal Source260 Home
-originals have actually been reviewed in a closed successful task/controller
-exit zero; tooltip and Activity-scope differences remain open under X411.
-The original archive is retained and storage policy is unchanged. No match
-is accepted: 88 catalog outputs and nineteen preparations remain open.
-Source251 retains the generic review and Source249 its separate broad
-Windows baseline. Main progress stays 71/80. All original failures, ownership
-HOLD, financial/seed UNKNOWNs and separate acceptance gates remain.
+Source263/262 negative native archives remain independently qualified failures;
+their original inner causes are NOT_ESTABLISHED. Latest positive native stays
+Source260 with 24 generic plus two literal Home images and required closure.
+The two actual Home originals have a closed successful visual review, but no
+match is accepted. X411 distinguishes missing hover preparation from the
+inert selected-address Activity badge. The separate Home capture-state
+candidate remains unapplied. Source251 generic review and Source249 broad
+Windows baseline remain source-bound. Main progress stays 71/80; 88 catalog
+outputs are missing. All original failures/HOLD/UNKNOWNs and acceptance gates
+remain. Native101 send and Native103 Token confirmation/effect stay UNKNOWN;
+Native104 is not admitted.
 
 
 ## Qualified PNG capture and Welcome border inset follow-up (2026-10-30T19:37Z)

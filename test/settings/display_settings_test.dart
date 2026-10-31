@@ -226,6 +226,20 @@ void main() {
         for (final AppLanguage next in <AppLanguage>[
           AppLanguage.arabic, AppLanguage.english,
         ]) {
+          // The widget retains layout-only labels while the menu is closed.
+          expect(find.text(next.nativeName), findsWidgets);
+          final Map<String, Object?> closed = await _driveHarness(
+            tester,
+            agent.commandForTest(<String, dynamic>{'cmd': 'tree'}),
+          );
+          expect(
+            (closed['nodes']! as List<dynamic>)
+                .whereType<Map<String, Object?>>()
+                .where((Map<String, Object?> node) =>
+                    node['kind'] == 'button' &&
+                    node['label'] == next.nativeName),
+            isEmpty,
+          );
           await _driveHarness(
             tester,
             agent.commandForTest(<String, dynamic>{
@@ -238,6 +252,18 @@ void main() {
               'cmd': 'wait', 'text': next.nativeName, 'exact': true,
               'timeoutMs': 5000,
             }),
+          );
+          final Map<String, Object?> opened = await _driveHarness(
+            tester,
+            agent.commandForTest(<String, dynamic>{'cmd': 'tree'}),
+          );
+          expect(
+            (opened['nodes']! as List<dynamic>)
+                .whereType<Map<String, Object?>>()
+                .where((Map<String, Object?> node) =>
+                    node['kind'] == 'button' &&
+                    node['label'] == next.nativeName),
+            hasLength(1),
           );
           await _driveHarness(
             tester,
