@@ -1,8 +1,13 @@
 import 'dart:async';
+import 'dart:convert';
+import 'dart:io';
+import 'dart:typed_data';
 
 import 'package:flutter_test/flutter_test.dart';
 
+import '../../harness/bin/readonly_home_catalog.dart';
 import '../../harness/bin/readonly_inspection_session.dart';
+import '../../harness/bin/screen_capture.dart';
 
 Map<String, dynamic> _reply({bool wallet = false}) => <String, dynamic>{
   'ok': true, 'pid': 44, 'booted': true,
@@ -30,6 +35,138 @@ class _JsonReentry {
 }
 
 void main() {
+  test('the real Home script stays bound across capture and refusal',
+      () async {
+    final String script = File('harness/screens/home-rest.txt')
+        .readAsStringSync();
+    // Header-only transport data is not an actual rendered image.
+    final Uint8List header = Uint8List(33)
+      ..setAll(0, <int>[137, 80, 78, 71, 13, 10, 26, 10])
+      ..setAll(12, ascii.encode('IHDR'));
+    ByteData.sublistView(header)
+      ..setUint32(8, 13)
+      ..setUint32(16, 1280)
+      ..setUint32(20, 780);
+    for (final String fault in <String>['unbound', 'none', 'negative']) {
+      final Directory repository = Directory.systemTemp.createTempSync(
+        'syrius-readonly-catalog-',
+      );
+      addTearDown(() => repository.deleteSync(recursive: true));
+      File('${repository.path}/harness/screens/home-rest.txt')
+        ..parent.createSync(recursive: true)
+        ..writeAsStringSync(script);
+      bool expanded = true;
+      String mode = 'light';
+      bool restoredWindow = false;
+      final List<Map<String, Object?>> commands = <Map<String, Object?>>[];
+      final Map<String, dynamic> negative = <String, dynamic>{
+        'ok': false, 'error': 'Synthetic capture refusal',
+      };
+      final ReadonlyInspectionSession session = ReadonlyInspectionSession(
+        processId: 44,
+        original: (Map<String, Object?> command, Duration timeout) async {
+          expect(timeout, lessThanOrEqualTo(const Duration(seconds: 30)));
+          commands.add(command);
+          final Object? name = command['cmd'];
+          if (name == 'shot' && fault == 'negative') return negative;
+          if (name == 'tap' && command['key'] == 'rail_toggle') {
+            expanded = !expanded;
+          }
+          if (name == 'theme') {
+            if (command['mode'] case final String requested) mode = requested;
+            if (command['restore'] case final Map<String, dynamic> original) {
+              mode = original['mode'] as String;
+            }
+          }
+          if (name == 'window' && command['restoreState'] != null) {
+            restoredWindow = true;
+          }
+          return <String, dynamic>{
+            ..._reply(wallet: true),
+            if (name == 'state') ...<String, dynamic>{
+              'walletUnlocked': true, 'walletInitCompleted': true,
+              'tab': 'dashboard', 'tabs': <String>['dashboard', 'transfer'],
+              'locale': 'en', 'direction': 'ltr',
+            },
+            if (name == 'tree') 'nodes': <Object?>[
+              <String, dynamic>{'key': 'rail_toggle', 'kind': 'button',
+                'rect': <int>[8, 36, if (expanded) 184 else 40, 32]},
+            ],
+            if (name == 'theme') ...<String, dynamic>{
+              'mode': mode, 'savedMode': 'ThemeMode.$mode',
+              'brightness': mode,
+            },
+            if (name == 'window') ...<String, dynamic>{
+              'window': <int>[80, 90, 1200, 700],
+              'client': <int>[
+                if (command['width'] != null) 1280 else 1200,
+                if (command['height'] != null) 780 else 700,
+              ],
+              'minimized': false, 'maximized': true, 'clientMatched': true,
+              if (command['restoreState'] != null) 'restored': true,
+            },
+            if (name == 'wait' || name == 'assert') ...<String, dynamic>{
+              'ms': 0, 'asserted': true,
+              'target': <String, dynamic>{'ref': 0, 'kind': 'region',
+                'key': command['key'], 'rect': <int>[0, 0, 200, 100]},
+            },
+            if (name == 'shot') ...<String, dynamic>{
+              'client': <int>[1280, 780], 'width': 1280, 'height': 780,
+              'scale': 1, 'theme': mode, 'asserted': true,
+              'png': base64Encode(header),
+            },
+          };
+        },
+      );
+      if (fault == 'unbound') {
+        await expectLater(captureReadonlyHomeRest(
+          repository: repository, session: session,
+        ), throwsA(isA<ReadonlyInspectionRefused>()));
+        expect(commands, isEmpty);
+        continue;
+      }
+      await session.bindWallet();
+      if (fault == 'negative') {
+        await expectLater(captureReadonlyHomeRest(
+          repository: repository, session: session,
+        ), throwsA(isA<ScreenCaptureError>()));
+        expect(commands.last['cmd'], 'shot');
+        expect(commands.where((Map<String, Object?> value) =>
+            value['cmd'] == 'shot').length, 1);
+        expect(negative, <String, dynamic>{
+          'ok': false, 'error': 'Synthetic capture refusal',
+        });
+        expect(restoredWindow, isFalse);
+        expect(expanded, isFalse);
+      } else {
+        final Map<String, Object> receipt = await captureReadonlyHomeRest(
+          repository: repository, session: session,
+        );
+        expect(receipt['scope'], 'readonly_native_home_catalog_capture');
+        expect(receipt['capture_returned'], isTrue);
+        expect(receipt['files'], <String>[
+          '01-home-rest-dark.png', '01-home-rest-light.png',
+        ]);
+        for (final String theme in <String>['dark', 'light']) {
+          final File image = File('${repository.path}/'
+            '$readonlyHomeCatalogDirectory/01-home-rest-$theme.png');
+          expect(image.readAsBytesSync(), header);
+        }
+        expect(commands.where((Map<String, Object?> value) =>
+            value['cmd'] == 'shot').length, 2);
+        expect(commands.where((Map<String, Object?> value) =>
+            value['cmd'] == 'tap' && value['tab'] == 'dashboard').length, 2);
+        expect(expanded, isTrue);
+        expect(mode, 'light');
+        expect(restoredWindow, isTrue);
+      }
+      expect(commands.every((Map<String, Object?> value) => <String>{
+        'readonly-wallet-bind', 'state', 'tree', 'tap', 'theme', 'window',
+        'wait', 'assert', 'shot',
+      }.contains(value['cmd'])), isTrue);
+    }
+  });
+
   test('an admitted original reply keeps identity and its actual mode',
       () async {
     final Map<String, dynamic> original = _reply();

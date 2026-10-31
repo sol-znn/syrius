@@ -100,6 +100,55 @@ class ReaderTests(unittest.TestCase):
         return reader.unpack(raw, reader.archive.sha(raw), len(raw),
             'a' * 40, 'b' * 40, 1, lab, parent)
 
+    def test_literal_home_archive_cannot_borrow_generic_or_foreign_state(self):
+        pixels = wallet_fixtures.png()
+        script = b'synthetic public script'
+        manifest = wallet_fixtures.home_manifest(pixels, script)
+        originals = [('manifest.json', encode(manifest), stat.S_IFREG)] + [
+            (row['file'], pixels, stat.S_IFREG) for row in manifest['captures']]
+
+        def inspect(files, *, head='a' * 40, tree='b' * 40, run=1,
+                    script_digest=None, reference=None, digest=None, size=None):
+            raw = packed(files)
+            ref = reference or wallet_fixtures.home_reference(reader.archive.sha(files[0][1]))
+            return reader.unpack_home_catalog(raw, digest or reader.archive.sha(raw),
+                len(raw) if size is None else size, head, tree, run, ref,
+                script_digest or reader.archive.sha(script))
+
+        observed = inspect(originals)
+        self.assertEqual(observed['verified_png_count'], 2)
+        self.assertEqual(observed['filenames'],
+            ['01-home-rest-dark.png', '01-home-rest-light.png'])
+        self.assertFalse(observed['catalog_capture_qualified'])
+        self.assertFalse(observed['parent_closure_qualified'])
+        self.assertFalse(observed['atomic_frame_qualified'])
+        self.assertEqual(observed['visual_matches'], 0)
+        for change in ({'head': 'c' * 40}, {'tree': 'c' * 40}, {'run': 2},
+                       {'script_digest': 'd' * 64}, {'digest': 'f' * 64}, {'size': 1},
+                       {'reference': wallet_fixtures.home_reference('f' * 64)}):
+            with self.subTest(change=change), self.assertRaises(reader.archive.Refused):
+                inspect(originals, **change)
+        bad_files = [originals[:2], originals + [('unregistered.bin', b'x', stat.S_IFREG)],
+            [originals[0], originals[1], originals[1]],
+            [originals[0], originals[1], (originals[2][0], pixels, stat.S_IFLNK)],
+            [originals[0], (originals[1][0], pixels[:-1], stat.S_IFREG), originals[2]],
+            pair()[2]]
+        for files in bad_files:
+            with self.subTest(names=[f[0] for f in files]), self.assertRaises(reader.archive.Refused):
+                with warnings.catch_warnings():
+                    warnings.simplefilter('ignore', UserWarning)
+                    inspect(files)
+        duplicate = b'{"scope":"Synthetic private value",' + encode(manifest)[1:]
+        files = [('manifest.json', duplicate, stat.S_IFREG), *originals[1:]]
+        with self.assertRaises(reader.archive.Refused):
+            inspect(files)
+        for change in ({'schema': True}, {'wallet_qualified': True},
+                       {'private_profile': 'Synthetic private path'}):
+            value = dict(copy.deepcopy(manifest), **change)
+            files = [('manifest.json', encode(value), stat.S_IFREG), *originals[1:]]
+            with self.subTest(manifest=change), self.assertRaises(reader.producer.Refused):
+                inspect(files)
+
     def test_readonly_parent_needs_explicit_scope_and_cannot_adopt_financial_owners(self):
         lab = lab_report()
         with self.assertRaises(reader.archive.Refused):
@@ -157,7 +206,7 @@ class ReaderTests(unittest.TestCase):
             [1, -32768, 1, 32768, 1, -32768] * 2 + [True])
         measured.update(archive_sha256='c' * 64, manifest_sha256='d' * 64,
             producer_job_id=44, metadata_revalidated=True,
-            producer_source_files_verified=24, all_original_png_digests_verified=True)
+            producer_source_files_verified=len(reader.SOURCE_FILES), all_original_png_digests_verified=True)
         self.assertLessEqual(len(encode(measured)), 3800)
         for bad_head, bad_tree, bad_run in (('c' * 40, 'b' * 40, 1),
                 ('a' * 40, 'd' * 40, 1), ('a' * 40, 'b' * 40, 2)):
@@ -325,16 +374,26 @@ class ReaderTests(unittest.TestCase):
             lab['node_exits'][0].update(exit_code=None, output_complete=False, forced=True)
         if child_missing:
             lab.update(success=False, error_codes=['WALLET_INSPECTION_FAILED'], wallet_inspection=None)
+        source = b'synthetic source'
+        home_pixels = wallet_fixtures.png()
+        home = wallet_fixtures.home_manifest(home_pixels, source)
+        home_manifest = encode(home)
+        if not child_missing:
+            child['home_catalog'] = (wallet_fixtures.home_reference(reader.archive.sha(home_manifest))
+                                     if positive else None)
+            bind(lab, child)
+            files[0] = ('manifest.json', encode(child), stat.S_IFREG)
         original_success = positive and not parent_failed and not child_missing
         wallet_raw = packed(files)
         root_raw = packed([('manifest.json', encode(lab), stat.S_IFREG)])
-        blobs = {1: root_raw, 2: wallet_raw}
-        artifact_ids = (1,) if child_missing else (1, 2)
+        home_raw = packed([('manifest.json', home_manifest, stat.S_IFREG)] +
+            [(row['file'], home_pixels, stat.S_IFREG) for row in home['captures']])
+        blobs = {1: root_raw, 2: wallet_raw, 3: home_raw}
+        artifact_ids = (1,) if child_missing else (1, 2, 3) if positive else (1, 2)
         listing = dict(total_count=len(artifact_ids), artifacts=[dict(id=i,
-            name=('chain321-native-' if i == 1 else 'wallet-inspection-') + 'a' * 40 + '-1-1',
+            name={1: 'chain321-native-', 2: 'wallet-inspection-', 3: 'home-catalog-'}[i] + 'a' * 40 + '-1-1',
             expired=False, size_in_bytes=len(blobs[i]), digest='sha256:' + reader.archive.sha(blobs[i]),
             workflow_run=dict(id=1, head_sha='a' * 40)) for i in artifact_ids])
-        source = b'synthetic source'
         blob = hashlib.sha1(b'blob ' + str(len(source)).encode() + b'\0' + source).hexdigest()
         tree = dict(sha='b' * 40, truncated=False, tree=[dict(path=n, mode='100644', type='blob', sha=blob)
             for n in reader.SOURCE_FILES])
@@ -401,10 +460,22 @@ class ReaderTests(unittest.TestCase):
                 self.assertTrue(measured['metadata_revalidated'])
                 self.assertEqual(measured['producer_source_files_verified'], len(reader.SOURCE_FILES))
 
+                self.assertEqual(value['verified_catalog_png_count'], 2)
+                home_notices = [line.split('::', 2)[-1] for line in text.splitlines()
+                    if line.startswith('::notice title=Retained readonly Home catalog::')]
+                self.assertEqual(len(home_notices), 1)
+                home_observed = json.loads(home_notices[0])
+                self.assertTrue(home_observed['catalog_capture_qualified'])
+                self.assertTrue(home_observed['parent_closure_qualified'])
+                self.assertTrue(home_observed['metadata_revalidated'])
+                self.assertEqual(home_observed['verified_png_count'], 2)
+                self.assertFalse(home_observed['atomic_frame_qualified'])
+                self.assertFalse(home_observed['wallet_qualified'])
+                self.assertEqual(home_observed['visual_matches'], 0)
                 self.assertFalse(value['runtime_started'])
                 self.assertIs(value['forced_cleanup'], forced)
                 self.assertIs(value['required_actor_forced_cleanup'], False)
-                self.assertLessEqual(len(calls), 12)
+                self.assertLessEqual(len(calls), 14)
                 self.assertNotIn('private_profile', text)
                 self.assertNotIn('synthetic private token', text)
                 self.assertNotIn('/fixture', text)

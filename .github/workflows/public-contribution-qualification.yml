@@ -720,6 +720,16 @@ jobs:
           if-no-files-found: error
           path: ${{ steps.inspection_paths.outputs.paths }}
 
+      - name: Retain the admitted Home catalog captures
+        if: always() && steps.inspection_paths.outcome == 'success' && steps.inspection_paths.outputs.catalog_paths != ''
+        uses: actions/upload-artifact@v7
+        with:
+          name: home-catalog-${{ github.sha }}-${{ github.run_id }}-${{ github.run_attempt }}
+          compression-level: 0
+          include-hidden-files: true
+          if-no-files-found: error
+          path: ${{ steps.inspection_paths.outputs.catalog_paths }}
+
   inspect-windows-inventory:
     if: inputs.inspect_windows_inventory_run != ''
     name: Inspect retained Windows inventory

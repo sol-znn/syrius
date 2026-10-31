@@ -42,6 +42,30 @@ def tour(theme):
             layout=layout()) for p in inspection.PAGES]))
 
 
+def home_receipt():
+    return dict(schema=1, scope='readonly_native_home_catalog_capture',
+        screen='home-rest', number=1, themes=['dark', 'light'],
+        files=['01-home-rest-dark.png', '01-home-rest-light.png'],
+        width=1280, height=780, scale=1, capture_returned=True)
+
+
+def home_reference(digest='e' * 64):
+    return dict(schema=1, scope='readonly_native_home_catalog_reference',
+        screen='home-rest', captured=2, manifest_sha256=digest)
+
+
+def home_manifest(pixels, script=b'synthetic public script'):
+    return dict(schema=1, scope='readonly_native_home_catalog_capture_bundle',
+        source_sha='a' * 40, source_tree='b' * 40, run_id='1', run_attempt='1',
+        script_sha256=hashlib.sha256(script).hexdigest(), capture=home_receipt(),
+        captures=[dict(theme=theme, file='01-home-rest-' + theme + '.png',
+            bytes=len(pixels), sha256=hashlib.sha256(pixels).hexdigest(),
+            width=1280, height=780, scale=1) for theme in ('dark', 'light')],
+        inspection_only=True, parent_closure_qualified=False,
+        atomic_frame_qualified=False, wallet_qualified=False, seed_admitted=False,
+        financial_send_qualified=False, visual_matches=0)
+
+
 def report():
     return dict(schema=1, scope='owned_chain321_wallet_inspection', success=True,
         inspection_qualified=True, wallet_qualified=False, seed_admitted=False, visual_matches=0,
@@ -53,7 +77,7 @@ def report():
             language='en', direction='ltr', stable=True) for t in inspection.THEMES},
         stalls={t: dict(schema=1, scope='readonly_native_stalls_observation', theme=t,
             events=0, longest_ms=0) for t in inspection.THEMES},
-        sdk_admission=sdk(), wallet_admission=wallet(),
+        sdk_admission=sdk(), wallet_admission=wallet(), home_catalog=home_reference(),
         address_selection=dict(index=1, members=2, generated=False, selected=True, persisted=True),
         lab_revalidations=2, forced_cleanup=False, required_actor_forced_cleanup=False,
         auxiliary_cleanup=dict(scope=inspection.debug.HELPER_SCOPE, status='PASSED',
@@ -87,6 +111,58 @@ class _Output(io.StringIO):
 
 
 class InspectionTests(unittest.TestCase):
+    def test_home_catalog_privacy_geometry_and_fixed_files_are_independent(self):
+        pixels = png()
+        original = home_manifest(pixels)
+        self.assertIs(inspection.home_capture_receipt(original['capture']), original['capture'])
+        self.assertIs(inspection.public_home_catalog(original), original)
+        self.assertFalse(original['parent_closure_qualified'])
+        self.assertFalse(original['atomic_frame_qualified'])
+        self.assertEqual(original['visual_matches'], 0)
+        missing = report()
+        missing['home_catalog'] = None
+        self.assertFalse(inspection.completed(missing))
+        with self.assertRaises(inspection.Refused):
+            inspection.public_manifest(missing)
+        for change in ({'schema': True}, {'scope': 'ordinary'},
+                       {'source_sha': 'Synthetic private origin'},
+                       {'parent_closure_qualified': True}, {'atomic_frame_qualified': True},
+                       {'wallet_qualified': True}, {'visual_matches': 1},
+                       {'private_profile': 'Synthetic private path'}):
+            with self.subTest(change=change), self.assertRaises(inspection.Refused):
+                inspection.public_home_catalog(dict(copy.deepcopy(original), **change))
+        for change in ({'files': ['dashboard.png', '01-home-rest-light.png']},
+                       {'themes': ['dark', 'dark']}, {'number': True},
+                       {'capture_returned': False}, {'width': 1279}, {'scale': True}):
+            value = copy.deepcopy(original)
+            value['capture'].update(change)
+            with self.subTest(capture=change), self.assertRaises(inspection.Refused):
+                inspection.public_home_catalog(value)
+        for change in ({'file': '../private.png'}, {'theme': 'light'}, {'bytes': True},
+                       {'bytes': inspection.MAX_HOME_CAPTURE_TOTAL + 1},
+                       {'sha256': 'Synthetic private value'}, {'width': 1279},
+                       {'path': 'Synthetic private path'}):
+            value = copy.deepcopy(original)
+            value['captures'][0].update(change)
+            with self.subTest(image=change), self.assertRaises(inspection.Refused):
+                inspection.public_home_catalog(value)
+        # The duplicated field is refused before script or pixel consumption.
+        duplicate = b'{"schema":1,' + json.dumps(original).encode('ascii')[1:]
+        owner = report()
+        owner['home_catalog'] = home_reference(hashlib.sha256(duplicate).hexdigest())
+        with mock.patch.object(inspection, 'home_output_bytes', return_value=len(duplicate)), \
+                mock.patch.object(inspection, 'read_original', return_value=duplicate) as read:
+            with self.assertRaises(inspection.Refused):
+                inspection.home_artifact_paths(Path('/fixture'), owner)
+            self.assertEqual(read.call_count, 1)
+        output = Path('/fixture/home')
+        with mock.patch.object(Path, 'exists', return_value=True), \
+                mock.patch.object(Path, 'iterdir', return_value=iter([output / 'unregistered.bin'])), \
+                mock.patch.object(inspection.debug.bounded, 'plain',
+                    return_value=SimpleNamespace(st_mode=stat.S_IFDIR)):
+            with self.assertRaises(inspection.Refused):
+                inspection.home_output_bytes(output)
+
     def test_complete_finite_controls_do_not_grant_financial_or_catalog_acceptance(self):
         value = report()
         self.assertTrue(inspection.completed(value))
@@ -248,6 +324,11 @@ class InspectionTests(unittest.TestCase):
         self.assertIsNone(value['application_exit'])
 
     def test_inspection_default_off_and_explicit_native_lab_requirements(self):
+        workflow = Path('.github/workflows/public-contribution-qualification.yml').read_text(encoding='utf-8')
+        self.assertIn('- name: Retain the admitted Home catalog captures', workflow)
+        self.assertIn("steps.inspection_paths.outputs.catalog_paths != ''", workflow)
+        self.assertIn('path: ${{ steps.inspection_paths.outputs.catalog_paths }}', workflow)
+        self.assertNotIn('path: .harness/ci-home-catalog/**', workflow)
         self.assertFalse(lab.wallet_inspection_requested('native', {}))
         parent = dict(SYRIUS_WINDOWS_WALLET_INSPECTION='true',
             SYRIUS_WINDOWS_WALLET_TOUR='false', SYRIUS_LAB_NODE_SOURCE='lab-fix',
@@ -319,12 +400,28 @@ class InspectionTests(unittest.TestCase):
     def artifact_case(self, value, *, pixels=None):
         parent = dict(GITHUB_WORKSPACE='/fixture', GITHUB_RUN_ID='1', GITHUB_RUN_ATTEMPT='1',
                       GITHUB_OUTPUT='/fixture-output')
+        value = copy.deepcopy(value)
+        script = Path('harness/screens/home-rest.txt').read_bytes()
+        home = home_manifest(pixels or b'x', script)
+        home_raw = json.dumps(home).encode('ascii')
+        if value['success']:
+            value['home_catalog'] = home_reference(hashlib.sha256(home_raw).hexdigest())
         manifest = json.dumps(value).encode()
         output = _Output()
         reads = []
 
         def read(path, cap):
             reads.append(path)
+            if path == Path('/fixture') / inspection.HOME_SCRIPT:
+                self.assertEqual(cap, 65536)
+                return script
+            if path.parent == Path('/fixture') / inspection.HOME_OUTPUT:
+                if path.name == 'manifest.json':
+                    self.assertEqual(cap, inspection.MAX_HOME_MANIFEST)
+                    return home_raw
+                self.assertEqual(cap, inspection.MAX_HOME_CAPTURE_TOTAL)
+                self.assertIn(path.name, inspection.HOME_FILES)
+                return pixels
             if path.name == 'manifest.json':
                 self.assertEqual(cap, inspection.MAX_MANIFEST)
                 return manifest
@@ -340,7 +437,8 @@ class InspectionTests(unittest.TestCase):
                     SimpleNamespace(st_size=len(manifest) if path.name == 'manifest.json' else len(pixels or b''))), \
                 mock.patch.object(inspection, 'read_original', side_effect=read), \
                 mock.patch.object(Path, 'open', return_value=output), \
-                mock.patch.object(inspection, 'output_bytes', return_value=len(pixels or b'') * 24):
+                mock.patch.object(inspection, 'output_bytes', return_value=len(pixels or b'') * 24), \
+                mock.patch.object(inspection, 'home_output_bytes', return_value=len(home_raw) + len(pixels or b'') * 2):
             paths = inspection.artifact_paths(parent)
         return paths, reads, output.getvalue()
 
@@ -363,9 +461,12 @@ class InspectionTests(unittest.TestCase):
         paths, reads, output = self.artifact_case(value, pixels=pixels)
         self.assertEqual(len(paths), 25)
         self.assertEqual(len(set(paths)), 25)
-        self.assertEqual(len(reads), 25)
+        self.assertEqual(len(reads), 29)
         self.assertIn('captures/dark/dashboard.png', output)
         self.assertIn('captures/light/walletConnect.png', output)
+        self.assertIn('catalog_paths<<HOME_CATALOG_PATHS_V1', output)
+        self.assertIn('ci-home-catalog/01-home-rest-dark.png', output)
+        self.assertIn('ci-home-catalog/01-home-rest-light.png', output)
 
     def test_artifacts_cannot_borrow_another_source_run_or_private_manifest(self):
         for change in ({'source_sha': 'c' * 40}, {'run_attempt': '2'},

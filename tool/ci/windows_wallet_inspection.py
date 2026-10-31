@@ -29,6 +29,11 @@ THEMES = ('dark', 'light')
 OUTPUT = Path('.harness/ci-wallet-inspection')
 MAX_CAPTURE_TOTAL = 32 * 1024**2
 MAX_MANIFEST = 128 * 1024
+HOME_OUTPUT = Path('.harness/ci-home-catalog')
+HOME_FILES = ('01-home-rest-dark.png', '01-home-rest-light.png')
+MAX_HOME_CAPTURE_TOTAL = 4 * 1024**2
+MAX_HOME_MANIFEST = 64 * 1024
+HOME_SCRIPT = Path('harness/screens/home-rest.txt')
 CHECKS = ('environment', 'source', 'unused_destinations', 'job_owned',
     'entry_gate', 'entry_ready', 'application_owned', 'lab_revalidated',
     'input_released', 'wallet_bound', 'tours_complete', 'locale_verified',
@@ -37,7 +42,7 @@ CHECKS = ('environment', 'source', 'unused_destinations', 'job_owned',
 CODES = shared.CODES | frozenset(('BINDING_REFUSED', 'INSPECTION_REFUSED'))
 STAGES = frozenset(('unused_destinations', 'build', 'start', 'input', 'window',
     'onboarding', 'signing_policy', 'onboarding_logs', 'address_selection',
-    'wallet_binding', 'tour_dark', 'tour_light', 'finish'))
+    'wallet_binding', 'tour_dark', 'tour_light', 'home_catalog', 'finish'))
 
 
 class Refused(Exception):
@@ -70,6 +75,153 @@ def read_original(path, cap):
     need(identity(debug.bounded.plain(path)) == expected
          and len(raw) == before.st_size, 'OUTPUT_REFUSED')
     return raw
+
+
+def home_capture_receipt(value):
+    """Admit fixed metadata only after the original capture runner returns."""
+    expected = dict(schema=1, scope='readonly_native_home_catalog_capture',
+        screen='home-rest', number=1, themes=list(THEMES), files=list(HOME_FILES),
+        width=1280, height=780, scale=1, capture_returned=True)
+    need(type(value) is dict and set(value) == set(expected)
+         and all(type(value[k]) is type(v) and value[k] == v
+                 for k, v in expected.items()), 'CAPTURE_REFUSED')
+    return value
+
+
+def home_capture_records(value):
+    """The two literal filenames are not aliases for generic tour pages."""
+    need(type(value) is list and len(value) == 2, 'CAPTURE_REFUSED')
+    for row, theme, name in zip(value, THEMES, HOME_FILES):
+        need(type(row) is dict and set(row) ==
+             {'theme', 'file', 'bytes', 'sha256', 'width', 'height', 'scale'}
+             and row['theme'] == theme and row['file'] == name
+             and type(row['bytes']) is int and 0 < row['bytes'] <= MAX_HOME_CAPTURE_TOTAL
+             and type(row['sha256']) is str and re.fullmatch('[a-f0-9]{64}', row['sha256'])
+             and all(type(row[k]) is int for k in ('width', 'height', 'scale'))
+             and (row['width'], row['height'], row['scale']) == (1280, 780, 1),
+             'CAPTURE_REFUSED')
+    need(sum(row['bytes'] for row in value) <= MAX_HOME_CAPTURE_TOTAL, 'CAPTURE_REFUSED')
+    return value
+
+
+def home_catalog_reference(value):
+    need(type(value) is dict and set(value) ==
+         {'schema', 'scope', 'screen', 'captured', 'manifest_sha256'}
+         and type(value['schema']) is int and value['schema'] == 1
+         and value['scope'] == 'readonly_native_home_catalog_reference'
+         and value['screen'] == 'home-rest'
+         and type(value['captured']) is int and value['captured'] == 2
+         and type(value['manifest_sha256']) is str
+         and re.fullmatch('[a-f0-9]{64}', value['manifest_sha256']), 'CAPTURE_REFUSED')
+    return value
+
+
+def public_home_catalog(value):
+    """This capture bundle cannot qualify its later parent closure or a match."""
+    flags = {'inspection_only', 'parent_closure_qualified', 'atomic_frame_qualified',
+             'wallet_qualified', 'seed_admitted', 'financial_send_qualified'}
+    required = flags | {'schema', 'scope', 'source_sha', 'source_tree', 'run_id',
+        'run_attempt', 'script_sha256', 'capture', 'captures', 'visual_matches'}
+    need(type(value) is dict and set(value) == required
+         and type(value['schema']) is int and value['schema'] == 1
+         and value['scope'] == 'readonly_native_home_catalog_capture_bundle'
+         and all(type(value[k]) is bool for k in flags)
+         and value['inspection_only'] is True
+         and all(value[k] is False for k in flags - {'inspection_only'})
+         and type(value['visual_matches']) is int and value['visual_matches'] == 0,
+         'OUTPUT_REFUSED')
+    for key in ('source_sha', 'source_tree'):
+        need(type(value[key]) is str and re.fullmatch('[a-f0-9]{40}', value[key]), 'OUTPUT_REFUSED')
+    need(type(value['run_id']) is str and re.fullmatch('[1-9][0-9]{0,19}', value['run_id'])
+         and type(value['run_attempt']) is str and value['run_attempt'] == '1'
+         and type(value['script_sha256']) is str
+         and re.fullmatch('[a-f0-9]{64}', value['script_sha256']), 'OUTPUT_REFUSED')
+    home_capture_receipt(value['capture'])
+    home_capture_records(value['captures'])
+    return value
+
+
+def home_output_bytes(output):
+    """Account only this fresh finite family, including incomplete writes."""
+    if not output.exists() and not output.is_symlink():
+        return 0
+    root = debug.bounded.plain(output)
+    need(stat.S_ISDIR(root.st_mode), 'STORAGE_REFUSED')
+    allowed = {'manifest.json', *HOME_FILES}
+    total = count = 0
+    for path in output.iterdir():
+        count += 1
+        need(count <= 3 and path.name in allowed, 'STORAGE_REFUSED')
+        info = debug.bounded.plain(path)
+        cap = MAX_HOME_MANIFEST if path.name == 'manifest.json' else MAX_HOME_CAPTURE_TOTAL
+        need(stat.S_ISREG(info.st_mode) and info.st_nlink == 1
+             and 0 <= info.st_size <= cap, 'STORAGE_REFUSED')
+        total += info.st_size
+    need(total <= MAX_HOME_CAPTURE_TOTAL + MAX_HOME_MANIFEST, 'STORAGE_REFUSED')
+    return total
+
+
+def collect_home_catalog(repo, receipt, source, tree, parent):
+    """Retain original PNG references without creating another archive copy."""
+    home_capture_receipt(receipt)
+    output = repo / HOME_OUTPUT
+    home_output_bytes(output)
+    records = []
+    for theme, name in zip(THEMES, HOME_FILES):
+        raw = read_original(output / name, MAX_HOME_CAPTURE_TOTAL)
+        debug.entry.png_bytes(base64.b64encode(raw).decode('ascii'))
+        records.append(dict(theme=theme, file=name, bytes=len(raw),
+            sha256=hashlib.sha256(raw).hexdigest(), width=1280, height=780, scale=1))
+    home_capture_records(records)
+    script = read_original(repo / HOME_SCRIPT, 65536)
+    value = dict(schema=1, scope='readonly_native_home_catalog_capture_bundle',
+        source_sha=source, source_tree=tree, run_id=parent['GITHUB_RUN_ID'],
+        run_attempt=parent['GITHUB_RUN_ATTEMPT'], script_sha256=hashlib.sha256(script).hexdigest(),
+        capture=receipt, captures=records, inspection_only=True,
+        parent_closure_qualified=False, atomic_frame_qualified=False,
+        wallet_qualified=False, seed_admitted=False, financial_send_qualified=False,
+        visual_matches=0)
+    public_home_catalog(value)
+    data = (json.dumps(value, sort_keys=True, separators=(',', ':')) + '\n').encode('ascii')
+    need(len(data) <= MAX_HOME_MANIFEST, 'OUTPUT_REFUSED')
+    with (output / 'manifest.json').open('xb') as stream:
+        stream.write(data)
+    home_output_bytes(output)
+    return home_catalog_reference(dict(schema=1,
+        scope='readonly_native_home_catalog_reference', screen='home-rest',
+        captured=2, manifest_sha256=hashlib.sha256(data).hexdigest()))
+
+
+def home_artifact_paths(repo, report):
+    """Only a completed generic parent can export the two catalog originals."""
+    if report.get('success') is not True:
+        return []
+    need(completed(report), 'CAPTURE_REFUSED')
+    reference = home_catalog_reference(report['home_catalog'])
+    output = repo / HOME_OUTPUT
+    home_output_bytes(output)
+    raw = read_original(output / 'manifest.json', MAX_HOME_MANIFEST)
+    need(hashlib.sha256(raw).hexdigest() == reference['manifest_sha256'], 'CAPTURE_REFUSED')
+    def unique(pairs):
+        value = {}
+        for key, item in pairs:
+            need(key not in value, 'OUTPUT_REFUSED')
+            value[key] = item
+        return value
+
+    value = public_home_catalog(json.loads(raw, object_pairs_hook=unique))
+    need(all(value[k] == report[k] for k in
+             ('source_sha', 'source_tree', 'run_id', 'run_attempt'))
+         and value['script_sha256'] == hashlib.sha256(
+             read_original(repo / HOME_SCRIPT, 65536)).hexdigest(), 'SOURCE_REFUSED')
+    paths = [str(HOME_OUTPUT / 'manifest.json').replace('\\', '/')]
+    for row in home_capture_records(value['captures']):
+        image = read_original(output / row['file'], MAX_HOME_CAPTURE_TOTAL)
+        need(len(image) == row['bytes'] and hashlib.sha256(image).hexdigest() == row['sha256'],
+             'CAPTURE_REFUSED')
+        debug.entry.png_bytes(base64.b64encode(image).decode('ascii'))
+        paths.append(str(HOME_OUTPUT / row['file']).replace('\\', '/'))
+    return paths
 
 
 def sdk_receipt(value):
@@ -231,6 +383,7 @@ def capture_records(value, *, complete=True):
 def completed(report):
     try:
         capture_records(report['captures'])
+        home_catalog_reference(report['home_catalog'])
         sdk_receipt(report['sdk_admission'])
         wallet_receipt(report['wallet_admission'])
         return (report['phase'] == 'complete' and not report['errors']
@@ -281,7 +434,7 @@ def public_manifest(value):
         'forced_cleanup', 'required_actor_forced_cleanup', 'financial_send_qualified',
         'motion_baseline_compared', 'arabic_or_minimum_window_qualified'}
     required = flags | {'schema', 'scope', 'visual_matches', 'checks', 'errors', 'phase',
-        'captures', 'tours', 'locales', 'stalls', 'sdk_admission', 'wallet_admission',
+        'captures', 'tours', 'locales', 'stalls', 'home_catalog', 'sdk_admission', 'wallet_admission',
         'address_selection', 'lab_revalidations', 'auxiliary_cleanup', 'min_free_bytes',
         'workspace_cap_bytes', 'storage_scope', 'storage', 'cleanup'}
     optional = {'source_sha', 'source_tree', 'run_id', 'run_attempt', 'input_attempted',
@@ -321,6 +474,9 @@ def public_manifest(value):
         need(type(value['input_attempted']) is bool, 'OUTPUT_REFUSED')
     if 'entry_failure' in value:
         entry_failure(value['entry_failure'])
+    if value['home_catalog'] is not None:
+        home_catalog_reference(value['home_catalog'])
+    need(not value['success'] or value['home_catalog'] is not None, 'OUTPUT_REFUSED')
     capture_records(value['captures'], complete=value['success'])
     if value['sdk_admission'] is not None:
         sdk_receipt(value['sdk_admission'])
@@ -391,7 +547,8 @@ def run(repo, parent, runtime, lab_root, observation, revalidate):
     report = dict(schema=1, scope='owned_chain321_wallet_inspection', success=False,
         inspection_qualified=False, wallet_qualified=False, seed_admitted=False, visual_matches=0,
         checks=dict.fromkeys(CHECKS, False), errors=[], phase='admission', captures=[],
-        tours={}, locales={}, stalls={}, sdk_admission=None, wallet_admission=None,
+        tours={}, locales={}, stalls={}, home_catalog=None,
+        sdk_admission=None, wallet_admission=None,
         address_selection=None, lab_revalidations=0, forced_cleanup=False,
         required_actor_forced_cleanup=False, auxiliary_cleanup=None,
         min_free_bytes=shared.FIXTURE_FLOOR, workspace_cap_bytes=shared.WORK_CAP,
@@ -401,6 +558,7 @@ def run(repo, parent, runtime, lab_root, observation, revalidate):
         motion_baseline_compared=False, arabic_or_minimum_window_qualified=False)
     original = lines = job = output = transport = token = None
     close_attempted = False
+    catalog_receipt = None
     try:
         parent, source = debug.entry.require_ci(parent, None, platform=os.name)
         need(parent.get('GITHUB_EVENT_NAME') == 'workflow_dispatch'
@@ -424,7 +582,7 @@ def run(repo, parent, runtime, lab_root, observation, revalidate):
         debug.bounded.check_no_existing(repo, parent)
         name = 'ci-inspect-' + secrets.token_hex(12)
         home, app, build = root / name, root / 'app', repo / 'build/windows/x64'
-        need(not any(p.exists() or p.is_symlink() for p in (home, app, build)), 'PROFILE_REFUSED')
+        need(not any(p.exists() or p.is_symlink() for p in (home, app, build, repo / HOME_OUTPUT)), 'PROFILE_REFUSED')
         report['checks']['unused_destinations'] = True
         profile = debug.entry.new_profile(repo)
         profile_identity = shared.directory_identity(profile.lstat())
@@ -461,7 +619,7 @@ def run(repo, parent, runtime, lab_root, observation, revalidate):
             report['lab_revalidations'] += 1
 
         def wait(marker, *, seconds=None):
-            nonlocal next_sample, ready
+            nonlocal next_sample, ready, catalog_receipt
             limit = deadline if seconds is None else min(deadline, time.monotonic() + seconds)
             while True:
                 runtime.healthy()
@@ -471,6 +629,7 @@ def run(repo, parent, runtime, lab_root, observation, revalidate):
                     logical = shared.sample_workspace((home, app, build, profile),
                         expected_profile=profile_identity)
                     logical += output_bytes(output)
+                    logical += home_output_bytes(repo / HOME_OUTPUT)
                     need(logical <= shared.WORK_CAP, 'STORAGE_REFUSED')
                     free = shutil.disk_usage(repo).free
                     storage = report['storage']
@@ -527,11 +686,17 @@ def run(repo, parent, runtime, lab_root, observation, revalidate):
                          and len(report['locales']) == len(report['stalls']) + 1
                          and len(report['stalls']) == THEMES.index(theme), 'ENTRY_REFUSED')
                     report['stalls'][theme] = value
+                elif line.startswith(b'SYRIUS_INSPECTION_CATALOG:'):
+                    need(marker == b'CI_INSPECT_DONE' and catalog_receipt is None
+                         and 'wallet' in used and set(report['stalls']) == set(THEMES),
+                         'ENTRY_REFUSED')
+                    catalog_receipt = home_capture_receipt(json.loads(line.partition(b':')[2]))
                 elif line.startswith(b'CI_INSPECT_ERROR:'):
                     report['entry_failure'] = entry_failure(json.loads(line.partition(b':')[2]))
                     raise Refused('ENTRY_FAILED')
                 elif line == b'CI_INSPECT_DONE':
-                    need(marker == line and set(report['stalls']) == set(THEMES), 'ENTRY_REFUSED')
+                    need(marker == line and set(report['stalls']) == set(THEMES)
+                         and catalog_receipt is not None, 'ENTRY_REFUSED')
                     return
                 elif line.startswith((b'CI_INSPECT_', b'SYRIUS_INSPECTION_',
                         b'CI_WALLET_', b'SYRIUS_LAB_SEND:', b'SYRIUS_WALLET_TOUR:')):
@@ -589,6 +754,8 @@ def run(repo, parent, runtime, lab_root, observation, revalidate):
         capture_records(report['captures'])
         output_bytes(output)
         report['checks']['captures'] = True
+        report['home_catalog'] = collect_home_catalog(
+            repo, catalog_receipt, source, tree, parent)
         lab_current()
         report['phase'] = 'ordinary_close'
         close_attempted = True
@@ -680,8 +847,11 @@ def run(repo, parent, runtime, lab_root, observation, revalidate):
             with (output / 'manifest.json').open('x', encoding='ascii') as stream:
                 stream.write(text)
         summary = {key: value for key, value in report.items()
-                   if key not in ('captures', 'tours', 'locales', 'stalls')}
-        summary.update(captured_pages=len(report['captures']),
+                   if key not in ('captures', 'tours', 'locales', 'stalls', 'home_catalog')}
+        summary.update(catalog_captured=2 if report['home_catalog'] is not None else 0,
+            home_catalog_manifest_sha256=(report['home_catalog']['manifest_sha256']
+                if report['home_catalog'] is not None else None),
+            captured_pages=len(report['captures']),
             visited_pages=sum(len(t['tour']['visited']) for t in report['tours'].values()))
         public = json.dumps(summary, sort_keys=True, separators=(',', ':'))
         print(public)
@@ -715,10 +885,13 @@ def artifact_paths(parent):
                  and hashlib.sha256(raw).hexdigest() == row['sha256'], 'CAPTURE_REFUSED')
             debug.entry.png_bytes(base64.b64encode(raw).decode('ascii'))
             paths.append(str(relative).replace('\\', '/'))
+    home_paths = home_artifact_paths(repo, value)
     output = Path(parent['GITHUB_OUTPUT'])
     debug.bounded.plain(output)
     with output.open('a', encoding='utf-8') as stream:
         stream.write('paths<<INSPECTION_PATHS_V1\n' + '\n'.join(paths) + '\nINSPECTION_PATHS_V1\n')
+        stream.write('catalog_paths<<HOME_CATALOG_PATHS_V1\n'
+            + '\n'.join(home_paths) + '\nHOME_CATALOG_PATHS_V1\n')
     return paths
 
 

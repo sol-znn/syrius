@@ -17,6 +17,7 @@ from . import windows_wallet_inspection as producer
 
 
 MAX_ARCHIVE = producer.MAX_CAPTURE_TOTAL + producer.MAX_MANIFEST + 65536
+MAX_HOME_ARCHIVE = producer.MAX_HOME_CAPTURE_TOTAL + producer.MAX_HOME_MANIFEST + 65536
 MAX_TREE = 2 * 1024**2
 JOB = 'Windows readonly inspection with owned chain-321'
 PREFLIGHT = ('Test all isolated controllers before SDK allocation',
@@ -37,6 +38,8 @@ SOURCE_FILES = (
     'harness/app/readonly_wallet_admission.dart',
     'harness/app/readonly_wallet_binding.dart', 'harness/app/native_window_owner.dart',
     'harness/app/logical_capture.dart', 'harness/app/readonly_shot_layout.dart',
+    'harness/bin/readonly_home_catalog.dart', 'harness/bin/screen_capture.dart',
+    'harness/screens/home-rest.txt', '.github/workflows/public-contribution-qualification.yml',
     'pubspec.yaml', 'pubspec.lock',
 )
 PHASE = 'environment'
@@ -229,10 +232,61 @@ def unpack(raw, expected_sha, expected_size, head, tree, run_id, lab, lab_summar
                 producer.debug.entry.png_bytes(base64.b64encode(image).decode('ascii'))
             summary['verified_png_count'] = 24
             summary['_layout_observation'] = layout_projection(report, head, tree, run_id)
+            summary['_home_catalog_reference'] = report['home_catalog']
         else:
             need(names == ['manifest.json'])
     summary.update(archive_sha256=archive.sha(raw), manifest_sha256=archive.sha(manifest))
     return summary
+
+
+def unpack_home_catalog(raw, expected_sha, expected_size, head, tree, run_id,
+                        reference, script_sha):
+    """Verify separate literal pixels; only the caller can bind parent closure."""
+    producer.home_catalog_reference(reference)
+    need(type(raw) is bytes and type(expected_size) is int and digest(expected_sha)
+         and 0 < len(raw) == expected_size <= MAX_HOME_ARCHIVE and archive.sha(raw) == expected_sha
+         and digest(script_sha))
+    allowed = {'manifest.json', *producer.HOME_FILES}
+    with zipfile.ZipFile(io.BytesIO(raw)) as zipped:
+        members = zipped.infolist()
+        names = [m.filename for m in members]
+        need(len(members) == len(set(names)) == 3 and set(names) == allowed)
+        total = 0
+        for member in members:
+            cap = producer.MAX_HOME_MANIFEST if member.filename == 'manifest.json' else producer.MAX_HOME_CAPTURE_TOTAL
+            need(member.orig_filename == member.filename and not member.is_dir()
+                 and not member.flag_bits & 1
+                 and stat.S_IFMT(member.external_attr >> 16) in (0, stat.S_IFREG)
+                 and 0 < member.file_size <= cap)
+            total += member.file_size
+        need(total <= producer.MAX_HOME_CAPTURE_TOTAL + producer.MAX_HOME_MANIFEST)
+
+        def member(name, cap):
+            with zipped.open(name) as stream:
+                value = stream.read(cap + 1)
+                need(not stream.read(1))
+            need(0 < len(value) == zipped.getinfo(name).file_size <= cap)
+            return value
+
+        manifest = member('manifest.json', producer.MAX_HOME_MANIFEST)
+        need(archive.sha(manifest) == reference['manifest_sha256'])
+        value = producer.public_home_catalog(decode(manifest))
+        need(value['source_sha'] == head and value['source_tree'] == tree
+             and value['run_id'] == str(run_id) and value['run_attempt'] == '1'
+             and value['script_sha256'] == script_sha)
+        for row in producer.home_capture_records(value['captures']):
+            pixels = member(row['file'], producer.MAX_HOME_CAPTURE_TOTAL)
+            need(len(pixels) == row['bytes'] and archive.sha(pixels) == row['sha256'])
+            producer.debug.entry.png_bytes(base64.b64encode(pixels).decode('ascii'))
+    return dict(schema=1, scope='retained_readonly_home_catalog', source_head=head,
+        source_tree=tree, source_run_id=run_id, source_attempt=1, screen='home-rest', number=1,
+        themes=list(producer.THEMES), filenames=list(producer.HOME_FILES),
+        width=1280, height=780, scale=1, verified_png_count=2,
+        archive_sha256=archive.sha(raw), manifest_sha256=archive.sha(manifest),
+        script_sha256=script_sha, catalog_capture_qualified=False,
+        parent_closure_qualified=False, atomic_frame_qualified=False,
+        inspection_only=True, runtime_started=False, wallet_qualified=False,
+        seed_admitted=False, financial_send_qualified=False, visual_matches=0)
 
 
 def source_files(repo, value, tree):
@@ -245,10 +299,13 @@ def source_files(repo, value, tree):
                  and item.get('type') == 'blob' and digest(item.get('sha'), 40))
             entries[item['path']] = item
     need(set(entries) == set(SOURCE_FILES))
+    digests = {}
     for name in SOURCE_FILES:
         raw = producer.read_original(repo / name, MAX_TREE)
         blob = hashlib.sha1(b'blob ' + str(len(raw)).encode('ascii') + b'\0' + raw).hexdigest()
         need(blob == entries[name]['sha'])
+        digests[name] = archive.sha(raw)
+    return digests
 
 
 def selected_job(value, head, run_id):
@@ -321,7 +378,7 @@ def main(parent=None):
     need(commit.get('sha') == head and digest(commit.get('tree', {}).get('sha'), 40))
     tree = commit['tree']['sha']
     PHASE = 'producer_source'
-    source_files(Path(parent['GITHUB_WORKSPACE']), decode(client.read(
+    source_digests = source_files(Path(parent['GITHUB_WORKSPACE']), decode(client.read(
         archive.API + '/git/trees/' + tree + '?recursive=1', cap=MAX_TREE)), tree)
     jobs = client.json('/actions/runs/' + text + '/attempts/1/jobs?per_page=50')
     job = selected_job(jobs, head, run_id)
@@ -360,6 +417,15 @@ def main(parent=None):
             and summary['original_lab_closure_qualified'] and summary['verified_png_count'] == 24
             and job['conclusion'] == 'success')
     need(job['conclusion'] != 'success' or summary['native_inspection_qualified'])
+    catalog = None
+    reference = summary.pop('_home_catalog_reference', None)
+    if summary['native_inspection_qualified']:
+        PHASE = 'home_catalog_artifact'
+        need(reference is not None)
+        item = artifact(listing, 'home-catalog-' + head + '-' + text + '-1', head, run_id)
+        catalog = unpack_home_catalog(download(item, MAX_HOME_ARCHIVE), item['digest'][7:],
+            item['size_in_bytes'], head, tree, run_id, reference,
+            source_digests['harness/screens/home-rest.txt'])
     PHASE = 'metadata_after'
     after = client.json('/actions/runs/' + text)
     need(all(after.get(k) == run.get(k) for k in ('id', 'head_sha', 'run_attempt', 'workflow_id', 'status', 'conclusion')))
@@ -369,7 +435,8 @@ def main(parent=None):
     layout = summary.pop('_layout_observation', None)
     for component, frame in archive.restored_wallet_run.notice_frames(lab_summary):
         emit('Readonly inspection parent' + (' ' + component if component else ''), frame)
-    summary.update(producer_job_id=job['id'], producer_conclusion=job['conclusion'],
+    summary.update(verified_catalog_png_count=2 if catalog is not None else 0,
+        producer_job_id=job['id'], producer_conclusion=job['conclusion'],
         producer_source_files_verified=len(SOURCE_FILES), metadata_revalidated=True)
     emit('Retained readonly wallet inspection', summary)
     if layout is not None and summary['native_inspection_qualified']:
@@ -379,6 +446,12 @@ def main(parent=None):
             producer_source_files_verified=len(SOURCE_FILES),
             all_original_png_digests_verified=True)
         emit('Retained readonly shot layout', layout)
+    if catalog is not None:
+        catalog.update(catalog_capture_qualified=True, parent_closure_qualified=True,
+            producer_job_id=job['id'], metadata_revalidated=True,
+            producer_source_files_verified=len(SOURCE_FILES),
+            all_original_png_digests_verified=True)
+        emit('Retained readonly Home catalog', catalog)
     return summary
 
 
