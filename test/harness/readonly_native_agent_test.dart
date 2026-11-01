@@ -327,6 +327,87 @@ void main() {
     expect(OriginalPublications.snapshot(scope.sdk), isEmpty);
   });
 
+
+  testWidgets('readonly passive centers distinguish gaps from overlays', (
+    WidgetTester tester,
+  ) async {
+    final _Scope scope = _Scope();
+    await scope.open();
+    final HarnessAgent ordinary = HarnessAgent.forTest()..booted = true;
+    for (final String key in <String>['home_hero', 'send_form_ready']) {
+      for (final bool covered in <bool>[false, true]) {
+        await tester.pumpWidget(Directionality(
+          textDirection: TextDirection.ltr,
+          child: Align(alignment: Alignment.topLeft,
+            child: ColoredBox(color: const Color(0xff222222),
+              child: SizedBox(width: 200, height: 100,
+                child: Stack(children: <Widget>[
+                  Builder(key: Key(key), builder: (_) => const Column(
+                    children: <Widget>[
+                      SizedBox(height: 20, child: Text('Synthetic top',
+                        key: Key('passive_top'))),
+                      Spacer(),
+                      SizedBox(height: 20, child: Text('Synthetic bottom',
+                        key: Key('passive_bottom'))),
+                    ],
+                  )),
+                  if (covered)
+                    const Positioned(left: 70, top: 30, width: 60, height: 40,
+                      child: ColoredBox(color: Color(0xff444444))),
+                ]),
+              ),
+            ),
+          ),
+        ));
+        for (final String child in <String>['passive_top', 'passive_bottom']) {
+          final Map<String, Object?> result =
+              await scope.agent.commandForTest(<String, dynamic>{
+            'cmd': 'assert', 'key': child,
+          });
+          expect(result['asserted'], isTrue);
+        }
+        await expectLater(ordinary.commandForTest(<String, dynamic>{
+          'cmd': 'assert', 'key': key,
+        }), throwsA(isA<HarnessError>()));
+        for (final String command in <String>['assert', 'wait']) {
+          final Map<String, dynamic> fields = <String, dynamic>{
+            'cmd': command, 'key': key,
+            if (command == 'wait') 'ready': true,
+            if (command == 'wait') 'timeoutMs': 0,
+          };
+          if (covered) {
+            await expectLater(scope.agent.commandForTest(fields),
+              throwsA(isA<HarnessError>()));
+          } else {
+            final Map<String, Object?> result =
+                await scope.agent.commandForTest(fields);
+            final Map<String, Object?> target =
+                result['target']! as Map<String, Object?>;
+            expect(target['key'], key);
+            expect(target['kind'], 'region');
+            expect(target['ref'], 0);
+            final Rect rect = tester.getRect(find.byKey(Key(key)));
+            expect(target['rect'], <int>[
+              rect.left.round(), rect.top.round(),
+              rect.width.round(), rect.height.round(),
+            ]);
+          }
+        }
+        await expectLater(scope.agent.commandForTest(<String, dynamic>{
+          'cmd': 'tap', 'key': key,
+        }), throwsA(isA<HarnessError>()));
+        expect(tester.takeException(), isNull);
+      }
+    }
+    final Map<String, Object?> tree =
+        await scope.agent.commandForTest(<String, dynamic>{'cmd': 'tree'});
+    final List<Map<String, Object?>> nodes =
+        tree['nodes']! as List<Map<String, Object?>>;
+    expect(nodes.where((Map<String, Object?> node) =>
+        node['kind'] == 'region'), isEmpty);
+    expect(OriginalPublications.snapshot(scope.sdk), isEmpty);
+  });
+
   test('inspection entry refuses foreign nodes and chains before UI access',
       () async {
     final _Scope scope = _Scope();

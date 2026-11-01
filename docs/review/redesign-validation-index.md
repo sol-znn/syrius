@@ -33,3 +33,6 @@ A prior successful run remains bound to its original source and scope.
 - [Source284 original Navigation analysis refusal](source284-navigation-analysis-failure.md): 924 Python controls with three original skips, one finite line-length info, skipped Dart execution, no native admission or artifacts, and a one-comment formatting correction pending fresh hosted analysis.
 
 - [Source285 original Navigation capture failure](source285-navigation-capture-failure.md): 780 passing Dart cases and zero selected analysis findings, then dark/send-rest line six, zero admitted PNGs, failed required-wallet closure, a 101-case independent reader and a fixed passive-key observation candidate. [Exact prior PR body 226](pr-body-226.md) retains all eight submitted URLs.
+
+- [Source286 original passive-region assertion failure](source286-navigation-region-failure.md): 781-case/zero-finding controls, dark/send-rest line ten after three controls return, a 101-case independent reader, zero PNGs and a passive empty-center candidate pending fresh qualification. [Exact PR body 227](pr-body-227.md) retains all seven submitted URLs.
+- [Source278 hidden-amount spacing follow-up](source278-home-hidden-spacing-followup.md): two old-scope actual/reference pairs, measured ink gaps, retained CAS reuse without transport, successful owned closure and X411 still open.

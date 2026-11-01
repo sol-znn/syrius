@@ -3244,6 +3244,34 @@ class HarnessAgent {
     return (point: n.center, node: n);
   }
 
+  // Passive layout gaps can hit an ancestor's painted background.
+  // The first unrelated render hit still covers the region. Input uses
+  // the original descendant-only reachability path.
+  bool _positiveObservationReachable(_Node n, Offset p) {
+    if (_readonlyNative == null || n.kind != 'region') {
+      return _reachable(n, p);
+    }
+    final RenderObject? region = n.element.renderObject;
+    if (region == null || !region.attached) return false;
+    final HitTestResult result = HitTestResult();
+    WidgetsBinding.instance.hitTestInView(
+      result, p,
+      WidgetsBinding.instance.renderViews.first.flutterView.viewId,
+    );
+    for (final HitTestEntry<HitTestTarget> entry in result.path) {
+      final HitTestTarget target = entry.target;
+      if (target is! RenderObject) continue;
+      for (RenderObject? node = target; node != null; node = node.parent) {
+        if (identical(node, region)) return true;
+      }
+      for (RenderObject? node = region; node != null; node = node.parent) {
+        if (identical(node, target)) return true;
+      }
+      return false;
+    }
+    return false;
+  }
+
   bool _reachable(_Node n, Offset p) {
     final RenderObject? ro = n.element.renderObject;
     if (ro == null) return false;
@@ -3787,7 +3815,7 @@ class HarnessAgent {
       // overlay. Readiness observes the same unique hit and guards as type.
       final bool found = ready
           ? hits.length == 1 && hits.single.enabled &&
-              _reachable(hits.single, hits.single.center)
+              _positiveObservationReachable(hits.single, hits.single.center)
           : hits.isNotEmpty;
       if (gone ? hits.isEmpty : found) {
         return <String, Object?>{
@@ -3878,7 +3906,7 @@ class HarnessAgent {
     final _Node node = regions == null
         ? _find(<String, dynamic>{...c, 'exact': true})
         : regions.single;
-    if (!_reachable(node, node.center)) {
+    if (!_positiveObservationReachable(node, node.center)) {
       throw HarnessError('assert target is covered', node.toJson());
     }
     return <String, Object?>{'asserted': true, 'target': node.toJson()};

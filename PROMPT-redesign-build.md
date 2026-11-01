@@ -392,13 +392,13 @@ macOS; Windows provision and acceptance remain pending. See
 
 ### Now
 
-- Updated: 2026-11-01T07:32Z
-- Current work: Source285 passes 780 Dart cases, zero selected analysis findings, 924 Python controls with three original skips and fourteen asset observations. X422 is closed on this narrow comment-correction scope; its original failure stays recorded
-- Original native failure: Source285 reaches dark/send-rest script line six, then fails with no exported inner code and zero admitted PNGs. The independent reader passes 101 controls and verifies 51 sources and both failure manifests. See [the retained failure and Source286 candidate](docs/review/source285-navigation-capture-failure.md)
-- Main ledger: 72 of 80 rows done, 90 percent by rows. P03, P09, F06, V01-V03 and V05-V06 remain open; original V04 viewing is complete on its recorded scope
-- Visual scope: zero of 94 accepted matches, nineteen preparations and 82 missing literal outputs. Source278's full 4849-pass/one-skip application baseline and actual eight-Home review retain their earlier scopes. Settings X420, lab X421, Navigation X423, X411 and Arabic fallback X414 remain separate
-- Next gates: Source286 adds fourteen fixed passive Navigation keys to the existing readonly observation lane and one real-agent component regression. Fresh expected gates are 781/783 ordinary/startup Dart, 924/459/101 Python/memory/reader and 51 producer pins. Fourteen Navigation/42 total PNGs remain unqualified
-- Preserved scope: Original runtime inner causes remain NOT_ESTABLISHED. Native101 Send and Native103 Token confirmation/effect stay UNKNOWN; Native104 is not admitted. All earlier failures remain. Attribution uses edgepillar, GitHub no-reply and UTC; the PR stays Draft
+- Updated: 2026-11-01T08:11Z
+- Current controls: Source286 passes 781 Dart cases in both focused and native preflight, zero selected analysis findings, 924 Python controls with three original skips, fourteen asset observations and 459 selected memory controls
+- Original native failure: Source286 passes dark/send-rest line six and three control assertions, then fails at line ten, assert --key send_form_ready. Reader 101 verifies 51 sources and both original failure manifests; zero PNGs are admitted. See [the original failure and Source287 candidate](docs/review/source286-navigation-region-failure.md)
+- Next gate: Source287 distinguishes a passive empty center from an unrelated covering render hit, preserving input reachability and the fixed key whitelist. One new widget regression and fresh 782/784 ordinary/startup Dart gates remain pending; Python/memory/reader stay 924/459/101
+- Home follow-up: [Two earlier Source278 hidden frames](docs/review/source278-home-hidden-spacing-followup.md) confirm narrower mask/currency/eye ink gaps. One retained CAS input is reused with no new transport; the owned task closes successfully. X411 stays open and no current native claim is inferred
+- Main ledger and visuals: 72 of 80 rows done, 90 percent by rows; zero of 94 accepted matches, nineteen preparations and 82 missing literal outputs. P03, P09, F06, V01-V03 and V05-V06 remain open. Original V04 viewing keeps its recorded scope; Arabic fallback X414 remains
+- Preserved evidence: Source285 line six, Source282 Settings X420, Source283 lab X421 and Source286 line ten keep separate original failures and NOT_ESTABLISHED inner causes. Prior Source278 full/application-UI evidence keeps its scope. Native101 Send and Native103 Token confirmation/effect stay UNKNOWN; Native104 is not admitted. Attribution uses edgepillar, GitHub no-reply and UTC; the PR stays Draft
 
 ### Rows
 
@@ -478,12 +478,12 @@ macOS; Windows provision and acceptance remain pending. See
 | N05 | done | 2026-10-23T15:54Z | e13abb387577 adds the original globe crop and three captured entry routes, preserving owned callbacks and Welcome motion; strict and full local checks pass; native comparison pending |
 | N06 | done | 2026-10-23T15:54Z | e13abb387577 adds pure Import and the bounded three-word quiz with original decrypt, access release and shared-axis routes; strict and full local checks pass; native authentication and comparison remain unqualified |
 | N07 | done | 2026-10-23T15:54Z | e13abb387577 adds the original map and Ready glass card, captured first address and once-only opening bound to original creation and local initialization; connection mismatch and uncertainty remain distinct from readiness; strict and full local checks pass; native acceptance pending |
-| V01 | review | 2026-11-01T07:32Z | Source285 passes 780 Dart cases and zero selected analysis findings, then its original native capture fails at dark/send-rest script line six with zero admitted PNGs. Reader 101 verifies both failure manifests and 51 sources. Source286 adds bounded passive-key observation pending fresh hosted qualification. Actual entry/Home outputs remain twelve of 94; no accepted match is added |
+| V01 | review | 2026-11-01T08:11Z | Source286 passes 781-case zero-finding controls, then native capture fails at dark/send-rest line ten after its line-six wait and three assertions return. Reader 101 verifies both failure manifests and 51 sources; zero PNGs are admitted. Source287 targets passive empty-center observation pending fresh hosted qualification. Twelve entry/Home outputs, zero accepted matches and 82 missing literal outputs remain |
 | V02 | blocked | 2026-10-23T12:26Z | Finite widget timing coverage is separate from the running-build motion, shader and frame-time pass; native execution and its baseline remain pending |
 | V03 | blocked | 2026-10-23T12:26Z | Seam registry and injected control checks are prepared; trying every control, shortcut and Go to entry in a running native wallet remains pending |
 | V04 | done | 2026-10-31T23:34Z | All four independently qualified Source265 minimum-window/Arabic originals were actually viewed in both themes. The owned review closes SUCCESS with actual controller exit zero; required original native closure stays source-bound. Minimum controls fit and RTL layout mirrors. English fallback/missing Arabic copy is retained as X414; exact saved locale preference and Arabic glyph quality remain separate unqualified observations |
 | V05 | blocked | 2026-10-28T12:48Z | The four source133 images and their exact references are now opened, with corrected Import family/counter placement and residual selector, Welcome frame/drop and draft-decoration differences. Font hinting and the selected brand colors remain allowed exceptions. No input buffer receives a decorative continuation mark. Complete independent review of all 94 pairs and the browser-rendered compare page remains pending; zero matches are accepted |
-| V06 | review | 2026-11-01T07:32Z | Main progress stays 72/80. Source285 closes X422 on 780-case/zero-finding scope while its native failure remains X423 with inner cause NOT_ESTABLISHED. Source286 keeps ordinary input, SDK and production UI paths, adds fourteen readonly passive keys and one component case, and requires fresh 781/783 and 924/459/101 gates. All original acceptance boundaries remain |
+| V06 | review | 2026-11-01T08:11Z | Main progress stays 72/80. Source286 original line-ten native failure stays separate from Source285 line six; both inner causes remain NOT_ESTABLISHED. Source287 preserves ordinary/input/SDK/UI paths and adds one passive-center regression, with fresh 782/784 and 924/459/101 gates. A closed CAS-only Source278 hidden-spacing follow-up keeps X411 open; all original acceptance gates remain |
 | X01 | done | 2026-10-21T23:26Z | e13abb387577 restores loading-list sweep ink in lib/rearchitecture/utils/widgets/motion/skeleton.dart; all 19 existing Skeleton tests pass unchanged |
 | X02 | done | 2026-10-21T23:57Z | e13abb387577 keeps the status-strip dot visible at narrow widths and fixes asynchronous visibility tests |
 | X03 | done | 2026-10-21T23:57Z | e13abb387577 parses the bridge test's HTTP head before binary frames; compression refusal assertions retained |
@@ -1819,3 +1819,12 @@ The [Source284 original refusal](docs/review/source284-navigation-analysis-failu
 | Row | Status | Updated | Note |
 | --- | --- | --- | --- |
 | X423 | review | 2026-11-01T07:32Z | Source285 native fails at dark/send-rest script line six, wait --key send_form_ready; inner code is absent and the original cause remains NOT_ESTABLISHED. Source286 extends existing positive readonly observation to fourteen fixed passive Navigation keys, with unique visible geometry and covered/hidden/duplicate/zero/input refusal preserved. Fresh hosted component and native evidence are required; no original operation is replayed |
+
+
+### Source287 passive empty-center observation
+
+[Source286's original failure](docs/review/source286-navigation-region-failure.md) reaches the final passive-form assertion after three controls return, but admits no image and retains failed required-wallet closure. The new component case and observer do not establish its runtime cause. [The separate Source278 hidden-spacing follow-up](docs/review/source278-home-hidden-spacing-followup.md) retains its old native scope and keeps X411 open.
+
+| Row | Status | Updated | Note |
+| --- | --- | --- | --- |
+| X424 | review | 2026-11-01T08:11Z | Source286 native fails at dark/send-rest script line ten, assert --key send_form_ready, after line six and three controls return. Its 101-case reader verifies 51 sources and two failure manifests, zero PNGs and failed required-wallet closure. Inner cause remains NOT_ESTABLISHED. Source287 adds readonly passive empty-center observation while the first unrelated hit still refuses it; fresh hosted component/native evidence is required |
