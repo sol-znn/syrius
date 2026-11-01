@@ -170,6 +170,7 @@ def main():
             'test/shell/shell_frame_test.dart',
             'test/transfer/view/transfer_page_test.dart',
             'test/home/home_hero_test.dart',
+            'test/go_to_palette/go_to_palette_test.dart',
             'test/harness/entry_capture_progress_test.dart',
             'test/publication_session/original_publications_test.dart',
             'test/harness/readonly_sdk_admission_test.dart',
@@ -258,7 +259,7 @@ def main():
         counts = test_counts(outcome.output)
         report['counts'] = counts
         debug.need(outcome.success and counts['terminal_success'] is True
-            and counts['passed'] == (754 if asset_fidelity else 752)
+            and counts['passed'] == (779 if asset_fidelity else 777)
             and counts['skipped'] == counts['failed'] == counts['error_events'] == 0,
             'TESTS_FAILED')
         if asset_fidelity:

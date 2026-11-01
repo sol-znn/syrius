@@ -1180,3 +1180,24 @@ native/reader qualification. X411 and Arabic fallback X414 remain; generic/V04
 frames are not literal aliases. All original FAILURE/HOLD/UNKNOWNs are retained.
 Native101 send and Native103 Token confirmation/effect remain UNKNOWN;
 Native104 is not admitted. The existing PR stays Draft.
+
+
+See [Source275 qualification](../docs/review/source275-home-goto-qualification.md) and the validation index for
+current source-bound results and the closed eight-Home review.
+
+
+Source276 corrects the actual Go To trailing-hint defect found in the closed
+Source275 eight-Home review. Loose text now occupies one filled content slot;
+keyboard hints stay at the trailing edge, while address details have a bounded
+trailing slot. Filtering, IME, values, seams, focus, callbacks and animation
+remain unchanged. The foreground/dim behavior is retained for separate review.
+One geometry case covers both themes, LTR/RTL, long text and 2x text scaling.
+All 24 original palette cases now join the original 752 selected cases exactly
+once: expected 777/779 ordinary/startup counts. Python/memory/reader remain
+918/453/95 and producer pins remain 33. Applied memory controls pass 453 with
+no skips, errors, native/network/write attempts or shared-store accesses.
+Fresh hosted admission must precede new native Home capture and its independent
+reader. The UI change also requires a fresh full baseline; expected root counts
+are 4849 passes and one original skip, derived before execution. All bounds,
+original financial/profile/password/seed/reopen inputs and SDK policy remain.
+The prepared Settings catalog is deferred until this correction is qualified.

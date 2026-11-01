@@ -644,6 +644,8 @@ class AnalysisAdmissionTests(unittest.TestCase):
         self.assertTrue(value['output_complete'])
         for path in (
             'test/window/window_frame_test.dart',
+            'test/go_to_palette/go_to_palette_test.dart',
+            'lib/rearchitecture/utils/widgets/go_to_palette.dart',
             'test/window/window_chrome_test.dart',
             'harness/app/retained_renderer_frame.dart',
             'harness/app/retained_png.dart',

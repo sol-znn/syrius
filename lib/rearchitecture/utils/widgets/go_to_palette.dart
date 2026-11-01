@@ -586,53 +586,70 @@ class _PaletteRowState<T> extends State<_PaletteRow<T>>
     final Color ink = widget.highlighted ? tokens.foreground : tokens.dim;
     final GoToIconBuilder? iconBuilder = entry.iconBuilder;
     final String? identifier = entry.identifier;
+    final bool address = entry.category == GoToCategory.addresses;
+    Widget detail() => _MatchedText(
+      text: entry.detail!,
+      needle: widget.needle,
+      style: tokens.compactText.copyWith(color: tokens.dim),
+    );
     return Padding(
       padding: EdgeInsetsDirectional.symmetric(horizontal: tokens.goToRowInset),
-      child: Row(
-        children: <Widget>[
-          if (iconBuilder != null || entry.icon != null) ...<Widget>[
-            iconBuilder?.call(context, ink) ??
-                Icon(entry.icon, size: tokens.railIconSize, color: ink),
-            SizedBox(width: tokens.railLabelGap),
-          ],
-          Flexible(
-            child: _MatchedText(
-              text: entry.label,
-              needle: widget.needle,
-              style: tokens.bodyText.copyWith(color: ink),
+      child: LayoutBuilder(
+        builder: (BuildContext context, BoxConstraints constraints) => Row(
+          children: <Widget>[
+            if (iconBuilder != null || entry.icon != null) ...<Widget>[
+              iconBuilder?.call(context, ink) ??
+                  Icon(entry.icon, size: tokens.railIconSize, color: ink),
+              SizedBox(width: tokens.railLabelGap),
+            ],
+            // Fill the content slot before laying out the trailing hint.
+            // Loose text widths must not leave space after that hint.
+            Expanded(
+              child: Row(
+                children: <Widget>[
+                  Flexible(
+                    child: _MatchedText(
+                      text: entry.label,
+                      needle: widget.needle,
+                      style: tokens.bodyText.copyWith(color: ink),
+                    ),
+                  ),
+                  if (identifier != null) ...<Widget>[
+                    SizedBox(width: tokens.inlineGap),
+                    Flexible(
+                      child: Tooltip(
+                        message: identifier,
+                        child: _MatchedText(
+                          text: _shortIdentifier(identifier),
+                          needle: widget.needle,
+                          style: tokens.goToIdentifierText,
+                          textDirection: TextDirection.ltr,
+                        ),
+                      ),
+                    ),
+                  ],
+                  if (!address && entry.detail != null) ...<Widget>[
+                    SizedBox(width: tokens.inlineGap),
+                    Flexible(child: detail()),
+                  ],
+                ],
+              ),
             ),
-          ),
-          if (identifier != null) ...<Widget>[
-            SizedBox(width: tokens.inlineGap),
-            Flexible(
-              child: Tooltip(
-                message: identifier,
-                child: _MatchedText(
-                  text: _shortIdentifier(identifier),
-                  needle: widget.needle,
-                  style: tokens.goToIdentifierText,
-                  textDirection: TextDirection.ltr,
+            if (address && entry.detail != null) ...<Widget>[
+              SizedBox(width: tokens.inlineGap),
+              ConstrainedBox(
+                constraints: BoxConstraints(
+                  maxWidth: constraints.maxWidth * 0.4,
                 ),
+                child: detail(),
               ),
-            ),
+            ],
+            if (entry.shortcut != null) ...<Widget>[
+              SizedBox(width: tokens.inlineGap),
+              _KeyHint(entry.shortcut!),
+            ],
           ],
-          if (entry.category == GoToCategory.addresses) const Spacer(),
-          if (entry.detail != null) ...<Widget>[
-            SizedBox(width: tokens.inlineGap),
-            Flexible(
-              child: _MatchedText(
-                text: entry.detail!,
-                needle: widget.needle,
-                style: tokens.compactText.copyWith(color: tokens.dim),
-              ),
-            ),
-          ],
-          if (entry.category != GoToCategory.addresses) const Spacer(),
-          if (entry.shortcut != null) ...<Widget>[
-            SizedBox(width: tokens.inlineGap),
-            _KeyHint(entry.shortcut!),
-          ],
-        ],
+        ),
       ),
     );
   }

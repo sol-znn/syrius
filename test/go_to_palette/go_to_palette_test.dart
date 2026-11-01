@@ -103,6 +103,95 @@ Future<void> _open<T>(
 }
 
 void main() {
+  testWidgets('row hints stay at the trailing edge with loose text', (
+    WidgetTester tester,
+  ) async {
+    tester.view
+      ..physicalSize = const Size(1200, 780)
+      ..devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+    for (final bool dark in <bool>[true, false]) {
+      for (final TextDirection direction in TextDirection.values) {
+        for (final double scale in <double>[1, 2]) {
+          await tester.pumpWidget(MaterialApp(
+            theme: dark ? AppTheme.darkTheme : AppTheme.lightTheme,
+            locale: const Locale('en'),
+            localizationsDelegates: appLocalizationsDelegates,
+            supportedLocales: AppLocalizations.supportedLocales,
+            home: Directionality(
+              textDirection: direction,
+              child: MediaQuery(
+                data: MediaQueryData(
+                  size: const Size(1200, 780),
+                  textScaler: TextScaler.linear(scale),
+                ),
+                child: Scaffold(
+                  body: Center(
+                    child: SizedBox(
+                      width: 560,
+                      child: GoToPalette<int>(entries: <GoToEntry<int>>[
+                        const GoToEntry<int>(
+                          id: 'short', value: 1, label: 'Delegation',
+                          detail: 'Nodes', shortcut: 'Ctrl 4',
+                          icon: Icons.layers,
+                        ),
+                        GoToEntry<int>(
+                          id: 'long', value: 2,
+                          label: 'Long destination ' * 24,
+                          detail: 'Context ' * 20, shortcut: 'Ctrl D',
+                          category: GoToCategory.actions,
+                          icon: Icons.layers,
+                        ),
+                        GoToEntry<int>(
+                          id: 'address', value: 3, label: 'Contact ' * 20,
+                          identifier: 'synthetic' * 12,
+                          detail: 'Send to destination ' * 20,
+                          category: GoToCategory.addresses,
+                        ),
+                      ]),
+                    ),
+                  ),
+                ),
+              ),
+            ),
+          ));
+          await tester.pumpAndSettle();
+          final AppTokens tokens = AppTokens.of(tester.element(_row('short')));
+          for (final MapEntry<String, String> pair in <String, String>{
+            'short': 'Ctrl 4', 'long': 'Ctrl D',
+          }.entries) {
+            final Rect row = tester.getRect(_row(pair.key));
+            final Rect hint = tester.getRect(find.descendant(
+              of: _row(pair.key), matching: find.text(pair.value),
+            ));
+            final EdgeInsets padding =
+                tokens.keyboardHintPadding.resolve(direction);
+            if (direction == TextDirection.ltr) {
+              expect(hint.right,
+                  closeTo(row.right - tokens.goToRowInset - padding.right, 1));
+            } else {
+              expect(hint.left,
+                  closeTo(row.left + tokens.goToRowInset + padding.left, 1));
+            }
+            expect(hint.top, greaterThanOrEqualTo(row.top));
+            expect(hint.bottom, lessThanOrEqualTo(row.bottom));
+          }
+          final Rect label = tester.getRect(
+            _rowRichText('short', 'Delegation'),
+          );
+          final Rect detail = tester.getRect(_rowRichText('short', 'Nodes'));
+          expect(direction == TextDirection.ltr
+              ? detail.left - label.right : label.left - detail.right,
+              closeTo(tokens.inlineGap, 1));
+          expect(_rowSemantics(tester, 'address').properties.label,
+              contains('synthetic' * 12));
+          expect(tester.takeException(), isNull);
+        }
+      }
+    }
+  });
+
   testWidgets('groups pages, actions and contacts in source order', (
     WidgetTester tester,
   ) async {

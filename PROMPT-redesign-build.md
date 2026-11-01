@@ -392,13 +392,14 @@ macOS; Windows provision and acceptance remain pending. See
 
 ### Now
 
-- Updated: 2026-11-01T02:34Z
-- Current work: Source274 has five successful exact-source runs: 751 selected Dart passes, independent 34-PNG/32-source verification and a 4847-pass/one-skip broad Windows baseline. Source275 adds only the original Go To capture path and positive-shot Escape dismissal, pending fresh 752-case admission and new eight-Home native/reader qualification
-- Main ledger: 72 of 80 main rows are done, or 90 percent by rows. P03, P09, F06, V01-V03 and V05-V06 remain open; original V04 viewing is complete and Arabic fallback stays X414
-- Current focused and native evidence: Source274 harness 41263201527, native 41263824470 and reader 41265200881 qualify 751 ordinary passes/zero skips, 918 Python controls/three original skips, fourteen asset phases, zero selected findings, reader 95, 32 producer sources and 34 PNGs. Full producer 41263876562 and inspector 41265646572 qualify 4847 passes/one skip, twelve checks and Debug/Release on that exact source only
-- Visual scope: Source274 six-Home archive is independently verified at 984647 bytes; actual new viewing remains pending. Source270 four-Home viewing and Source265 V04 viewing retain their original scope. The Home privacy widget case qualifies eye/player/focus geometry and fiat masking. X411 and Arabic fallback X414 remain. Zero of 94 matches, nineteen preparations and 84 missing literal outputs remain
-- Original failures: Source273 original seven-error analysis refusal and skipped Dart/native are retained. Source271 one-info and Source269 five-info refusals, Source267 home_catalog, Source266 transport/Windows skip, Source264 covered-target, Source263/262 native failures and all earlier FAILURE/HOLD/UNKNOWNs stay source-bound; Source267/263 inner causes remain NOT_ESTABLISHED
-- Publication and limits: Identities use edgepillar, GitHub no-reply and UTC; the PR stays Draft. Source275 expects 752/754 Dart, 918/453/95 Python/memory/reader, 33 producer pins, eight Home and 36 total PNGs. Product UI, original inputs, SDK authority, workflow, dependencies and global bounds are unchanged. Native101 send and Native103 Token effect remain UNKNOWN; Native104 is not admitted
+- Updated: 2026-11-01T03:29Z
+- Current work: Source275 has three successful exact-source runs and a closed eight-Home review. Source276 fixes the observed Go To trailing-hint layout; fresh 777-case hosted admission, full baseline and native/reader qualification are pending
+- Main ledger: 72 of 80 rows done, 90 percent by rows. P03, P09, F06, V01-V03 and V05-V06 remain open; original V04 viewing is complete on its recorded scope
+- Source275 evidence: harness 41266079174, native 41266634177 and reader 41267953384 qualify 752 Dart passes, 918 Python controls with three skips, zero selected findings, reader 95, 33 source files and 36 PNGs
+- Visual scope: eight actual Home images and eight references viewed; zero of 94 matches, nineteen preparations and 82 missing literal outputs. The hidden eye row and fiat omission fixes are observed. Remaining X411/X414 differences and new X417 are separate
+- Full baseline: Source274 producer 41263876562 and inspector 41265646572 qualify 4847 passes and one skip on that source only. Source276 changes UI and requires fresh full qualification; expected 4849 passes and one skip are not execution proof
+- Next gates: 777/779 Dart, 918/453/95 Python/memory/reader, 33 producer pins, eight Home and 36 total PNGs expected. Settings capture preparation is deferred until this UI fix is qualified
+- Preserved scope: all original FAILURE/HOLD/UNKNOWNs remain. Native101 Send and Native103 Token confirmation/effect stay UNKNOWN; Native104 is not admitted. Identity uses edgepillar, GitHub no-reply and UTC; the PR stays Draft
 
 ### Rows
 
@@ -478,7 +479,7 @@ macOS; Windows provision and acceptance remain pending. See
 | N05 | done | 2026-10-23T15:54Z | e13abb387577 adds the original globe crop and three captured entry routes, preserving owned callbacks and Welcome motion; strict and full local checks pass; native comparison pending |
 | N06 | done | 2026-10-23T15:54Z | e13abb387577 adds pure Import and the bounded three-word quiz with original decrypt, access release and shared-axis routes; strict and full local checks pass; native authentication and comparison remain unqualified |
 | N07 | done | 2026-10-23T15:54Z | e13abb387577 adds the original map and Ready glass card, captured first address and once-only opening bound to original creation and local initialization; connection mismatch and uncertainty remain distinct from readiness; strict and full local checks pass; native acceptance pending |
-| V01 | review | 2026-11-01T00:58Z | Source270 native/independent reader qualify 24 generic, four literal Home rest/hidden and four V04 PNGs. The four-Home archive is 660819 bytes; local transport and actual viewing remain pending. Closed Source268 Home and Source265 V04 reviews retain original scope. Generic/V04 frames are not catalog aliases. Zero of 94 matches, nineteen preparations and 86 missing literal outputs remain |
+| V01 | review | 2026-11-01T03:29Z | Source275 native/reader qualify 24 generic, eight literal Home and four viewport PNGs. All eight Home images and references were viewed in one successful closed owned review. Zero of 94 matches, nineteen preparations and 82 missing literal outputs remain. See docs/review/source275-home-goto-qualification.md |
 | V02 | blocked | 2026-10-23T12:26Z | Finite widget timing coverage is separate from the running-build motion, shader and frame-time pass; native execution and its baseline remain pending |
 | V03 | blocked | 2026-10-23T12:26Z | Seam registry and injected control checks are prepared; trying every control, shortcut and Go to entry in a running native wallet remains pending |
 | V04 | done | 2026-10-31T23:34Z | All four independently qualified Source265 minimum-window/Arabic originals were actually viewed in both themes. The owned review closes SUCCESS with actual controller exit zero; required original native closure stays source-bound. Minimum controls fit and RTL layout mirrors. English fallback/missing Arabic copy is retained as X414; exact saved locale preference and Arabic glyph quality remain separate unqualified observations |
@@ -1386,6 +1387,7 @@ The minimum-window/Arabic candidate remains unapplied; its fifteen synthetic PNG
 | X414 | review | 2026-11-01T00:17Z | The Arabic resource contains only its locale declaration. Actual Source265 Arabic-locale frames therefore retain English Home/status fallback. RTL mirroring is observed, while full Arabic localization, locale-correct unit order and glyph quality remain unqualified. This does not reopen the completed original V04 viewing criterion |
 | X415 | done | 2026-11-01T00:58Z | Source270 harness-only and native selections pass all 749 ordinary cases with zero failures/errors/skips and selected findings, retaining the real semantic-container counterexample and exact pointer/text waits. The closed Source268 Home review shows Notifications in both themes. Original Source267 home_catalog inner cause stays NOT_ESTABLISHED |
 | X416 | review | 2026-11-01T00:27Z | Source269 retains five PREFER_INTERPOLATION_TO_COMPOSE_STRINGS infos in three test path expressions. Strict analysis correctly prevents Dart/native execution. Source270 substitutes equivalent interpolation without changing assertions, counts or runtime code; fresh hosted qualification is pending |
+| X417 | review | 2026-11-01T03:29Z | Source275 actual Go To images place Ctrl 4 inside the row rather than at its trailing edge. Source276 fills the content slot and bounds trailing details; one new both-theme, RTL and scaled geometry case joins all original palette cases. Fresh hosted, full-baseline and native/reader evidence remain pending. Unselected contrast and missing reference contact data are not inferred fixed |
 
 
 ## Source265: exclude menu children used only for measurement
@@ -1723,3 +1725,20 @@ native/reader qualification. X411 and Arabic fallback X414 remain; generic/V04
 frames are not literal aliases. All original FAILURE/HOLD/UNKNOWNs are retained.
 Native101 send and Native103 Token confirmation/effect remain UNKNOWN;
 Native104 is not admitted. The existing PR stays Draft.
+
+
+Source276 corrects the actual Go To trailing-hint defect found in the closed
+Source275 eight-Home review. Loose text now occupies one filled content slot;
+keyboard hints stay at the trailing edge, while address details have a bounded
+trailing slot. Filtering, IME, values, seams, focus, callbacks and animation
+remain unchanged. The foreground/dim behavior is retained for separate review.
+One geometry case covers both themes, LTR/RTL, long text and 2x text scaling.
+All 24 original palette cases now join the original 752 selected cases exactly
+once: expected 777/779 ordinary/startup counts. Python/memory/reader remain
+918/453/95 and producer pins remain 33. Applied memory controls pass 453 with
+no skips, errors, native/network/write attempts or shared-store accesses.
+Fresh hosted admission must precede new native Home capture and its independent
+reader. The UI change also requires a fresh full baseline; expected root counts
+are 4849 passes and one original skip, derived before execution. All bounds,
+original financial/profile/password/seed/reopen inputs and SDK policy remain.
+The prepared Settings catalog is deferred until this correction is qualified.
