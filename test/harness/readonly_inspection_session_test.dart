@@ -1227,12 +1227,13 @@ void main() {
         _ => throw StateError('Unexpected bound capture fault'),
       }));
       expect(scrolls, orderedEquals(<Map<String, Object?>>[
-        for (int pair = 0; pair < scrolls.length ~/ 2; pair++) ...[
-          <String, Object?>{'cmd': 'scroll', 'dy': -1000000},
-          <String, Object?>{
-            'cmd': 'scroll', 'key': 'node_settings_peers_toggle', 'dy': 300,
-          },
-        ],
+        for (int pair = 0; pair < scrolls.length ~/ 2; pair++)
+          ...<Map<String, Object?>>[
+            <String, Object?>{'cmd': 'scroll', 'dy': -1000000},
+            <String, Object?>{
+              'cmd': 'scroll', 'key': 'node_settings_peers_toggle', 'dy': 300,
+            },
+          ],
       ]));
       expect(commands.every((Map<String, Object?> value) => <String>{
         'readonly-wallet-bind', 'state', 'tree', 'tap', 'theme', 'window',
@@ -1759,12 +1760,13 @@ void main() {
       ).toList();
       expect(scrolls, orderedEquals(<Map<String, Object?>>[
         if (fault == 'none')
-          for (int pair = 0; pair < 4; pair++) ...[
-            <String, Object?>{
-              'cmd': 'scroll', 'key': 'about_licences_toggle', 'dy': 300,
-            },
-            <String, Object?>{'cmd': 'scroll', 'dy': 1000000},
-          ],
+          for (int pair = 0; pair < 4; pair++)
+            ...<Map<String, Object?>>[
+              <String, Object?>{
+                'cmd': 'scroll', 'key': 'about_licences_toggle', 'dy': 300,
+              },
+              <String, Object?>{'cmd': 'scroll', 'dy': 1000000},
+            ],
       ]));
       expect(commands.every((Map<String, Object?> value) => <String>{
         'readonly-wallet-bind', 'state', 'tree', 'tap', 'theme', 'window',
