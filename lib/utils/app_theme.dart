@@ -397,6 +397,12 @@ class AppTokens extends ThemeExtension<AppTokens> {
   /// Hidden balances place the original eye beside the primary amount.
   double get heroHiddenEyeSize => 20;
 
+  /// The hidden headline's gap before the original eye's layout slot.
+  double get heroHiddenEyeGap => 14;
+
+  /// The reference canvas's 150 pixels minus its two 58-pixel margins.
+  double get heroHiddenEyeSlotWidth => 34;
+
   /// Home uses the reference's tighter gap around its body panels.
   double get homePanelGap => 12;
 

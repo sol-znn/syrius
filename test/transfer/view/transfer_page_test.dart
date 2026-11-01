@@ -467,6 +467,27 @@ void main() {
     timeout: const Timeout(Duration(seconds: 45)),
   );
 
+  testWidgets('Send sender follows the trailing header content edge', (
+    WidgetTester tester,
+  ) async {
+    for (final bool light in <bool>[false, true]) {
+      await show(tester, light: light, reduced: true);
+      final Finder sender = find.byKey(const Key('transfer_sender'));
+      final Rect card = tester.getRect(
+        find.byKey(const Key('transfer_card')),
+      );
+      final Rect selector = tester.getRect(sender);
+      final AppTokens tokens = AppTokens.of(tester.element(sender));
+      expect(card.right - selector.right,
+        closeTo(tokens.cardPadding.right, 0.01));
+      expect(selector.center.dy,
+        closeTo(tester.getRect(_mode(TransferMode.send)).center.dy, 0.01));
+      expect(selector.left, greaterThan(card.center.dx));
+      expect(sender.hitTestable(), findsOneWidget);
+      expect(tester.takeException(), isNull);
+    }
+  });
+
   testWidgets(
     'modes retain live form state and deny hidden focus, semantics and tickers',
     (WidgetTester tester) async {

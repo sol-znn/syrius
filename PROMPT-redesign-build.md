@@ -392,13 +392,13 @@ macOS; Windows provision and acceptance remain pending. See
 
 ### Now
 
-- Updated: 2026-11-01 10:13 UTC
-- Current failure: Source290 reports 784 Dart passes and one failed exact QSR selection, zero selected analysis findings and 928 Python controls with three original skips. The actual QSR option and hit-testable widget are observed before agent.dart:3135 refuses the direct line-447 command. The geometry/label cause remains NOT_ESTABLISHED. [Original evidence](docs/review/source290-visible-receive-menu-failure.md)
-- Next gate: [Source291 overlay paint-context preparation](docs/review/source291-painted-overlay-context.md) resets caller context only at a known deferred overlay render owner and adds a real portal regression with ordinary clipping refusal. The existing Receive counterexample and final assertions remain unchanged. Ten count gates pass; fresh 786/788 Dart and 928 Python gates are pending
-- Preserved controls: the closed four-family choice and sixteen fixed Settings observations remain. No Source290 native run is dispatched. [Source288 native failure](docs/review/source288-receive-selection-failure.md), [Source289 component failure](docs/review/source289-receive-agent-diagnostic-failure.md), original causes and all FAILURE/HOLD/UNKNOWN evidence remain separate
-- Visual scope: fourteen [Source287 Navigation originals and references](docs/review/source287-navigation-visual-review.md) were viewed with a successfully closed owned review and zero matches accepted. [Source278 Home X411](docs/review/source278-home-hidden-spacing-followup.md), original V04 and Arabic fallback X414 keep their scopes; separate Home/Send UI candidates remain unapplied
-- Acceptance: 72 of 80 rows done, 90 percent by rows; zero of 94 accepted matches, nineteen preparations, 26 available literal outputs and 68 missing. No Settings or Details literal images are qualified. P03, P09, F06, V01-V03 and V05-V06 remain open
-- Publication: Source278's prior full/application-UI scope remains protected. Native101 Send and Native103 Token confirmation/effect stay UNKNOWN; Native104 is not admitted. Attribution uses edgepillar, GitHub no-reply and UTC; the PR stays Draft
+- Updated: 2026-11-01 10:35 UTC
+- Qualified component: Source291 passes 786 Dart cases, the real portal/clipping regression and unchanged Receive/QSR assertions, 928 Python controls with three original skips and zero selected analysis findings. Its separate native preparation fails at the unchanged 240-second Dart limit before any wallet/node execution; zero artifacts are produced. [Original results](docs/review/source291-prebuild-dart-timeout.md)
+- Current changes: [Source292 Home/Send corrections](docs/review/source292-home-send-layout.md) measure hidden mask spacing, preserve the original animated eye within its reference slot, and move the wide Send sender selector to the trailing edge. Ten count controls pass for the exact eight-file candidate; 788/790 Dart, 928 Python and fresh full-root Windows/independent-inspector gates remain pending
+- Required visual checks: new affected Home/Send native captures and actual comparison remain pending. The separate [Source278 Home X411 follow-up](docs/review/source278-home-hidden-spacing-followup.md) and [Source287 Navigation review](docs/review/source287-navigation-visual-review.md) retain their old source scopes. No new Settings or Details literal images are qualified
+- Preserved evidence: [Source288 native failure](docs/review/source288-receive-selection-failure.md), [Source289 component failure](docs/review/source289-receive-agent-diagnostic-failure.md), [Source290 selector discrepancy](docs/review/source290-visible-receive-menu-failure.md), original V04, Arabic fallback X414 and all FAILURE/HOLD/UNKNOWN records remain. No original run is retried
+- Acceptance: 72 of 80 rows done, 90 percent by rows; zero of 94 accepted matches, nineteen preparations, 26 available literal outputs and 68 missing. P03, P09, F06, V01-V03 and V05-V06 remain open. Source278's prior full/application-UI baseline does not qualify the new UI
+- Publication: Native101 Send and Native103 Token confirmation/effect stay UNKNOWN; Native104 is not admitted. Attribution uses edgepillar, GitHub no-reply and UTC; the PR stays Draft
 
 ### Rows
 
@@ -1858,6 +1858,14 @@ See [the original Source289 failure](docs/review/source289-receive-agent-diagnos
 
 | Exception | State | Updated (UTC) | Evidence and remaining gate |
 | --- | --- | --- | --- |
-| X429 | review | 2026-11-01 10:13 UTC | Only the known deferred portal paint owner resets caller decoration/button/scroll context, within owner/client bounds. One real two-theme portal case retains an ordinary clipped-control refusal. The original Receive counterexample is byte-unchanged. Ten count gates pass; fresh hosted 786/788 Dart and 928 Python gates are pending. No original native cause or new image is inferred |
+| X429 | review | 2026-11-01 10:13 UTC | Only the known deferred portal paint owner resets caller decoration/button/scroll context, within owner/client bounds. One real two-theme portal case retains an ordinary clipped-control refusal. The original Receive counterexample is byte-unchanged. Ten count gates pass; fresh hosted 786/788 Dart and 928 Python gates are pending. No original native cause or new image is inferred Source291 subsequently passes all 786 focused cases, including the real portal and unchanged Receive counterexample. Its separate native preparation times out before wallet/node execution; no Details image is produced. |
 
 See [the original Source290 discrepancy](docs/review/source290-visible-receive-menu-failure.md), [Source291 preparation](docs/review/source291-painted-overlay-context.md) and exact [PR body 231 archive](docs/review/pr-body-231.md). All eight body URLs and prior evidence remain retained. Main progress stays 72/80 with zero of 94 accepted matches.
+
+### Source291 original timeout and Source292 observed layout fixes
+
+| Exception | State | Updated (UTC) | Evidence and remaining gate |
+| --- | --- | --- | --- |
+| X430 | review | 2026-11-01 10:35 UTC | Source291 component passes 786 with zero selected findings, while its separate native preparation hits the unchanged 240-second serial Dart limit. The original command is forced, partial counts and last suite are unexported, native wallet/node steps are skipped and zero artifacts exist. The failed run is preserved and not retried. Source292 applies two observed Home/Send layout corrections; fresh focused/full/native/visual qualification remains pending |
+
+See [Source291 original results](docs/review/source291-prebuild-dart-timeout.md), [Source292 layout changes](docs/review/source292-home-send-layout.md) and exact [PR body 232 archive](docs/review/pr-body-232.md). All nine body URLs and prior evidence remain retained. Main progress stays 72/80 with zero of 94 accepted matches.

@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'dart:math' as math;
+import 'dart:ui' as ui;
 
 import 'package:material_ui/material_ui.dart';
 import 'package:zenon_syrius_wallet_flutter/blocs/pow_generating_status_bloc.dart';
@@ -201,13 +202,19 @@ class _HomeHeroState extends State<HomeHero> {
     );
     final TextStyle symbol = tokens.heroSymbolText;
     final double hiddenEyeWidth = hidden
-        ? tokens.heroDollarGap + tokens.heroHiddenEyeSize
+        ? tokens.heroHiddenEyeGap + tokens.heroHiddenEyeSlotWidth
         : 0;
+    final double znnGap = hidden
+        ? _homeHiddenSymbolGap(context, tokens.heroAmountText)
+        : tokens.heroSymbolGap;
+    final double qsrGap = hidden
+        ? _homeHiddenSymbolGap(context, tokens.heroSecondaryAmountText)
+        : tokens.heroSymbolGap;
     return math.max(
-          znn + _textWidth(context, kZnnCoin.symbol, symbol) + hiddenEyeWidth,
-          qsr + _textWidth(context, kQsrCoin.symbol, symbol),
-        ) +
-        tokens.heroSymbolGap;
+      znn + znnGap + _textWidth(context, kZnnCoin.symbol, symbol) +
+          hiddenEyeWidth,
+      qsr + qsrGap + _textWidth(context, kQsrCoin.symbol, symbol),
+    );
   }
 
   double _actionsWidth(BuildContext context) {

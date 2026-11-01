@@ -589,7 +589,11 @@ void main() {
         final AppTokens tokens = AppTokens.of(tester.element(eye));
         expect(
           hiddenEye.left - tester.getRect(symbol).right,
-          closeTo(tokens.heroDollarGap, 0.01),
+          closeTo(
+            tokens.heroHiddenEyeGap +
+                (tokens.heroHiddenEyeSlotWidth - tokens.heroHiddenEyeSize) / 2,
+            0.01,
+          ),
         );
         expect(hiddenEye.top, greaterThanOrEqualTo(hiddenAmount.top));
         expect(hiddenEye.bottom, lessThanOrEqualTo(hiddenAmount.bottom));
@@ -648,6 +652,76 @@ void main() {
       }
     },
   );
+
+  testWidgets('hidden spacing follows inline reference at both text scales', (
+    WidgetTester tester,
+  ) async {
+    visibility.set(true);
+    for (final bool light in <bool>[false, true]) {
+      for (final TextDirection direction in TextDirection.values) {
+        for (final double scale in <double>[1, 2]) {
+          await show(tester, light: light, direction: direction,
+            textScale: scale);
+          final AppTokens tokens = AppTokens.of(
+            tester.element(find.byType(HomeHero)),
+          );
+          for (final (String, TextStyle) row in <(String, TextStyle)>[
+            ('home_znn', tokens.heroAmountText),
+            ('home_qsr', tokens.heroSecondaryAmountText),
+          ]) {
+            final (String prefix, TextStyle style) = row;
+            final Finder mask = find.descendant(
+              of: find.byKey(ValueKey<String>('${prefix}_value')),
+              matching: find.text(kHiddenAmountDots),
+            );
+            final Finder symbol = find.byKey(
+              ValueKey<String>('${prefix}_symbol'),
+            );
+            // This is the reference's inline mask, space and plain symbol.
+            final TextPainter reference = TextPainter(
+              text: TextSpan(
+                style: monoStyle(style).copyWith(
+                  letterSpacing: style.fontSize! * 0.08,
+                ),
+                children: <InlineSpan>[
+                  const TextSpan(text: '•••• '),
+                  TextSpan(
+                    text: prefix == 'home_znn' ? 'ZNN' : 'QSR',
+                    style: tokens.heroSymbolText.copyWith(letterSpacing: 0),
+                  ),
+                ],
+              ),
+              textDirection: TextDirection.ltr,
+              textScaler: TextScaler.linear(scale),
+            )..layout();
+            expect(tester.getRect(symbol).right - tester.getRect(mask).left,
+              closeTo(reference.width, 0.1));
+            reference.dispose();
+          }
+          final Rect slot = tester.getRect(
+            find.byKey(const Key('home_hidden_eye_slot')),
+          );
+          final Rect eye = tester.getRect(find.byKey(const Key('home_eye')));
+          expect(slot.size, const Size(34, 20));
+          expect(eye.size, const Size(20, 20));
+          expect(eye.center, slot.center);
+          final Finder primaryMask = find.descendant(
+            of: find.byKey(const Key('home_znn_value')),
+            matching: find.text(kHiddenAmountDots),
+          );
+          final double gap = direction == TextDirection.ltr
+              ? slot.left - tester.getRect(
+                  find.byKey(const Key('home_znn_symbol'))).right
+              : tester.getRect(primaryMask).left - slot.right;
+          expect(gap, closeTo(14, 0.1));
+          expect(find.byKey(const Key('home_znn_dollars')), findsNothing);
+          expect(find.byKey(const Key('home_qsr_dollars')), findsNothing);
+          expect(find.text('≈ ••••'), findsOneWidget);
+          expect(tester.takeException(), isNull);
+        }
+      }
+    }
+  });
 
   testWidgets('hidden width reveals neither balance length nor its changes', (
     WidgetTester tester,

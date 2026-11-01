@@ -1,5 +1,28 @@
 part of 'home_hero.dart';
 
+// Measure one interior mono space with the mask's tracking and text scale.
+// The width never depends on the private amount or trailing-space trimming.
+double _homeHiddenSymbolGap(BuildContext context, TextStyle amountStyle) {
+  final AppTokens tokens = AppTokens.of(context);
+  final TextPainter painter = TextPainter(
+    text: TextSpan(
+      text: '0 0',
+      style: monoStyle(amountStyle).copyWith(
+        letterSpacing:
+            amountStyle.fontSize! * tokens.hiddenAmountTrackingEm,
+      ),
+    ),
+    textDirection: TextDirection.ltr,
+    textScaler: MediaQuery.textScalerOf(context),
+  )..layout();
+  final ui.TextBox space = painter.getBoxesForSelection(
+    const TextSelection(baseOffset: 1, extentOffset: 2),
+  ).single;
+  final double width = space.right - space.left;
+  painter.dispose();
+  return width;
+}
+
 class _HomeHeroBalances extends StatelessWidget {
   const _HomeHeroBalances({
     required this.snapshot,
@@ -119,7 +142,9 @@ class _HomeHeroBalanceLine extends StatelessWidget {
         ? tokens.heroAmountText
         : tokens.heroSecondaryAmountText;
     return Wrap(
-      spacing: tokens.heroDollarGap,
+      spacing: visibility.hidden
+          ? tokens.heroHiddenEyeGap
+          : tokens.heroDollarGap,
       runSpacing: tokens.heroBalanceRunGap,
       crossAxisAlignment: WrapCrossAlignment.center,
       children: <Widget>[
@@ -146,7 +171,11 @@ class _HomeHeroBalanceLine extends StatelessWidget {
                   ),
                 ),
               ),
-              SizedBox(width: tokens.heroSymbolGap),
+              SizedBox(
+                width: visibility.hidden
+                    ? _homeHiddenSymbolGap(context, amountStyle)
+                    : tokens.heroSymbolGap,
+              ),
               Text(
                 symbol,
                 key: ValueKey<String>('${keyPrefix}_symbol'),
@@ -155,7 +184,13 @@ class _HomeHeroBalanceLine extends StatelessWidget {
             ],
           ),
         ),
-        if (eye case final Widget control) control,
+        if (eye case final Widget control)
+          SizedBox(
+            key: const Key('home_hidden_eye_slot'),
+            width: tokens.heroHiddenEyeSlotWidth,
+            height: tokens.heroHiddenEyeSize,
+            child: Center(child: control),
+          ),
         if (priced && !visibility.hidden)
           DollarText(
             key: ValueKey<String>('${keyPrefix}_dollars'),

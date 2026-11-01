@@ -318,7 +318,12 @@ class _TransferHeader extends StatelessWidget {
                 Expanded(child: segment),
                 if (mode == TransferMode.send) ...<Widget>[
                   SizedBox(width: AppTokens.of(context).transferFormGap),
-                  const Flexible(child: _TransferSender()),
+                  const Flexible(
+                    child: Align(
+                      alignment: AlignmentDirectional.centerEnd,
+                      child: _TransferSender(),
+                    ),
+                  ),
                 ],
               ],
             ),
