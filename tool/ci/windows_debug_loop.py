@@ -554,6 +554,7 @@ def analyze(parent, repo):
         'harness/bin/ci_wallet_inspection.dart',
         'test/harness/readonly_inspection_session_test.dart',
         'harness/bin/readonly_viewport_probe.dart',
+        'harness/bin/readonly_details_catalog.dart',
         'harness/bin/readonly_navigation_catalog.dart',
         'harness/bin/readonly_settings_catalog.dart',
         'test/harness/readonly_viewport_probe_test.dart',

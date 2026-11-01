@@ -5,8 +5,8 @@ import 'dart:io';
 
 import '../wallet_recipe_failure.dart' show walletRecipePublicDiagnostic;
 import 'harness.dart' as cli;
+import 'readonly_details_catalog.dart';
 import 'readonly_inspection_session.dart';
-import 'readonly_navigation_catalog.dart';
 import 'readonly_viewport_probe.dart';
 import 'screen_capture.dart';
 import 'wallet_recipe.dart';
@@ -37,10 +37,10 @@ class _InspectionInstance extends cli.Instance {
 
   Future<Map<String, dynamic>> bindWallet() => _session.bindWallet();
 
-  Future<Map<String, Object>> captureNavigationDefaults({
+  Future<Map<String, Object>> captureDetailsDefaults({
     void Function(ScreenCaptureObservation step)? onStep,
   }) =>
-      captureReadonlyNavigationDefaults(
+      captureReadonlyDetailsDefaults(
     repository: Directory(cli.repo), session: _session, onStep: onStep,
   );
 
@@ -77,7 +77,7 @@ Future<void> main() async {
   );
   String stage = 'admission';
   ReadonlyViewportStep? lastViewportStep;
-  ScreenCaptureObservation? lastNavigationStep;
+  ScreenCaptureObservation? lastDetailsStep;
   try {
     final Map<String, String> environment = Platform.environment;
     final String name = environment['SYRIUS_CI_INSPECTION_INSTANCE'] ?? '';
@@ -227,10 +227,10 @@ Future<void> main() async {
         'longest_ms': timings['longestMs'] as int,
       })}');
     }
-    stage = 'navigation_catalog';
+    stage = 'details_catalog';
     final Map<String, Object> catalog =
-        await instance.captureNavigationDefaults(
-      onStep: (ScreenCaptureObservation value) => lastNavigationStep = value,
+        await instance.captureDetailsDefaults(
+      onStep: (ScreenCaptureObservation value) => lastDetailsStep = value,
     );
     await marker('SYRIUS_INSPECTION_CATALOG:${jsonEncode(catalog)}');
     stage = 'viewport';
@@ -255,8 +255,8 @@ Future<void> main() async {
       Map<String, Object>? diagnostic = error is WalletRecipeRefused
           ? walletRecipePublicDiagnostic(error.diagnostic)
           : error is cli.WalletTourFailure ? error.diagnostic : null;
-      if (stage == 'navigation_catalog') {
-        diagnostic = readonlyNavigationFailureDiagnostic(lastNavigationStep);
+      if (stage == 'details_catalog') {
+        diagnostic = readonlyDetailsFailureDiagnostic(lastDetailsStep);
       }
       final ReadonlyViewportStep? observed = lastViewportStep;
       if (stage == 'viewport' && observed != null) {

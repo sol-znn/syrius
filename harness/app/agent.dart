@@ -3745,6 +3745,12 @@ class HarnessAgent {
           'p2p_swaps_list',
           'accelerator_strip',
           'accelerator_list',
+          'receive_qr_screen_marker',
+          'zap_form_ready',
+          'about_page',
+          'about_licences_list',
+          'about_licences_end',
+          'originals_card',
         }
             .contains(key)) {
       return null;

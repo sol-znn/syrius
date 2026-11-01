@@ -227,7 +227,7 @@ void main() {
   });
 
 
-  testWidgets('readonly navigation regions preserve passive ancestor keys', (
+  testWidgets('readonly catalog regions preserve passive ancestor keys', (
     WidgetTester tester,
   ) async {
     final _Scope scope = _Scope();
@@ -239,6 +239,12 @@ void main() {
       'plasma_fused_list', 'plasma_screen', 'tokens_strip', 'tokens_list',
       'p2p_swaps_strip', 'p2p_swaps_list',
       'accelerator_strip', 'accelerator_list',
+      'receive_qr_screen_marker',
+      'zap_form_ready',
+      'about_page',
+      'about_licences_list',
+      'about_licences_end',
+      'originals_card',
     ];
     Widget region(String key) => SizedBox(
       key: Key(key), width: 200, height: 80,

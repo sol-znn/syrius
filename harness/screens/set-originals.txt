@@ -10,3 +10,5 @@ type --key originals_discovery_field "" 321
 wait --key originals_card --timeout 30
 assert --key originals_play_launch
 # Replay is a movie overlay only; it does not initialize or unlock a wallet.
+# after-capture: goto dashboard
+# after-capture: wait --key home_hero --timeout 5

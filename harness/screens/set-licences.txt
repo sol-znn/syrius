@@ -6,3 +6,5 @@ tap --key about_licences_toggle
 wait --key about_licences_list --timeout 30
 reveal --key about_licences_end
 assert --key about_licences_end
+# after-capture: goto dashboard
+# after-capture: wait --key home_hero --timeout 5

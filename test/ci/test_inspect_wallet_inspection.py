@@ -554,7 +554,7 @@ class ReaderTests(unittest.TestCase):
                     'expected', 'a' * 40, 1)
 
     def run_main(self, *, positive=True, parent_failed=False, mutate_after=False,
-                 child_missing=False, auxiliary_forced=False, home_schema=1, settings_catalog=False, navigation_catalog=False):
+                 child_missing=False, auxiliary_forced=False, home_schema=1, settings_catalog=False, navigation_catalog=False, details_catalog=False):
         child, lab, files = pair(positive=positive)
         if auxiliary_forced:
             child['forced_cleanup'] = child['auxiliary_cleanup']['forced'] = True
@@ -575,8 +575,10 @@ class ReaderTests(unittest.TestCase):
         source = b'synthetic source'
         home_pixels = wallet_fixtures.png()
         home = wallet_fixtures.home_manifest(home_pixels, source, schema=home_schema)
-        self.assertFalse(settings_catalog and navigation_catalog)
-        if settings_catalog:
+        self.assertLessEqual(sum((settings_catalog, navigation_catalog, details_catalog)), 1)
+        if details_catalog:
+            home = wallet_fixtures.details_manifest(home_pixels, source)
+        elif settings_catalog:
             home = wallet_fixtures.settings_manifest(home_pixels, source)
         elif navigation_catalog:
             home = wallet_fixtures.navigation_manifest(home_pixels, source)
@@ -585,7 +587,12 @@ class ReaderTests(unittest.TestCase):
         viewport_manifest['probe_sha256'] = hashlib.sha256(source).hexdigest()
         viewport_manifest_raw = encode(viewport_manifest)
         if not child_missing:
-            if navigation_catalog:
+            if details_catalog:
+                child.update(schema=4, home_catalog=None, settings_catalog=None,
+                    navigation_catalog=None,
+                    details_catalog=(wallet_fixtures.details_reference(
+                        reader.archive.sha(home_manifest)) if positive else None))
+            elif navigation_catalog:
                 child.update(schema=3, home_catalog=None, settings_catalog=None,
                     navigation_catalog=(wallet_fixtures.navigation_reference(
                         reader.archive.sha(home_manifest)) if positive else None))
@@ -610,7 +617,7 @@ class ReaderTests(unittest.TestCase):
         blobs = {1: root_raw, 2: wallet_raw, 3: home_raw, 4: viewport_raw}
         artifact_ids = (1,) if child_missing else (1, 2, 3, 4) if positive else (1, 2)
         listing = dict(total_count=len(artifact_ids), artifacts=[dict(id=i,
-            name={1: 'chain321-native-', 2: 'wallet-inspection-', 3: 'navigation-catalog-' if navigation_catalog else 'settings-catalog-' if settings_catalog else 'home-catalog-', 4: 'viewport-observation-'}[i] + 'a' * 40 + '-1-1',
+            name={1: 'chain321-native-', 2: 'wallet-inspection-', 3: 'details-catalog-' if details_catalog else 'navigation-catalog-' if navigation_catalog else 'settings-catalog-' if settings_catalog else 'home-catalog-', 4: 'viewport-observation-'}[i] + 'a' * 40 + '-1-1',
             expired=False, size_in_bytes=len(blobs[i]), digest='sha256:' + reader.archive.sha(blobs[i]),
             workflow_run=dict(id=1, head_sha='a' * 40)) for i in artifact_ids])
         blob = hashlib.sha1(b'blob ' + str(len(source)).encode() + b'\0' + source).hexdigest()
@@ -722,7 +729,7 @@ class ReaderTests(unittest.TestCase):
         value, calls, text = self.run_main(settings_catalog=True)
         self.assertTrue(value['native_inspection_qualified'])
         self.assertEqual(value['verified_catalog_png_count'], 14)
-        self.assertEqual(value['producer_source_files_verified'], 51)
+        self.assertEqual(value['producer_source_files_verified'], 58)
         self.assertEqual(len(calls), 16)
         messages = [line.split('::', 2)[-1] for line in text.splitlines()
             if line.startswith('::notice title=Retained readonly Settings catalog::')]
@@ -738,7 +745,7 @@ class ReaderTests(unittest.TestCase):
         value, calls, text = self.run_main(navigation_catalog=True)
         self.assertTrue(value['native_inspection_qualified'])
         self.assertEqual(value['verified_catalog_png_count'], 14)
-        self.assertEqual(value['producer_source_files_verified'], 51)
+        self.assertEqual(value['producer_source_files_verified'], 58)
         self.assertEqual(len(calls), 16)
         messages = [line.split('::', 2)[-1] for line in text.splitlines()
             if line.startswith('::notice title=Retained readonly Navigation catalog::')]
@@ -746,6 +753,22 @@ class ReaderTests(unittest.TestCase):
         observed = json.loads(messages[0])
         self.assertEqual(observed['filenames'], list(reader.producer.navigation.FILES))
         self.assertEqual(observed['verified_png_count'], 14)
+        self.assertTrue(observed['all_original_png_digests_verified'])
+        self.assertTrue(observed['parent_closure_qualified'])
+        self.assertFalse(observed['atomic_frame_qualified'])
+        self.assertFalse(observed['wallet_qualified'])
+        self.assertEqual(observed['visual_matches'], 0)
+        value, calls, text = self.run_main(details_catalog=True)
+        self.assertTrue(value['native_inspection_qualified'])
+        self.assertEqual(value['verified_catalog_png_count'], 10)
+        self.assertEqual(value['producer_source_files_verified'], 58)
+        self.assertEqual(len(calls), 16)
+        messages = [line.split('::', 2)[-1] for line in text.splitlines()
+            if line.startswith('::notice title=Retained readonly Details catalog::')]
+        self.assertEqual(len(messages), 1)
+        observed = json.loads(messages[0])
+        self.assertEqual(observed['filenames'], list(reader.producer.details.FILES))
+        self.assertEqual(observed['verified_png_count'], 10)
         self.assertTrue(observed['all_original_png_digests_verified'])
         self.assertTrue(observed['parent_closure_qualified'])
         self.assertFalse(observed['atomic_frame_qualified'])
@@ -760,10 +783,11 @@ class ReaderTests(unittest.TestCase):
         self.assertFalse(value['native_inspection_qualified'])
 
     def test_negative_reader_keeps_original_failure_and_does_not_admit_pixels(self):
-        value, _, _ = self.run_main(positive=False)
-        self.assertFalse(value['native_inspection_qualified'])
-        self.assertEqual(value['verified_png_count'], 0)
-        self.assertEqual(value['original_errors'], ['ENTRY_FAILED'])
+        for selected in ({}, dict(details_catalog=True)):
+            value, _, _ = self.run_main(positive=False, **selected)
+            self.assertFalse(value['native_inspection_qualified'])
+            self.assertEqual(value['verified_png_count'], 0)
+            self.assertEqual(value['original_errors'], ['ENTRY_FAILED'])
 
     def test_mutated_attempt_after_transport_is_refused_before_emitting_acceptance(self):
         with self.assertRaises(reader.archive.Refused):

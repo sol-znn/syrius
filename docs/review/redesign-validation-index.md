@@ -36,3 +36,5 @@ A prior successful run remains bound to its original source and scope.
 
 - [Source286 original passive-region assertion failure](source286-navigation-region-failure.md): 781-case/zero-finding controls, dark/send-rest line ten after three controls return, a 101-case independent reader, zero PNGs and a passive empty-center candidate pending fresh qualification. [Exact PR body 227](pr-body-227.md) retains all seven submitted URLs.
 - [Source278 hidden-amount spacing follow-up](source278-home-hidden-spacing-followup.md): two old-scope actual/reference pairs, measured ink gaps, retained CAS reuse without transport, successful owned closure and X411 still open.
+
+- 2026-11-01T08:46Z: [Source287 Navigation qualification](source287-navigation-catalog-qualification.md) binds the original positive native run and 101-case independent reader, with 42 PNGs/51 sources and all earlier failures preserved. [Source288 Details preparation](source288-details-catalog-preparation.md) has 462 selected memory passes; new hosted gates remain pending. [PR body 228](pr-body-228.md) preserves all 5425 bytes and seven URLs.

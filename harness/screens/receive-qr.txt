@@ -14,3 +14,5 @@ assert "Hide QR" --exact
 assert --key receive_share_image
 assert --key receive_save_image
 assert --key receive_qr_screen_marker
+# after-capture: goto dashboard
+# after-capture: wait --key home_hero --timeout 5
