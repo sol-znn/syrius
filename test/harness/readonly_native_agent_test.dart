@@ -1,7 +1,6 @@
 import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
-import 'dart:typed_data';
 
 import 'package:flutter/foundation.dart';
 import 'package:flutter/widgets.dart';
@@ -218,7 +217,7 @@ void main() {
             ),
             afterLicences: const SizedBox(height: 56),
           ),
-          light: light, width: 1000, height: 674,
+          light: light, height: 674,
         ));
         await tester.pump();
         await _driveCatalogCommand(tester, agent.commandForTest(
