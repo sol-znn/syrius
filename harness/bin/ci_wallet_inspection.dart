@@ -5,7 +5,7 @@ import 'dart:io';
 
 import '../wallet_recipe_failure.dart' show walletRecipePublicDiagnostic;
 import 'harness.dart' as cli;
-import 'readonly_home_catalog.dart';
+import 'readonly_settings_catalog.dart';
 import 'readonly_inspection_session.dart';
 import 'readonly_viewport_probe.dart';
 import 'wallet_recipe.dart';
@@ -36,8 +36,8 @@ class _InspectionInstance extends cli.Instance {
 
   Future<Map<String, dynamic>> bindWallet() => _session.bindWallet();
 
-  Future<Map<String, Object>> captureHomeStates() =>
-      captureReadonlyHomeGotoStates(
+  Future<Map<String, Object>> captureSettingsDefaults() =>
+      captureReadonlySettingsDefaults(
     repository: Directory(cli.repo), session: _session,
   );
 
@@ -223,8 +223,9 @@ Future<void> main() async {
         'longest_ms': timings['longestMs'] as int,
       })}');
     }
-    stage = 'home_catalog';
-    final Map<String, Object> catalog = await instance.captureHomeStates();
+    stage = 'settings_catalog';
+    final Map<String, Object> catalog =
+        await instance.captureSettingsDefaults();
     await marker('SYRIUS_INSPECTION_CATALOG:${jsonEncode(catalog)}');
     stage = 'viewport';
     final Map<String, Object> viewport = await instance.captureViewport(

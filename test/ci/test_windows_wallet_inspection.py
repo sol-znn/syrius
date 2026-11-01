@@ -17,6 +17,23 @@ import zlib
 from tool.ci import hosted_chain321 as lab
 from tool.ci import windows_wallet_inspection as inspection
 import test_readonly_viewport_capture as viewport_fixtures
+import test_readonly_settings_capture as settings_fixtures
+
+
+def settings_manifest(pixels, script):
+    value, _ = settings_fixtures.fixture()
+    value.update(source_sha='a' * 40, source_tree='b' * 40,
+        run_id='1', script_sha256_by_screen={
+            name: hashlib.sha256(script).hexdigest()
+            for name in inspection.settings.SCREENS})
+    for row in value['captures']:
+        row.update(bytes=len(pixels), sha256=hashlib.sha256(pixels).hexdigest())
+    return value
+
+
+def settings_reference(digest):
+    return dict(schema=1, scope='readonly_native_settings_catalog_reference',
+        screens=list(inspection.settings.SCREENS), captured=14, manifest_sha256=digest)
 
 
 def sdk():
@@ -344,6 +361,32 @@ class InspectionTests(unittest.TestCase):
                      for name in inspection.HOME_GOTO_SCREENS})
                 self.assertFalse(manifest['parent_closure_qualified'])
                 self.assertEqual(manifest['visual_matches'], 0)
+        written = RetainedBytes()
+        scripts = {name + '.txt': ('original ' + name).encode('ascii')
+            for name in inspection.settings.SCREENS}
+        def read_settings(path, cap):
+            if path.suffix == '.png':
+                self.assertEqual(cap, inspection.settings.MAX_CAPTURE_TOTAL)
+                return pixels
+            self.assertEqual(cap, 65536)
+            return scripts[path.name]
+        reads = mock.Mock(side_effect=read_settings)
+        with mock.patch.object(inspection.settings, 'output_bytes', return_value=0), \
+                mock.patch.object(Path, 'open', return_value=written) as opened:
+            reference = inspection.settings.collect(Path('/fixture'),
+                settings_fixtures.receipt(), 'a' * 40, 'b' * 40,
+                dict(GITHUB_RUN_ID='1', GITHUB_RUN_ATTEMPT='1'), read_original=reads)
+        manifest = json.loads(written.getvalue())
+        self.assertEqual(reference['manifest_sha256'], hashlib.sha256(written.getvalue()).hexdigest())
+        self.assertEqual(reference['captured'], 14)
+        self.assertEqual(reads.call_count, 21)
+        self.assertEqual(manifest['script_sha256_by_screen'],
+            {name: hashlib.sha256(scripts[name + '.txt']).hexdigest()
+             for name in inspection.settings.SCREENS})
+        self.assertEqual([row['file'] for row in manifest['captures']], list(inspection.settings.FILES))
+        self.assertFalse(manifest['parent_closure_qualified'])
+        self.assertEqual(manifest['visual_matches'], 0)
+        opened.assert_called_once_with('xb')
         with mock.patch.object(inspection, 'home_output_bytes', return_value=0), \
                 mock.patch.object(inspection, 'read_original', return_value=b'bad pixels'), \
                 mock.patch.object(Path, 'open') as opened:
@@ -516,10 +559,12 @@ class InspectionTests(unittest.TestCase):
 
     def test_inspection_default_off_and_explicit_native_lab_requirements(self):
         workflow = Path('.github/workflows/public-contribution-qualification.yml').read_text(encoding='utf-8')
-        self.assertIn('- name: Retain the admitted Home catalog captures', workflow)
+        self.assertIn('- name: Retain the admitted literal catalog captures', workflow)
         self.assertIn("steps.inspection_paths.outputs.catalog_paths != ''", workflow)
         self.assertIn('path: ${{ steps.inspection_paths.outputs.catalog_paths }}', workflow)
         self.assertNotIn('path: .harness/ci-home-catalog/**', workflow)
+        self.assertNotIn('path: .harness/ci-settings-catalog/**', workflow)
+        self.assertIn('name: ${{ steps.inspection_paths.outputs.catalog_family }}-', workflow)
         self.assertFalse(lab.wallet_inspection_requested('native', {}))
         parent = dict(SYRIUS_WINDOWS_WALLET_INSPECTION='true',
             SYRIUS_WINDOWS_WALLET_TOUR='false', SYRIUS_LAB_NODE_SOURCE='lab-fix',
@@ -588,18 +633,24 @@ class InspectionTests(unittest.TestCase):
                     with self.assertRaises(inspection.Refused):
                         inspection.read_original(path, 16)
 
-    def artifact_case(self, value, *, pixels=None, home_schema=1):
+    def artifact_case(self, value, *, pixels=None, home_schema=1, settings_catalog=False):
         parent = dict(GITHUB_WORKSPACE='/fixture', GITHUB_RUN_ID='1', GITHUB_RUN_ATTEMPT='1',
                       GITHUB_OUTPUT='/fixture-output')
         value = copy.deepcopy(value)
         script = Path('harness/screens/home-rest.txt').read_bytes()
         home = home_manifest(pixels or b'x', script, schema=home_schema)
         home_raw = json.dumps(home).encode('ascii')
+        settings_value = settings_manifest(pixels or b'x', script)
+        settings_raw = json.dumps(settings_value).encode('ascii')
         viewport_manifest, viewport_images = viewport_fixtures.fixture()
         viewport_manifest['probe_sha256'] = hashlib.sha256(script).hexdigest()
         viewport_raw = json.dumps(viewport_manifest).encode('ascii')
         if value['success']:
-            value['home_catalog'] = home_reference(hashlib.sha256(home_raw).hexdigest(), schema=home_schema)
+            if settings_catalog:
+                value.update(schema=2, home_catalog=None,
+                    settings_catalog=settings_reference(hashlib.sha256(settings_raw).hexdigest()))
+            else:
+                value['home_catalog'] = home_reference(hashlib.sha256(home_raw).hexdigest(), schema=home_schema)
             value['viewport']['manifest_sha256'] = hashlib.sha256(viewport_raw).hexdigest()
         manifest = json.dumps(value).encode()
         output = _Output()
@@ -614,6 +665,15 @@ class InspectionTests(unittest.TestCase):
                         Path('/fixture') / inspection.viewport.PROBE):
                 self.assertEqual(cap, 65536)
                 return script
+            if (path.parent == Path('/fixture/harness/screens')
+                    and path.stem in inspection.settings.SCREENS):
+                self.assertEqual(cap, 65536)
+                return script
+            if path.parent == Path('/fixture') / inspection.settings.OUTPUT:
+                self.assertIn(path.name, ('manifest.json', *inspection.settings.FILES))
+                self.assertEqual(cap, inspection.settings.MAX_MANIFEST
+                    if path.name == 'manifest.json' else inspection.settings.MAX_CAPTURE_TOTAL)
+                return settings_raw if path.name == 'manifest.json' else pixels
             if path.parent == Path('/fixture') / inspection.viewport.OUTPUT:
                 return viewport_raw if path.name == 'manifest.json' else viewport_images[path.name]
             if path.parent == Path('/fixture') / inspection.HOME_OUTPUT:
@@ -640,6 +700,7 @@ class InspectionTests(unittest.TestCase):
                 mock.patch.object(Path, 'open', return_value=output), \
                 mock.patch.object(inspection, 'output_bytes', return_value=len(pixels or b'') * 24), \
                 mock.patch.object(inspection, 'home_output_bytes', return_value=len(home_raw) + len(pixels or b'') * 2), \
+                mock.patch.object(inspection.settings, 'output_bytes', return_value=0), \
                 mock.patch.object(inspection.viewport, 'output_bytes', return_value=0):
             paths = inspection.artifact_paths(parent)
         return paths, reads, output.getvalue()
@@ -695,6 +756,15 @@ class InspectionTests(unittest.TestCase):
         self.assertEqual(len(reads), 44)
         for filename in inspection.HOME_GOTO_FILES:
             self.assertIn('ci-home-catalog/' + filename, output)
+        self.assertNotIn('private', output)
+
+        paths, reads, output = self.artifact_case(value, pixels=pixels, settings_catalog=True)
+        self.assertEqual(len(paths), 25)
+        self.assertEqual(len(reads), 53)
+        self.assertIn('catalog_family=settings-catalog', output)
+        self.assertNotIn('ci-home-catalog/', output)
+        for filename in inspection.settings.FILES:
+            self.assertIn('ci-settings-catalog/' + filename, output)
         self.assertNotIn('private', output)
 
     def test_artifacts_cannot_borrow_another_source_run_or_private_manifest(self):

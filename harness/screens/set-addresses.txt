@@ -7,3 +7,7 @@ wait --key addresses_settings_page --timeout 30
 assert --key settings_add_address
 assert --key addresses_add_contact
 assert --key addresses_account_chain_toggle
+
+# Return only after a fully retained positive shot.
+# after-capture: goto dashboard
+# after-capture: wait --key home_hero --timeout 5

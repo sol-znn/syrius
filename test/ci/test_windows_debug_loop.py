@@ -646,6 +646,7 @@ class AnalysisAdmissionTests(unittest.TestCase):
             'test/window/window_frame_test.dart',
             'test/go_to_palette/go_to_palette_test.dart',
             'lib/rearchitecture/utils/widgets/go_to_palette.dart',
+            'harness/bin/readonly_settings_catalog.dart',
             'test/window/window_chrome_test.dart',
             'harness/app/retained_renderer_frame.dart',
             'harness/app/retained_png.dart',
@@ -684,6 +685,7 @@ class AnalysisAdmissionTests(unittest.TestCase):
 
     def test_every_selected_finding_refuses_even_with_zero_process_exit(self):
         sources = {
+            'harness/bin/readonly_settings_catalog.dart': 'other',
             'test/window/window_frame_test.dart': 'window_frame_test',
             'test/window/window_chrome_test.dart': 'window_chrome_test',
             'harness/app/retained_renderer_frame.dart': 'other',

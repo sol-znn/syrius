@@ -12,3 +12,7 @@ assert --key security_settings_export_vault
 assert --key security_settings_sign_toggle
 assert --key security_settings_verify_toggle
 assert --key security_settings_remove_toggle
+
+# Return only after a fully retained positive shot.
+# after-capture: goto dashboard
+# after-capture: wait --key home_hero --timeout 5

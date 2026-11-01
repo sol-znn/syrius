@@ -11,3 +11,7 @@ assert --key wallet_settings_launchAtStartup
 assert --key wallet_settings_modes_gate
 assert --key wallet_settings_wallets_gate
 assert --key wallet_settings_maintenance_toggle
+
+# Return only after a fully retained positive shot.
+# after-capture: goto dashboard
+# after-capture: wait --key home_hero --timeout 5

@@ -8,3 +8,7 @@ assert --key apps_settings_connected
 assert --key apps_settings_count
 assert --key apps_settings_connect
 assert --key apps_settings_details_toggle
+
+# Return only after a fully retained positive shot.
+# after-capture: goto dashboard
+# after-capture: wait --key home_hero --timeout 5

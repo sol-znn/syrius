@@ -47,6 +47,15 @@ SOURCE_FILES = (
     'harness/screens/home-open.txt', 'harness/screens/home-goto.txt',
     '.github/workflows/public-contribution-qualification.yml',
     'pubspec.yaml', 'pubspec.lock',
+    'tool/ci/readonly_settings_capture.py',
+    'harness/bin/readonly_settings_catalog.dart',
+    'harness/screens/set-node.txt',
+    'harness/screens/set-security.txt',
+    'harness/screens/set-display.txt',
+    'harness/screens/set-wallet.txt',
+    'harness/screens/set-apps.txt',
+    'harness/screens/set-addresses.txt',
+    'harness/screens/set-about.txt',
 )
 PHASE = 'environment'
 
@@ -239,6 +248,8 @@ def unpack(raw, expected_sha, expected_size, head, tree, run_id, lab, lab_summar
             summary['verified_png_count'] = 24
             summary['_layout_observation'] = layout_projection(report, head, tree, run_id)
             summary['_home_catalog_reference'] = report['home_catalog']
+            if report['schema'] == 2:
+                summary['_settings_catalog_reference'] = report['settings_catalog']
             summary['_viewport_reference'] = report['viewport']
         else:
             need(names == ['manifest.json'])
@@ -471,14 +482,25 @@ def main(parent=None):
     need(job['conclusion'] != 'success' or summary['native_inspection_qualified'])
     catalog = viewport_observation = None
     reference = summary.pop('_home_catalog_reference', None)
+    settings_reference = summary.pop('_settings_catalog_reference', None)
     viewport_reference = summary.pop('_viewport_reference', None)
     if summary['native_inspection_qualified']:
-        PHASE = 'home_catalog_artifact'
-        need(reference is not None)
-        item = artifact(listing, 'home-catalog-' + head + '-' + text + '-1', head, run_id)
-        catalog = unpack_home_catalog(download(item, MAX_HOME_ARCHIVE), item['digest'][7:],
-            item['size_in_bytes'], head, tree, run_id, reference,
-            home_script_source_pins(source_digests, reference['schema']))
+        need((reference is None) != (settings_reference is None))
+        if settings_reference is not None:
+            PHASE = 'settings_catalog_artifact'
+            item = artifact(listing, 'settings-catalog-' + head + '-' + text + '-1', head, run_id)
+            pins = {name: source_digests['harness/screens/' + name + '.txt']
+                for name in producer.settings.SCREENS}
+            catalog = producer.settings.unpack(download(item, producer.settings.MAX_ARCHIVE),
+                item['digest'][7:], item['size_in_bytes'], head, tree, run_id,
+                settings_reference, pins)
+        else:
+            PHASE = 'home_catalog_artifact'
+            need(reference is not None)
+            item = artifact(listing, 'home-catalog-' + head + '-' + text + '-1', head, run_id)
+            catalog = unpack_home_catalog(download(item, MAX_HOME_ARCHIVE), item['digest'][7:],
+                item['size_in_bytes'], head, tree, run_id, reference,
+                home_script_source_pins(source_digests, reference['schema']))
         PHASE = 'viewport_artifact'
         need(viewport_reference is not None)
         item = artifact(listing, 'viewport-observation-' + head + '-' + text + '-1', head, run_id)
@@ -511,7 +533,10 @@ def main(parent=None):
             producer_job_id=job['id'], metadata_revalidated=True,
             producer_source_files_verified=len(SOURCE_FILES),
             all_original_png_digests_verified=True)
-        emit('Retained readonly Home catalog', catalog)
+        title = ('Retained readonly Settings catalog'
+            if catalog['scope'] == 'retained_readonly_settings_catalog'
+            else 'Retained readonly Home catalog')
+        emit(title, catalog)
     if viewport_observation is not None:
         viewport_observation.update(viewport_observation_qualified=True, parent_closure_qualified=True,
             producer_job_id=job['id'], metadata_revalidated=True,

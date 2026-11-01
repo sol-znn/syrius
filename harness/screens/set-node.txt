@@ -10,3 +10,7 @@ assert --key node_settings_add
 assert --key node_settings_chain_toggle
 assert --key node_settings_peers_toggle
 assert --key node_settings_sporks_gate
+
+# Return only after a fully retained positive shot.
+# after-capture: goto dashboard
+# after-capture: wait --key home_hero --timeout 5
