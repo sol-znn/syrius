@@ -132,7 +132,7 @@ Future<T> _driveCatalogCommand<T>(
   for (int frame = 0; frame < 80 && !done; frame++) {
     await tester.pump(const Duration(milliseconds: 40));
   }
-  expect(done, isTrue, reason: 'The original About command must finish');
+  expect(done, isTrue, reason: 'The original catalog command must finish');
   if (failure != null) Error.throwWithStackTrace(failure!, trace!);
   return result as T;
 }
@@ -142,14 +142,14 @@ void main() {
     WidgetTester tester,
   ) async {
     about_fixture.prepareAboutViewport(tester);
+    final _Scope scope = _Scope();
+    await scope.open();
+    final HarnessAgent agent = scope.agent;
     for (final bool light in <bool>[false, true]) {
       final node_fixture.FakeNodeSettingsSession source =
           node_fixture.FakeNodeSettingsSession();
       final NodeSettingsPresenter presenter =
           node_fixture.nodePresenter(source);
-      final _Scope scope = _Scope();
-      await scope.open();
-      final HarnessAgent agent = scope.agent;
       await tester.pumpWidget(about_fixture.aboutHost(
         NodeSettingsView(
           presenter: presenter,
@@ -167,10 +167,13 @@ void main() {
       final Finder gate = find.byKey(
         const Key('node_settings_sporks_gate'),
       );
-      await tester.ensureVisible(gate);
-      await tester.pump();
-      expect(tester.widget<SeamGate>(gate).seam, Seam.sporks);
       final List<String> callsBefore = List<String>.of(source.calls);
+      await _driveCatalogCommand(tester, agent.commandForTest(
+        <String, dynamic>{
+          'cmd': 'scroll', 'key': 'node_settings_peers_toggle', 'dy': 300,
+        },
+      ));
+      expect(tester.widget<SeamGate>(gate).seam, Seam.sporks);
       for (final String command in <String>['assert', 'wait']) {
         final Map<String, Object?> result =
             await agent.commandForTest(<String, dynamic>{
@@ -212,8 +215,12 @@ void main() {
             loadInformation: () async => AboutInformation(version: 'fixture'),
             loadLicences: () => Stream<LicenseEntry>.value(
               about_fixture.FixtureLicence(<String>['fixture-package'],
-                const <LicenseParagraph>[
-                  LicenseParagraph('Complete fixture licence.', 0),
+                <LicenseParagraph>[
+                  LicenseParagraph(
+                    List<String>.filled(400, 'Complete fixture licence.')
+                      .join('\n'),
+                    0,
+                  ),
                 ]),
             ),
             afterLicences: const SizedBox(height: 56),
@@ -252,6 +259,28 @@ void main() {
         expect(target['kind'], 'region');
         expect(target['key'], 'about_licences_list');
         expect(find.text('fixture-package'), findsOneWidget);
+        expect(tester.getRect(list).contains(const Offset(640, 390)),
+          isTrue);
+        await expectLater(agent.commandForTest(<String, dynamic>{
+          'cmd': 'assert', 'key': 'about_licences_end',
+        }), throwsA(isA<HarnessError>()));
+        await _driveCatalogCommand(tester, agent.commandForTest(
+          <String, dynamic>{'cmd': 'scroll', 'dy': 1000000},
+        ));
+        final Map<String, Object?> endReady =
+            await agent.commandForTest(<String, dynamic>{
+          'cmd': 'wait', 'key': 'about_licences_end', 'timeoutMs': 0,
+        });
+        expect((endReady['target']! as Map<String, Object?>)['key'],
+          'about_licences_end');
+        final Map<String, Object?> end =
+            await agent.commandForTest(<String, dynamic>{
+          'cmd': 'assert', 'key': 'about_licences_end',
+        });
+        expect(end['asserted'], isTrue);
+        await expectLater(agent.commandForTest(<String, dynamic>{
+          'cmd': 'tap', 'key': 'about_licences_end',
+        }), throwsA(isA<HarnessError>()));
         expect(scope.disabled, isTrue);
         expect(tester.takeException(), isNull);
         await tester.pumpWidget(const SizedBox.shrink());

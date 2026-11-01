@@ -9,6 +9,7 @@ assert --key node_settings_count
 assert --key node_settings_add
 assert --key node_settings_chain_toggle
 assert --key node_settings_peers_toggle
+scroll --key node_settings_peers_toggle 300
 assert --key node_settings_sporks_gate
 
 # Return only after a fully retained positive shot.
