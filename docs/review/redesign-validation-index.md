@@ -20,3 +20,6 @@ A prior successful run remains bound to its original source and scope.
 
 - [Source280 remaining entry import finding](source280-settings-entry-import-failure.md): one original strict info, skipped Dart/native scope and the Source281 directive-only correction; narrows the earlier source association.
 - [Frozen PR body220](pr-body-220.md): exact 4428 bytes, SHA-256 b668500cd6df98b99e669491720582702051d316cd2b73bf2f4cb82c8777ae7c; all seven previous links retained.
+
+- [Source281 original fixture failures](source281-settings-fixture-failure.md): actual 774/four-failure engine, zero findings, bounded original locations and the Source282 stream expectation correction.
+- [Frozen PR body221](pr-body-221.md): exact 4904 bytes, SHA-256 2a2b50062c946c0c55019e46f3540359e68555f9191c36de883cb7445c688a84; all eight original URLs retained.

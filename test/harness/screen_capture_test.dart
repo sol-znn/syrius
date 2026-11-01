@@ -296,9 +296,27 @@ void main() {
           .where((String line) => line.isNotEmpty && !line.startsWith('#'))
           .map(scriptWords)
           .toList();
+      const List<List<String>> afterCapture = <List<String>>[
+        <String>['goto', 'dashboard'],
+        <String>['wait', '--key', 'home_hero', '--timeout', '5'],
+      ];
+      expect(script.lines.map((ScreenLine line) => line.words).toList(),
+          original);
+      expect(script.afterCapture.map((ScreenLine line) => line.words).toList(),
+          afterCapture);
       final List<String> paths = await capture.capture(id);
       expect(paths, hasLength(2));
-      expect(agent.lines, <List<String>>[...original, ...original]);
+      expect(agent.lines, <List<String>>[
+        ...original,
+        ...afterCapture,
+        ...original,
+        ...afterCapture,
+      ]);
+      // Transport headers remain distinct from actual rendered PNG evidence.
+      for (final String path in paths) {
+        expect(File('${repository.path}/$path').readAsBytesSync(),
+            base64Decode(_pngHeader()));
+      }
       expect(agent.homePreparations, 2);
       expect(agent.shots, 2);
       expect(agent.commands.last['restoreState'], isNotNull);

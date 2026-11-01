@@ -392,12 +392,12 @@ macOS; Windows provision and acceptance remain pending. See
 
 ### Now
 
-- Updated: 2026-11-01T05:11Z
-- Current work: Source280 focused attempt 41275567246 retains one strict import-order info before Dart execution. Source281 exchanges only the inspection entry imports. Source279's separate four-info failure and the narrowed source association remain recorded. See [the remaining finding and correction](docs/review/source280-settings-entry-import-failure.md)
+- Updated: 2026-11-01T05:27Z
+- Current work: Source281 passes strict zero-findings analysis but its original engine records 774 passes/four failures at the Settings fixture stream expectation, with zero artifacts. Source282 adds the explicit post-shot Home-return segments to that existing four-variant fixture. See [the original result and correction](docs/review/source281-settings-fixture-failure.md)
 - Main ledger: 72 of 80 rows done, 90 percent by rows. P03, P09, F06, V01-V03 and V05-V06 remain open; original V04 viewing is complete on its recorded scope
 - Source278 evidence: five successful runs qualify 777 focused passes, 36 PNGs and the full 4849-pass/one-skip baseline. All eight Home images and exact references were viewed with successful owned closure and actual controller exit zero
-- Visual scope: zero of 94 accepted matches, nineteen preparations and 82 missing literal outputs. Go To X417 is corrected on its narrow scope; X411 and Arabic fallback X414 remain
-- Next gates: unchanged 778/780 ordinary/startup Dart, 920/455/97 Python/memory/reader, 42 producer pins and fourteen Settings/42 total PNGs. Fresh Source281 controls are required before native capture; current Settings images remain unqualified
+- Visual scope: zero of 94 accepted matches, nineteen preparations and 82 missing literal outputs. Go To X417 and analysis X418 are corrected on their recorded scopes; X411, X414 and the separate fixture X419 remain
+- Next gates: unchanged 778/780 ordinary/startup Dart, 920/455/97 Python/memory/reader, 42 producer pins and fourteen Settings/42 total PNGs. Fresh Source282 controls must pass before native capture
 - Preserved scope: original failures are not retried or healed. Native101 Send and Native103 Token confirmation/effect stay UNKNOWN; Native104 is not admitted. Attribution uses edgepillar, GitHub no-reply and UTC; the PR stays Draft
 
 ### Rows
@@ -483,7 +483,7 @@ macOS; Windows provision and acceptance remain pending. See
 | V03 | blocked | 2026-10-23T12:26Z | Seam registry and injected control checks are prepared; trying every control, shortcut and Go to entry in a running native wallet remains pending |
 | V04 | done | 2026-10-31T23:34Z | All four independently qualified Source265 minimum-window/Arabic originals were actually viewed in both themes. The owned review closes SUCCESS with actual controller exit zero; required original native closure stays source-bound. Minimum controls fit and RTL layout mirrors. English fallback/missing Arabic copy is retained as X414; exact saved locale preference and Arabic glyph quality remain separate unqualified observations |
 | V05 | blocked | 2026-10-28T12:48Z | The four source133 images and their exact references are now opened, with corrected Import family/counter placement and residual selector, Welcome frame/drop and draft-decoration differences. Font hinting and the selected brand colors remain allowed exceptions. No input buffer receives a decorative continuation mark. Complete independent review of all 94 pairs and the browser-rendered compare page remains pending; zero matches are accepted |
-| V06 | review | 2026-11-01T05:11Z | Main progress remains 72/80. Source278 retains five successful runs, actual Home review and the 4849-pass/one-skip full baseline. Source279 and Source280 separately fail strict analysis before Dart execution with four and one infos. Source281 exchanges only entry imports; fresh unchanged 778/780 gates remain pending. Zero matches and original acceptance gates remain |
+| V06 | review | 2026-11-01T05:27Z | Main progress remains 72/80. Source278 retains five successful runs, actual Home review and its 4849-pass/one-skip full baseline. Source281 passes strict zero-findings analysis but retains 774 engine passes/four failures and zero artifacts. Source282 corrects the existing fixture stream for explicit after-capture commands; fresh unchanged 778/780 gates remain pending. Zero matches and original acceptance gates remain |
 | X01 | done | 2026-10-21T23:26Z | e13abb387577 restores loading-list sweep ink in lib/rearchitecture/utils/widgets/motion/skeleton.dart; all 19 existing Skeleton tests pass unchanged |
 | X02 | done | 2026-10-21T23:57Z | e13abb387577 keeps the status-strip dot visible at narrow widths and fixes asynchronous visibility tests |
 | X03 | done | 2026-10-21T23:57Z | e13abb387577 parses the bridge test's HTTP head before binary frames; compression refusal assertions retained |
@@ -1764,9 +1764,18 @@ The [Source279 original failure](docs/review/source279-settings-analysis-failure
 
 | Row | Status | Updated | Note |
 | --- | --- | --- | --- |
-| X418 | review | 2026-11-01T05:11Z | Source279 retains four original infos and Source280 one entry import-order info, both before Dart execution. Source281 sorts only the inspection entry directives with exact reversible bytes; every original test, input, count and limit remains. The earlier single-test-file source association is narrowed. Fresh strict analysis and engine controls are pending |
+| X418 | done | 2026-11-01T05:27Z | Source281 has zero selected errors/warnings/infos after the test-local and entry import corrections. Source279 four-info and Source280 one-info originals remain separate failed attempts. Source281 engine failures are recorded separately as X419; no native acceptance is inferred |
 
 
 ### Source281 inspection entry import order
 
 The [remaining Source280 finding](docs/review/source280-settings-entry-import-failure.md) retains one strict info, the skipped Dart step and zero artifacts. Only two entry import directives exchange order; program body and all original controls remain. Source279 retains its separate four-info failure and the source association is clarified without retrieving raw paths. Fresh unchanged 778/780 and 920/455/97 gates remain required before native Settings capture.
+
+
+### Source282 complete Settings fixture command streams
+
+The [Source281 original result](docs/review/source281-settings-fixture-failure.md) retains 774 passes/four failures, three exported line-301 items, an unexported fourth location, zero findings and zero artifacts. The four-variant fixture now expects each unchanged original sequence followed by the required Home return and keyed wait. Both parser partitions and both retained transport headers are checked explicitly. No production source, case count, deadline or byte cap changes; fresh hosted qualification remains required.
+
+| Row | Status | Updated | Note |
+| --- | --- | --- | --- |
+| X419 | review | 2026-11-01T05:27Z | Source281 has four original fixture failures; three finite locations share screen_capture_test.dart line 301 and the fourth is unexported. Source282 retains all original command/input sequences and four registrations, adding exact post-capture segments plus independent parser/header checks. Fresh 778-case qualification is pending |
