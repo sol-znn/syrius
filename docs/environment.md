@@ -1,39 +1,34 @@
 # Redesign build environment
 
-## Current qualification status (2026-11-01T00:17Z)
+## Current qualification status (2026-11-01T00:27Z)
 
-Source268 has five terminal positive hosted runs. Both focused engine lanes
-pass 746 ordinary cases with zero failures/errors/skips and zero selected
-findings; 918 Python controls/three original skips and fourteen asset phases
-pass. The independent native reader passes 95 controls, verifies thirty
-producer files plus the immutable workflow and all thirty original PNGs.
-Required app/entry/five-node exits are normal, complete, unforced and zero.
-Auxiliary telemetry cleanup remains separate. SDK publication stays paused.
+Source269 original harness-only run 41256403443 remains FAILURE: 918 Python
+controls/three original skips and fourteen asset phases pass, then strict
+analysis rejects five interpolation infos with zero errors/warnings. Original
+analyzer output is complete at 912 bytes with actual exit zero. Flutter tests
+are skipped; no native wallet/lab executes and zero artifacts exist.
 
-The full Source268 non-chain baseline and its independent inspector qualify
-4842 passes/one skip, all twelve checks, unchanged source/generation/l10n and
-Debug/Release. Root analysis is zero errors/warnings with 1296 infos; vendored
-is clean. Library maps remain separate from DLL initialization or release.
+Source270 changes only three equivalent path expressions in two Dart tests.
+No assertion, registration, original input, lint rule, producer/reader code,
+31 producer pins, workflow, product UI, SDK authority or global bound changes.
+Expectations stay 749/751 Dart and 918/453/95 Python/memory/reader. Fresh applied
+source controls and harness-only qualification precede new native admission.
 
-Both actual Source268 Home images and their references have been viewed in a
-closed SUCCESS owned review/controller zero. Notifications is visible in both
-themes. Scope/content/hero differences stay X411 and zero matches are accepted.
-The verified 339318-byte archive is retained; only owned disposable extraction
-is removed. The original four-image Source265 V04 viewing remains complete;
-the Arabic locale resource is a declaration only and fallback remains X414.
+Source268 retains five positive terminal hosted runs, 746 focused passes and
+its independent 4842-pass/one-skip non-chain baseline with all twelve checks.
+Root analysis is zero errors/warnings with 1296 infos; vendored is clean.
+Thirty original PNGs and required normal complete unforced closure are checked.
+Both actual Home originals and references are viewed in a closed SUCCESS owned
+review/controller zero with Notifications visible. Scope/content/hero gaps
+remain X411 and the 339318-byte archive is retained. These are prior-source
+results, not Source270 runtime or hidden-state qualification.
 
-Source269 adds a preflighted finite selection and wires original Home rest and
-hidden scripts into one fresh output. Strict schema two binds four filenames
-and both scripts, while legacy schema one stays strict. Three new Dart cases
-raise expected ordinary/fidelity counts to 749/751; Python/memory/reader stay
-918/453/95 and producer pins become 31. Fresh harness-only and native evidence
-are required. No local SDK, wallet, node or browser executes. Current product
-UI, dependencies, SDK authority, original inputs and global bounds are retained.
-
-Main progress remains 72/80 by rows, zero of 94 matches, nineteen preparations
-and 88 missing outputs. All earlier failures/HOLD/UNKNOWNs remain source-bound.
-Source267/263 original inner causes remain NOT_ESTABLISHED. Native101 send and
-Native103 Token effect stay UNKNOWN; Native104 is not admitted. The PR is Draft.
+Original V04 viewing remains complete; the Arabic locale-only resource keeps
+fallback/localization gaps in X414. Main progress stays 72/80 by rows, zero of
+94 matches, nineteen preparations and 88 missing outputs. All original
+failures/HOLD/UNKNOWNs remain. Original Source267/263 native inner causes stay
+NOT_ESTABLISHED. Native101 send and Native103 Token effect stay UNKNOWN;
+Native104 is not admitted. The PR remains Draft.
 
 
 ## Qualified PNG capture and Welcome border inset follow-up (2026-10-30T19:37Z)

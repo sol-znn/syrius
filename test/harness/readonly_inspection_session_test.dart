@@ -229,7 +229,7 @@ void main() {
       File('${repository.path}/harness/screens/home-rest.txt')
         ..parent.createSync(recursive: true)
         ..writeAsStringSync(script);
-      File(repository.path + '/harness/screens/home-hidden.txt')
+      File('${repository.path}/harness/screens/home-hidden.txt')
         .writeAsStringSync(hiddenScript);
       bool expanded = true;
       String mode = 'light';
@@ -355,8 +355,8 @@ void main() {
           expect(image.readAsBytesSync(), header);
         }
         for (final String theme in <String>['dark', 'light']) {
-          final File image = File(repository.path + '/' +
-            readonlyHomeCatalogDirectory + '/03-home-hidden-' + theme + '.png');
+          final File image = File('${repository.path}/'
+            '$readonlyHomeCatalogDirectory/03-home-hidden-$theme.png');
           expect(image.readAsBytesSync(), header);
         }
         expect(commands.where((Map<String, Object?> value) =>

@@ -205,7 +205,7 @@ void main() {
         throwsA(isA<ScreenCaptureError>()));
       expect(agent.commands, isEmpty);
       expect(agent.lines, isEmpty);
-      expect(Directory(repository.path + '/.harness/selected').existsSync(),
+      expect(Directory('${repository.path}/.harness/selected').existsSync(),
           isFalse);
     }
     writeScript('home-hidden', 'goto dashboard\n');
