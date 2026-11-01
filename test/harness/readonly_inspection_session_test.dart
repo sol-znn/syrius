@@ -664,6 +664,332 @@ void main() {
     }
   });
 
+  test('real Home palette shots dismiss only after retained positive output',
+      () async {
+    final String script = File('harness/screens/home-rest.txt')
+        .readAsStringSync();
+    final String hiddenScript = File('harness/screens/home-hidden.txt')
+        .readAsStringSync();
+    final String openScript = File('harness/screens/home-open.txt')
+        .readAsStringSync();
+    final String gotoScript = File('harness/screens/home-goto.txt')
+        .readAsStringSync();
+    // Header-only transport data is not an actual rendered image.
+    final Uint8List header = Uint8List(33)
+      ..setAll(0, <int>[137, 80, 78, 71, 13, 10, 26, 10])
+      ..setAll(12, ascii.encode('IHDR'));
+    ByteData.sublistView(header)
+      ..setUint32(8, 13)
+      ..setUint32(16, 1280)
+      ..setUint32(20, 780);
+    for (final String fault in <String>['unbound', 'none', 'negative',
+      'hidden-negative', 'open-negative', 'open-restore-negative',
+      'goto-negative', 'goto-restore-negative']) {
+      final _CatalogStdout output = _CatalogStdout();
+      final Directory repository = Directory.systemTemp.createTempSync(
+        'syrius-readonly-catalog-',
+      );
+      addTearDown(() => repository.deleteSync(recursive: true));
+      File('${repository.path}/harness/screens/home-rest.txt')
+        ..parent.createSync(recursive: true)
+        ..writeAsStringSync(script);
+      File('${repository.path}/harness/screens/home-hidden.txt')
+        .writeAsStringSync(hiddenScript);
+      File('${repository.path}/harness/screens/home-open.txt')
+        .writeAsStringSync(openScript);
+      File('${repository.path}/harness/screens/home-goto.txt')
+        .writeAsStringSync(gotoScript);
+      bool expanded = true;
+      String mode = 'light';
+      bool hidden = false;
+      bool tokensOpen = false;
+      bool paletteOpen = false;
+      int paletteRestorations = 0;
+      final List<bool> paletteAtShot = <bool>[];
+      String currentTab = 'dashboard';
+      int retainedOpenRestorations = 0;
+      final List<bool> tokensAtShot = <bool>[];
+      int shots = 0;
+      final List<bool> observedAtShot = <bool>[];
+      bool restoredWindow = false;
+      final List<Map<String, Object?>> commands = <Map<String, Object?>>[];
+      final Map<String, dynamic> negative = <String, dynamic>{
+        'ok': false, 'error': 'Synthetic capture refusal',
+      };
+      final ReadonlyInspectionSession session = ReadonlyInspectionSession(
+        processId: 44,
+        original: (Map<String, Object?> command, Duration timeout) async {
+          expect(timeout, lessThanOrEqualTo(const Duration(seconds: 30)));
+          commands.add(command);
+          final Object? name = command['cmd'];
+          if (name == 'shot') {
+            shots++;
+            observedAtShot.add(hidden);
+            tokensAtShot.add(tokensOpen);
+            paletteAtShot.add(paletteOpen);
+            if ((fault == 'negative' && shots == 1) ||
+                (fault == 'hidden-negative' && shots == 5) ||
+                (fault == 'open-negative' && shots == 3) ||
+                (fault == 'goto-negative' && shots == 7)) {
+              return negative;
+            }
+          }
+          final Object? requestedTab = command['tab'];
+          if (name == 'tap' && requestedTab is String) {
+            currentTab = requestedTab;
+            if (currentTab == 'transfer') {
+              tokensOpen = false;
+            }
+          }
+          if (name == 'key' && command['key'] == 'ctrl+k') {
+            expect(command, <String, Object?>{'cmd': 'key', 'key': 'ctrl+k'});
+            expect(paletteOpen, isFalse);
+            paletteOpen = true;
+          }
+          if (name == 'key' && command['key'] == 'escape') {
+            expect(command, <String, Object?>{'cmd': 'key', 'key': 'escape'});
+            expect(paletteOpen, isTrue);
+            final File retained = File.fromUri(repository.uri.resolve(
+              '$readonlyHomeCatalogDirectory/05-home-goto-$mode.png',
+            ));
+            expect(retained.readAsBytesSync(), header);
+            if (fault == 'goto-restore-negative') return negative;
+            paletteOpen = false;
+            paletteRestorations++;
+          }
+          if (name == 'type') {
+            expect(command, <String, Object?>{
+              'cmd': 'type', 'key': 'go_to_field', 'value': 'del',
+            });
+            expect(paletteOpen, isTrue);
+          }
+          if ((name == 'wait' || name == 'assert') &&
+              command['key'] == 'go_to_palette') {
+            expect(paletteOpen, command['gone'] != true);
+          }
+          if (name == 'tap' && command['key'] == 'home_tokens_toggle') {
+            if (tokensOpen) {
+              final File retained = File('${repository.path}/'
+                '$readonlyHomeCatalogDirectory/02-home-open-$mode.png');
+              expect(retained.readAsBytesSync(), header);
+              if (fault == 'open-restore-negative') {
+                return negative;
+              }
+              retainedOpenRestorations++;
+            }
+            tokensOpen = !tokensOpen;
+          }
+          if (name == 'wait' && command['key'] == 'home_tokens_body') {
+            expect(tokensOpen, command['gone'] != true);
+          }
+          if (name == 'tap' && command['text'] == 'Hide balances') {
+            expect(hidden, isFalse);
+            hidden = true;
+          }
+          if (name == 'tap' && command['text'] == 'Show balances') {
+            expect(hidden, isTrue);
+            hidden = false;
+          }
+          if (name == 'tap' && command['key'] == 'rail_toggle') {
+            expanded = !expanded;
+          }
+          if (name == 'theme') {
+            if (command['mode'] case final String requested) mode = requested;
+            if (command['restore'] case final Map<String, dynamic> original) {
+              mode = original['mode'] as String;
+            }
+          }
+          if (name == 'window' && command['restoreState'] != null) {
+            restoredWindow = true;
+          }
+          return <String, dynamic>{
+            ..._reply(wallet: true),
+            if (name == 'key') 'handled': true,
+            if (name == 'type') 'value': command['value'],
+            if (name == 'state') ...<String, dynamic>{
+              'walletUnlocked': true, 'walletInitCompleted': true,
+              'tab': currentTab, 'tabs': <String>['dashboard', 'transfer'],
+              'locale': 'en', 'direction': 'ltr',
+            },
+            if (name == 'tree') 'nodes': <Object?>[
+              <String, dynamic>{'key': 'rail_toggle', 'kind': 'button',
+                'rect': <int>[8, 36, if (expanded) 184 else 40, 32]},
+            ],
+            if (name == 'theme') ...<String, dynamic>{
+              'mode': mode, 'savedMode': 'ThemeMode.$mode',
+              'brightness': mode,
+            },
+            if (name == 'window') ...<String, dynamic>{
+              'window': <int>[80, 90, 1200, 700],
+              'client': <int>[
+                if (command['width'] != null) 1280 else 1200,
+                if (command['height'] != null) 780 else 700,
+              ],
+              'minimized': false, 'maximized': true, 'clientMatched': true,
+              if (command['restoreState'] != null) 'restored': true,
+            },
+            if (name == 'wait' || name == 'assert') ...<String, dynamic>{
+              'ms': 0, 'asserted': true,
+              'target': <String, dynamic>{'ref': 0, 'kind': 'region',
+                'key': command['key'], 'rect': <int>[0, 0, 200, 100]},
+            },
+            if (name == 'shot') ...<String, dynamic>{
+              'client': <int>[1280, 780], 'width': 1280, 'height': 780,
+              'scale': 1, 'theme': mode, 'asserted': true,
+              'png': base64Encode(header),
+            },
+          };
+        },
+      );
+      // The real CLI reports to stdout; keep its lines out of test events.
+      Future<Map<String, Object>> capture() =>
+          IOOverrides.runZoned<Future<Map<String, Object>>>(
+        () => captureReadonlyHomeGotoStates(
+          repository: repository, session: session,
+        ),
+        stdout: () => output,
+      );
+      if (fault == 'unbound') {
+        await expectLater(capture(),
+            throwsA(isA<ReadonlyInspectionRefused>()));
+        expect(commands, isEmpty);
+        expect(output.lines, isEmpty);
+        continue;
+      }
+      await session.bindWallet();
+      if (fault == 'negative' || fault == 'hidden-negative' ||
+          fault == 'open-negative' || fault == 'open-restore-negative' ||
+          fault == 'goto-negative' || fault == 'goto-restore-negative') {
+        await expectLater(capture(), throwsA(isA<ScreenCaptureError>()));
+        expect(commands.last['cmd'],
+            fault == 'open-restore-negative' ? 'tap' :
+            fault == 'goto-restore-negative' ? 'key' : 'shot');
+        expect(commands.where((Map<String, Object?> value) =>
+            value['cmd'] == 'shot').length,
+            fault == 'negative' ? 1 : fault == 'hidden-negative' ? 5 :
+            fault.startsWith('goto-') ? 7 : 3);
+        expect(negative, <String, dynamic>{
+          'ok': false, 'error': 'Synthetic capture refusal',
+        });
+        expect(restoredWindow, isFalse);
+        expect(expanded, fault.startsWith('open-'));
+      } else {
+        final Map<String, Object> receipt = await capture();
+        expect(receipt['scope'], 'readonly_native_home_catalog_capture');
+        expect(receipt['capture_returned'], isTrue);
+        expect(receipt['schema'], 4);
+        expect(receipt['screens'],
+            <String>['home-rest', 'home-open', 'home-hidden', 'home-goto']);
+        expect(receipt['files'], <String>[
+          '01-home-rest-dark.png', '01-home-rest-light.png',
+          '02-home-open-dark.png', '02-home-open-light.png',
+          '03-home-hidden-dark.png', '03-home-hidden-light.png',
+          '05-home-goto-dark.png', '05-home-goto-light.png',
+        ]);
+        for (final String theme in <String>['dark', 'light']) {
+          final File image = File('${repository.path}/'
+            '$readonlyHomeCatalogDirectory/01-home-rest-$theme.png');
+          expect(image.readAsBytesSync(), header);
+        }
+        for (final String theme in <String>['dark', 'light']) {
+          final File image = File('${repository.path}/'
+            '$readonlyHomeCatalogDirectory/02-home-open-$theme.png');
+          expect(image.readAsBytesSync(), header);
+        }
+        for (final String theme in <String>['dark', 'light']) {
+          final File image = File('${repository.path}/'
+            '$readonlyHomeCatalogDirectory/03-home-hidden-$theme.png');
+          expect(image.readAsBytesSync(), header);
+        }
+        for (final String theme in <String>['dark', 'light']) {
+          final File image = File.fromUri(repository.uri.resolve(
+            '$readonlyHomeCatalogDirectory/05-home-goto-$theme.png',
+          ));
+          expect(image.readAsBytesSync(), header);
+        }
+        expect(commands.where((Map<String, Object?> value) =>
+            value['cmd'] == 'shot').length, 8);
+        expect(commands.where((Map<String, Object?> value) =>
+            value['cmd'] == 'tap' && value['tab'] == 'dashboard').length, 8);
+        expect(expanded, isTrue);
+        expect(mode, 'light');
+        expect(restoredWindow, isTrue);
+      }
+      final List<Map<String, Object?>> pointer = commands
+          .where((Map<String, Object?> value) => value['cmd'] == 'hover')
+          .toList();
+      final List<Map<String, Object?>> expectedPointer = <Map<String, Object?>>[
+        <String, Object?>{'cmd': 'hover', 'at': <int>[0, 0], 'settleMs': 0},
+        <String, Object?>{'cmd': 'hover', 'key': 'nav_notifications'},
+      ];
+      expect(pointer, <Map<String, Object?>>[
+        ...expectedPointer,
+        if (fault != 'negative') ...expectedPointer,
+      ]);
+      final List<Map<String, Object?>> tooltip = commands
+          .where((Map<String, Object?> value) => value['cmd'] == 'wait' &&
+              value['text'] == 'Notifications')
+          .toList();
+      final Map<String, Object?> expectedTooltip = <String, Object?>{
+        'cmd': 'wait', 'text': 'Notifications', 'kind': 'text',
+        'exact': true, 'timeoutMs': 5000,
+      };
+      expect(tooltip, <Map<String, Object?>>[
+        expectedTooltip,
+        if (fault != 'negative') expectedTooltip,
+      ]);
+      expect(observedAtShot,
+          List<bool>.generate(shots,
+              (int index) => index >= 4 && index < 6));
+      expect(tokensAtShot, List<bool>.generate(shots,
+          (int index) => index >= 2 && index < 4));
+      expect(tokensOpen, fault.startsWith('open-'));
+      expect(retainedOpenRestorations,
+          fault == 'negative' || fault.startsWith('open-') ? 0 : 2);
+      expect(paletteAtShot,
+          List<bool>.generate(shots, (int index) => index >= 6));
+      expect(paletteOpen, fault.startsWith('goto-'));
+      expect(paletteRestorations, fault == 'none' ? 2 : 0);
+      final List<Map<String, Object?>> paletteKeys = commands.where(
+        (Map<String, Object?> value) => value['cmd'] == 'key',
+      ).toList();
+      expect(paletteKeys, <Map<String, Object?>>[
+        if (shots >= 7)
+          <String, Object?>{'cmd': 'key', 'key': 'ctrl+k'},
+        if (shots >= 7 && fault != 'goto-negative')
+          <String, Object?>{'cmd': 'key', 'key': 'escape'},
+        if (fault == 'none') ...<Map<String, Object?>>[
+          <String, Object?>{'cmd': 'key', 'key': 'ctrl+k'},
+          <String, Object?>{'cmd': 'key', 'key': 'escape'},
+        ],
+      ]);
+      final List<Map<String, Object?>> queries = commands.where(
+        (Map<String, Object?> value) => value['cmd'] == 'type',
+      ).toList();
+      final Map<String, Object?> query = <String, Object?>{
+        'cmd': 'type', 'key': 'go_to_field', 'value': 'del',
+      };
+      expect(queries, <Map<String, Object?>>[
+        if (shots >= 7) query,
+        if (fault == 'none') query,
+      ]);
+      expect(hidden, fault == 'hidden-negative');
+      if (fault != 'none') {
+        final int originalCalls = commands.length;
+        await expectLater(session.send(<String, Object?>{'cmd': 'state'},
+          const Duration(seconds: 1)),
+          throwsA(isA<ReadonlyInspectionRefused>()));
+        expect(commands.length, originalCalls);
+      }
+      expect(output.lines.every((Object? line) => line is String &&
+          line.startsWith('ok')), isTrue);
+      expect(commands.every((Map<String, Object?> value) => <String>{
+        'readonly-wallet-bind', 'state', 'tree', 'tap', 'theme', 'window',
+        'wait', 'assert', 'shot', 'hover', 'key', 'type',
+      }.contains(value['cmd'])), isTrue);
+    }
+  });
+
   test('an admitted original reply keeps identity and its actual mode',
       () async {
     final Map<String, dynamic> original = _reply();

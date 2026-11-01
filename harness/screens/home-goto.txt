@@ -6,3 +6,7 @@ wait --key go_to_field --timeout 30
 type --key go_to_field "" del
 assert --key go_to_palette
 assert --key go_to_results
+
+# Dismiss without selecting only after each fully retained positive shot.
+# after-capture: key escape
+# after-capture: wait --key go_to_palette --gone --timeout 5

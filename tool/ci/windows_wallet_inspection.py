@@ -42,6 +42,9 @@ HOME_STATE_SCREENS = ('home-rest', 'home-hidden')
 HOME_OPEN_SCRIPT = Path('harness/screens/home-open.txt')
 HOME_OPEN_FILES = HOME_FILES + ('02-home-open-dark.png', '02-home-open-light.png') + HOME_STATE_FILES[2:]
 HOME_OPEN_SCREENS = ('home-rest', 'home-open', 'home-hidden')
+HOME_GOTO_SCRIPT = Path('harness/screens/home-goto.txt')
+HOME_GOTO_FILES = HOME_OPEN_FILES + ('05-home-goto-dark.png', '05-home-goto-light.png')
+HOME_GOTO_SCREENS = HOME_OPEN_SCREENS + ('home-goto',)
 CHECKS = ('environment', 'source', 'unused_destinations', 'job_owned',
     'entry_gate', 'entry_ready', 'application_owned', 'lab_revalidated',
     'input_released', 'wallet_bound', 'tours_complete', 'locale_verified',
@@ -112,17 +115,21 @@ def read_original(path, cap):
 
 def home_catalog_files(schema):
     """Each version admits a finite literal family, never a generic alias."""
-    need(type(schema) is int and schema in (1, 2, 3), 'CAPTURE_REFUSED')
+    need(type(schema) is int and schema in (1, 2, 3, 4), 'CAPTURE_REFUSED')
     if schema == 1:
         return HOME_FILES
-    return HOME_STATE_FILES if schema == 2 else HOME_OPEN_FILES
+    if schema == 2:
+        return HOME_STATE_FILES
+    return HOME_OPEN_FILES if schema == 3 else HOME_GOTO_FILES
 
 
 def home_catalog_screens(schema):
     home_catalog_files(schema)
     if schema == 1:
         return ('home-rest',)
-    return HOME_STATE_SCREENS if schema == 2 else HOME_OPEN_SCREENS
+    if schema == 2:
+        return HOME_STATE_SCREENS
+    return HOME_OPEN_SCREENS if schema == 3 else HOME_GOTO_SCREENS
 
 
 def home_capture_receipt(value):
@@ -187,8 +194,11 @@ def _home_script_pins(repo, schema):
     hidden = hashlib.sha256(read_original(repo / HOME_HIDDEN_SCRIPT, 65536)).hexdigest()
     if schema == 2:
         return dict(zip(HOME_STATE_SCREENS, (first, hidden)))
-    return dict(zip(HOME_OPEN_SCREENS, (first,
+    pins = dict(zip(HOME_OPEN_SCREENS, (first,
         hashlib.sha256(read_original(repo / HOME_OPEN_SCRIPT, 65536)).hexdigest(), hidden)))
+    if schema == 4:
+        pins['home-goto'] = hashlib.sha256(read_original(repo / HOME_GOTO_SCRIPT, 65536)).hexdigest()
+    return pins
 
 
 def public_home_catalog(value):
@@ -730,7 +740,7 @@ def run(repo, parent, runtime, lab_root, observation, revalidate):
                     logical = shared.sample_workspace((home, app, build, profile),
                         expected_profile=profile_identity)
                     logical += output_bytes(output)
-                    logical += home_output_bytes(repo / HOME_OUTPUT, schema=3)
+                    logical += home_output_bytes(repo / HOME_OUTPUT, schema=4)
                     logical += viewport.output_bytes(repo / viewport.OUTPUT)
                     need(logical <= shared.WORK_CAP, 'STORAGE_REFUSED')
                     free = shutil.disk_usage(repo).free
@@ -793,7 +803,7 @@ def run(repo, parent, runtime, lab_root, observation, revalidate):
                          and 'wallet' in used and set(report['stalls']) == set(THEMES),
                          'ENTRY_REFUSED')
                     catalog_receipt = home_capture_receipt(json.loads(line.partition(b':')[2]))
-                    need(catalog_receipt['schema'] == 3, 'ENTRY_REFUSED')
+                    need(catalog_receipt['schema'] == 4, 'ENTRY_REFUSED')
                 elif line.startswith(b'SYRIUS_INSPECTION_VIEWPORT:'):
                     need(marker == b'CI_INSPECT_DONE' and viewport_receipt is None
                          and catalog_receipt is not None, 'ENTRY_REFUSED')

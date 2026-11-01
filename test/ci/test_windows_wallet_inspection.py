@@ -61,7 +61,7 @@ def home_reference(digest='e' * 64, *, schema=1):
 
 
 def home_manifest(pixels, script=b'synthetic public script', *, schema=1,
-                  hidden_script=None, open_script=None):
+                  hidden_script=None, open_script=None, goto_script=None):
     value = dict(schema=schema, scope='readonly_native_home_catalog_capture_bundle',
         source_sha='a' * 40, source_tree='b' * 40, run_id='1', run_attempt='1',
         capture=home_receipt(schema=schema),
@@ -82,6 +82,9 @@ def home_manifest(pixels, script=b'synthetic public script', *, schema=1,
         else:
             value['script_sha256_by_screen'] = dict(zip(inspection.HOME_OPEN_SCREENS,
                 (first, hashlib.sha256(script if open_script is None else open_script).hexdigest(), hidden)))
+            if schema == 4:
+                value['script_sha256_by_screen']['home-goto'] = hashlib.sha256(
+                    script if goto_script is None else goto_script).hexdigest()
     return value
 
 
@@ -266,15 +269,40 @@ class InspectionTests(unittest.TestCase):
             with self.subTest(schema=3, count=count), self.assertRaises(inspection.Refused):
                 inspection.home_catalog_reference(bad)
 
+        expanded = home_manifest(pixels, schema=4)
+        self.assertIs(inspection.public_home_catalog(expanded), expanded)
+        self.assertEqual(expanded['capture']['screens'], ['home-rest', 'home-open', 'home-hidden', 'home-goto'])
+        self.assertEqual(len(expanded['captures']), 8)
+        for change in (
+            lambda value: value['capture'].update(screens=['home-rest', 'home-open', 'home-goto', 'home-hidden']),
+            lambda value: value['capture'].update(schema=2),
+            lambda value: value['captures'].pop(),
+            lambda value: value['captures'][6].update(file='03-home-hidden-dark.png'),
+            lambda value: value['captures'][7].update(theme='dark'),
+            lambda value: value['script_sha256_by_screen'].pop('home-goto'),
+            lambda value: value['script_sha256_by_screen'].update(private='synthetic'),
+            lambda value: value.update(script_sha256='e' * 64),
+        ):
+            bad = copy.deepcopy(expanded)
+            change(bad)
+            with self.subTest(schema=4, change=change), self.assertRaises(inspection.Refused):
+                inspection.public_home_catalog(bad)
+        for count in (True, 1, 2, 3, 4, 6, 10):
+            bad = home_reference(schema=4)
+            bad['captured'] = count
+            with self.subTest(schema=4, count=count), self.assertRaises(inspection.Refused):
+                inspection.home_catalog_reference(bad)
+
         class RetainedBytes(io.BytesIO):
             def close(self):
                 pass
 
-        for schema in (1, 2, 3):
+        for schema in (1, 2, 3, 4):
             written = RetainedBytes()
             scripts = {'home-rest.txt': b'first original public script',
                 'home-hidden.txt': b'distinct original hidden script',
-                'home-open.txt': b'distinct original open script'}
+                'home-open.txt': b'distinct original open script',
+                'home-goto.txt': b'distinct original goto script'}
 
             def read(path, cap):
                 if path.suffix == '.png':
@@ -292,10 +320,10 @@ class InspectionTests(unittest.TestCase):
             manifest = json.loads(written.getvalue())
             self.assertEqual(reference['manifest_sha256'],
                 hashlib.sha256(written.getvalue()).hexdigest())
-            self.assertEqual(reference['captured'], {1: 2, 2: 4, 3: 6}[schema])
+            self.assertEqual(reference['captured'], {1: 2, 2: 4, 3: 6, 4: 8}[schema])
             self.assertEqual([row['file'] for row in manifest['captures']],
                 list(inspection.home_catalog_files(schema)))
-            self.assertEqual(reads.call_count, {1: 3, 2: 6, 3: 9}[schema])
+            self.assertEqual(reads.call_count, {1: 3, 2: 6, 3: 9, 4: 12}[schema])
             self.assertTrue(written.getvalue().endswith(b'\n'))
             opened.assert_called_once_with('xb')
             if schema == 2:
@@ -308,6 +336,12 @@ class InspectionTests(unittest.TestCase):
                 self.assertEqual(manifest['script_sha256_by_screen'],
                     {name: hashlib.sha256(scripts[name + '.txt']).hexdigest()
                      for name in inspection.HOME_OPEN_SCREENS})
+                self.assertFalse(manifest['parent_closure_qualified'])
+                self.assertEqual(manifest['visual_matches'], 0)
+            if schema == 4:
+                self.assertEqual(manifest['script_sha256_by_screen'],
+                    {name: hashlib.sha256(scripts[name + '.txt']).hexdigest()
+                     for name in inspection.HOME_GOTO_SCREENS})
                 self.assertFalse(manifest['parent_closure_qualified'])
                 self.assertEqual(manifest['visual_matches'], 0)
         with mock.patch.object(inspection, 'home_output_bytes', return_value=0), \
@@ -576,6 +610,7 @@ class InspectionTests(unittest.TestCase):
             if path in (Path('/fixture') / inspection.HOME_SCRIPT,
                         Path('/fixture') / inspection.HOME_HIDDEN_SCRIPT,
                         Path('/fixture') / inspection.HOME_OPEN_SCRIPT,
+                        Path('/fixture') / inspection.HOME_GOTO_SCRIPT,
                         Path('/fixture') / inspection.viewport.PROBE):
                 self.assertEqual(cap, 65536)
                 return script
@@ -651,6 +686,14 @@ class InspectionTests(unittest.TestCase):
         self.assertEqual(len(set(paths)), 25)
         self.assertEqual(len(reads), 41)
         for filename in inspection.HOME_OPEN_FILES:
+            self.assertIn('ci-home-catalog/' + filename, output)
+        self.assertNotIn('private', output)
+
+        paths, reads, output = self.artifact_case(value, pixels=pixels, home_schema=4)
+        self.assertEqual(len(paths), 25)
+        self.assertEqual(len(set(paths)), 25)
+        self.assertEqual(len(reads), 44)
+        for filename in inspection.HOME_GOTO_FILES:
             self.assertIn('ci-home-catalog/' + filename, output)
         self.assertNotIn('private', output)
 

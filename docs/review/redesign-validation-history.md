@@ -1142,3 +1142,121 @@ Main progress stays 72/80 by rows, zero of 94 matches, nineteen preparations and
 including the original Source273 seven-error refusal. Native101 send and
 Native103 Token confirmation/effect remain UNKNOWN; Native104 is not admitted.
 The existing PR stays Draft.
+
+
+## Frozen Draft PR body revision 214
+
+Implements the desktop wallet redesign and capture/seam harness for 47 screen IDs in both themes. RULES.md colors: #00D557 and #0061EB. This PR remains Draft.
+
+Validation update: 2026-11-01T01:59Z.
+
+[Source274](https://github.com/edgepillar/syrius/commit/735fb0ccf542430d9d17991024adb3556bfa071b) corrects only State<EyeToggle> and Animation<double> declarations in the new Home regression test. All assertions, case counts, production UI and financial inputs are retained. All 453 applied memory controls pass. Expected Dart ordinary/fidelity counts remain 751/753; Python/memory/reader remain 918/453/95 with 32 producer pins. [Fresh harness 41263201527](https://github.com/edgepillar/syrius/actions/runs/41263201527) is dispatched. Native/reader capture and a fresh broad Windows producer/inspector baseline are required for the changed Home UI.
+
+Original Source273 harness 41262728383 passes 918 Python controls/three skips and fourteen asset phases, then analysis exits three with seven test-type errors, zero warnings and zero infos. Complete output is 1480 bytes. Dart/native are skipped and zero artifacts exist. That original failure is preserved without retry. The original eye placement and hidden fiat-row correction stay unchanged.
+
+Source272 harness 41259908062, native 41260505235 and reader 41261948468 succeed: 750 ordinary passes/zero skips, zero selected findings, 95 reader cases, 32 pins and 34 PNGs. Required app/entry/five-node exits are normal, complete, unforced and zero. SDK publication is paused; automatic receive is disabled.
+
+Source270 four-Home/reference viewing is complete and closed, with original controller exit zero. Source268 broad baseline retains 4842 passes/one skip on its prior exact UI. Both retain their original scope.
+
+Progress: 72/80, or 90 percent by rows, not effort; zero of 94 accepted matches, nineteen preparations and 84 missing outputs. P03/P09/F06/V01-V03/V05-V06 stay open. Original V04 viewing retains scope; X411 and Arabic fallback X414 remain. Generic/V04 frames are not catalog aliases.
+
+All original FAILURE/HOLD/UNKNOWNs remain source-bound. Source267/263 original inner causes stay NOT_ESTABLISHED. Native101 send and Native103 Token confirmation/effect stay UNKNOWN; Native104 is not admitted. DLL initialization, unfiltered chain and release remain unqualified.
+
+All 364 contribution identities use edgepillar, GitHub no-reply and UTC. [Source274 frozen history](https://github.com/edgepillar/syrius/blob/735fb0ccf542430d9d17991024adb3556bfa071b/docs/review/redesign-validation-history.md) retains revision 213 verbatim and all 52 links.
+
+Preserved source-bound evidence; original outcomes and scopes remain unchanged:
+
+- [Source273](https://github.com/edgepillar/syrius/commit/ffe9704f8bb5559c16d6a2cf59d43a6817d6c10e); [new harness-only gate 41262728383](https://github.com/edgepillar/syrius/actions/runs/41262728383); [harness 41259908062](https://github.com/edgepillar/syrius/actions/runs/41259908062).
+
+- [native 41260505235](https://github.com/edgepillar/syrius/actions/runs/41260505235); [reader 41261948468](https://github.com/edgepillar/syrius/actions/runs/41261948468); [Source273 frozen history](https://github.com/edgepillar/syrius/blob/ffe9704f8bb5559c16d6a2cf59d43a6817d6c10e/docs/review/redesign-validation-history.md).
+
+- [Source272](https://github.com/edgepillar/syrius/commit/1e0e7da070b653169263b015daf483cea0c147c0); [Source271](https://github.com/edgepillar/syrius/commit/f3405b801f1679a419ab795698c6d2dbe16d3665); [harness 41259332493](https://github.com/edgepillar/syrius/actions/runs/41259332493).
+
+- [Source270](https://github.com/edgepillar/syrius/commit/33fa9485d6de958e017916e4767a8c7eaad72517); [harness 41257114219](https://github.com/edgepillar/syrius/actions/runs/41257114219); [native 41257907083](https://github.com/edgepillar/syrius/actions/runs/41257907083).
+
+- [independent reader 41258919158](https://github.com/edgepillar/syrius/actions/runs/41258919158); [Source268](https://github.com/edgepillar/syrius/commit/2a2f04584dbc2ab1b2403b64ba4fc6a9efb5f812); [producer 41253919663](https://github.com/edgepillar/syrius/actions/runs/41253919663).
+
+- [inspector 41255744645](https://github.com/edgepillar/syrius/actions/runs/41255744645); [Source271 frozen history](https://github.com/edgepillar/syrius/blob/f3405b801f1679a419ab795698c6d2dbe16d3665/docs/review/redesign-validation-history.md); [Source272 frozen history](https://github.com/edgepillar/syrius/blob/1e0e7da070b653169263b015daf483cea0c147c0/docs/review/redesign-validation-history.md).
+
+- [Source269](https://github.com/edgepillar/syrius/commit/aa343d30ecdf30b4d0e58fdd4282b881fe3494f6); [analysis refusal 41256403443](https://github.com/edgepillar/syrius/actions/runs/41256403443); [harness 41253439482](https://github.com/edgepillar/syrius/actions/runs/41253439482).
+
+- [native 41253886913](https://github.com/edgepillar/syrius/actions/runs/41253886913); [native reader 41255095090](https://github.com/edgepillar/syrius/actions/runs/41255095090); [Source267](https://github.com/edgepillar/syrius/commit/b5f9b34f3a40aea4683afd8a7b9cc82461d58ec3).
+
+- [native failure 41250424634](https://github.com/edgepillar/syrius/actions/runs/41250424634); [negative reader 41251749359](https://github.com/edgepillar/syrius/actions/runs/41251749359); [native 41246130776](https://github.com/edgepillar/syrius/actions/runs/41246130776).
+
+- [reader 41247342231](https://github.com/edgepillar/syrius/actions/runs/41247342231); [full baseline 41246690485](https://github.com/edgepillar/syrius/actions/runs/41246690485); [inspector 41248885882](https://github.com/edgepillar/syrius/actions/runs/41248885882).
+
+- [Source269 history](https://github.com/edgepillar/syrius/blob/aa343d30ecdf30b4d0e58fdd4282b881fe3494f6/docs/review/redesign-validation-history.md); [Source270 history](https://github.com/edgepillar/syrius/blob/33fa9485d6de958e017916e4767a8c7eaad72517/docs/review/redesign-validation-history.md); [Source266](https://github.com/edgepillar/syrius/commit/a690215820e1309c8ef57274ce652121454684c2).
+
+- [original failure 41249583868](https://github.com/edgepillar/syrius/actions/runs/41249583868); [Source263 source](https://github.com/edgepillar/syrius/commit/899f55bce6d8e52f9d4f46693b856e1ebf5636cf); [native failure 41238977735](https://github.com/edgepillar/syrius/actions/runs/41238977735).
+
+- [negative-archive reader 41240488104](https://github.com/edgepillar/syrius/actions/runs/41240488104); [producer 41235727833](https://github.com/edgepillar/syrius/actions/runs/41235727833); [reader 41236776174](https://github.com/edgepillar/syrius/actions/runs/41236776174).
+
+- [controller failure 41235368397](https://github.com/edgepillar/syrius/actions/runs/41235368397); [native failure 41231991847](https://github.com/edgepillar/syrius/actions/runs/41231991847); [reader failure 41233307044](https://github.com/edgepillar/syrius/actions/runs/41233307044).
+
+- [negative-archive reader 41234273027](https://github.com/edgepillar/syrius/actions/runs/41234273027); [producer 41220083078](https://github.com/edgepillar/syrius/actions/runs/41220083078); [reader 41221571770](https://github.com/edgepillar/syrius/actions/runs/41221571770).
+
+- [full baseline 41215021211](https://github.com/edgepillar/syrius/actions/runs/41215021211); [inspector 41217328796](https://github.com/edgepillar/syrius/actions/runs/41217328796); [Source260](https://github.com/edgepillar/syrius/blob/82e29feb67e10fa97e58eb6c5d46ecb951e30f60/docs/review/redesign-validation-history.md).
+
+- [Source263](https://github.com/edgepillar/syrius/blob/899f55bce6d8e52f9d4f46693b856e1ebf5636cf/docs/review/redesign-validation-history.md); [Source266](https://github.com/edgepillar/syrius/blob/a690215820e1309c8ef57274ce652121454684c2/docs/review/redesign-validation-history.md); [Source267](https://github.com/edgepillar/syrius/blob/b5f9b34f3a40aea4683afd8a7b9cc82461d58ec3/docs/review/redesign-validation-history.md).
+
+- [Source268 frozen history](https://github.com/edgepillar/syrius/blob/2a2f04584dbc2ab1b2403b64ba4fc6a9efb5f812/docs/review/redesign-validation-history.md).
+
+## Source275: retain the literal Go To palette after a positive capture
+
+2026-11-01T02:34Z: Source274 735fb0ccf542 has five successful source-bound runs:
+[harness 41263201527](https://github.com/edgepillar/syrius/actions/runs/41263201527),
+[native 41263824470](https://github.com/edgepillar/syrius/actions/runs/41263824470),
+[reader 41265200881](https://github.com/edgepillar/syrius/actions/runs/41265200881),
+[full Windows 41263876562](https://github.com/edgepillar/syrius/actions/runs/41263876562)
+and [independent full inspector 41265646572](https://github.com/edgepillar/syrius/actions/runs/41265646572).
+The two selected lanes pass 751 ordinary Dart cases/zero skips, 918 Python
+controls/three original skips, fourteen asset phases and zero selected findings.
+Reader 95 verifies 32 producer sources, the immutable workflow and 34 PNGs:
+24 generic pages, six literal Home rest/open/hidden and four V04. Required owned
+app/entry/five-node closure is normal, complete, unforced and zero; auxiliary
+telemetry cleanup is separate. The broad baseline qualifies 4847 passes/one skip,
+twelve checks and Debug/Release on that exact source. Root analysis has zero
+errors/warnings and 1296 infos; vendored analysis is clean. DLL initialization,
+unfiltered chain, motion and release acceptance remain separate.
+
+The Home privacy case qualifies the original eye State/controller, keyboard
+focus, half-second playback, hidden-amount geometry, per-coin fiat omission and
+retained total mask in both themes. Actual new Home image viewing remains
+separate and pending; no native visual match is accepted. Original Source270
+four-Home viewing and Source265 V04 viewing retain their source-bound scope.
+Source273's seven-error test-type refusal, skipped Dart/native and zero artifacts
+remain preserved without retry; Source274 fixes only the declared test types.
+
+Source275 adds a distinct four-state capture API for rest/open/hidden/Go To.
+The original Go To script prefix, including its empty selector placeholder and
+del query value, is retained. Escape and the bounded absent-palette check run only
+after a fully retained positive shot. They dismiss without selecting a target.
+A first negative reply holds the original session; no capture, restoration,
+financial command or failed owner is replayed. Legacy two-, four- and six-image
+APIs and schemas remain strict. Schema four binds eight ordered Home filenames
+and four exact script digests, including the two literal 05-home-goto outputs.
+The same four artifact families, 16-request reader budget and global byte/time
+caps remain. Product UI, original eye asset/player, dependencies, workflow,
+SDK publication pause, automatic-receive disablement and all original
+financial/profile/password/send/seed/reopen inputs are unchanged.
+
+One new bound transport case exercises all four real scripts, their original
+request maps, positive retained-output dismissal and first refusals. All earlier
+cases and assertions remain. Extended Python fixtures cover exact schema-four
+files, order, source pins, byte limits and negative archives while retaining all
+legacy counterexamples. A stale-count fixture exempts only the newly valid
+ordinary 752 value; old 751/753 remain explicit refusals. Expected Dart counts
+become 752/754 ordinary/startup-fidelity; Python/memory/reader remain 918/453/95.
+Producer pins become 33. The complete private code candidate passes 453 memory
+controls; applied controls and a fresh 752-case harness gate are required before
+a new native capture and independent reader. Eight Home images and 36 total
+PNGs are expected, not yet executed. Local image transport is not performed by
+this source step. Prior full-baseline proof stays bound to Source274.
+
+Main progress stays 72/80 by rows, zero of 94 matches, nineteen preparations and
+84 missing literal outputs. The two Go To outputs remain missing until fresh
+native/reader qualification. X411 and Arabic fallback X414 remain; generic/V04
+frames are not literal aliases. All original FAILURE/HOLD/UNKNOWNs are retained.
+Native101 send and Native103 Token confirmation/effect remain UNKNOWN;
+Native104 is not admitted. The existing PR stays Draft.

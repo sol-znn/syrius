@@ -1121,3 +1121,62 @@ Main progress stays 72/80 by rows, zero of 94 matches, nineteen preparations and
 including the original Source273 seven-error refusal. Native101 send and
 Native103 Token confirmation/effect remain UNKNOWN; Native104 is not admitted.
 The existing PR stays Draft.
+
+## Source275: retain the literal Go To palette after a positive capture
+
+2026-11-01T02:34Z: Source274 735fb0ccf542 has five successful source-bound runs:
+[harness 41263201527](https://github.com/edgepillar/syrius/actions/runs/41263201527),
+[native 41263824470](https://github.com/edgepillar/syrius/actions/runs/41263824470),
+[reader 41265200881](https://github.com/edgepillar/syrius/actions/runs/41265200881),
+[full Windows 41263876562](https://github.com/edgepillar/syrius/actions/runs/41263876562)
+and [independent full inspector 41265646572](https://github.com/edgepillar/syrius/actions/runs/41265646572).
+The two selected lanes pass 751 ordinary Dart cases/zero skips, 918 Python
+controls/three original skips, fourteen asset phases and zero selected findings.
+Reader 95 verifies 32 producer sources, the immutable workflow and 34 PNGs:
+24 generic pages, six literal Home rest/open/hidden and four V04. Required owned
+app/entry/five-node closure is normal, complete, unforced and zero; auxiliary
+telemetry cleanup is separate. The broad baseline qualifies 4847 passes/one skip,
+twelve checks and Debug/Release on that exact source. Root analysis has zero
+errors/warnings and 1296 infos; vendored analysis is clean. DLL initialization,
+unfiltered chain, motion and release acceptance remain separate.
+
+The Home privacy case qualifies the original eye State/controller, keyboard
+focus, half-second playback, hidden-amount geometry, per-coin fiat omission and
+retained total mask in both themes. Actual new Home image viewing remains
+separate and pending; no native visual match is accepted. Original Source270
+four-Home viewing and Source265 V04 viewing retain their source-bound scope.
+Source273's seven-error test-type refusal, skipped Dart/native and zero artifacts
+remain preserved without retry; Source274 fixes only the declared test types.
+
+Source275 adds a distinct four-state capture API for rest/open/hidden/Go To.
+The original Go To script prefix, including its empty selector placeholder and
+del query value, is retained. Escape and the bounded absent-palette check run only
+after a fully retained positive shot. They dismiss without selecting a target.
+A first negative reply holds the original session; no capture, restoration,
+financial command or failed owner is replayed. Legacy two-, four- and six-image
+APIs and schemas remain strict. Schema four binds eight ordered Home filenames
+and four exact script digests, including the two literal 05-home-goto outputs.
+The same four artifact families, 16-request reader budget and global byte/time
+caps remain. Product UI, original eye asset/player, dependencies, workflow,
+SDK publication pause, automatic-receive disablement and all original
+financial/profile/password/send/seed/reopen inputs are unchanged.
+
+One new bound transport case exercises all four real scripts, their original
+request maps, positive retained-output dismissal and first refusals. All earlier
+cases and assertions remain. Extended Python fixtures cover exact schema-four
+files, order, source pins, byte limits and negative archives while retaining all
+legacy counterexamples. A stale-count fixture exempts only the newly valid
+ordinary 752 value; old 751/753 remain explicit refusals. Expected Dart counts
+become 752/754 ordinary/startup-fidelity; Python/memory/reader remain 918/453/95.
+Producer pins become 33. The complete private code candidate passes 453 memory
+controls; applied controls and a fresh 752-case harness gate are required before
+a new native capture and independent reader. Eight Home images and 36 total
+PNGs are expected, not yet executed. Local image transport is not performed by
+this source step. Prior full-baseline proof stays bound to Source274.
+
+Main progress stays 72/80 by rows, zero of 94 matches, nineteen preparations and
+84 missing literal outputs. The two Go To outputs remain missing until fresh
+native/reader qualification. X411 and Arabic fallback X414 remain; generic/V04
+frames are not literal aliases. All original FAILURE/HOLD/UNKNOWNs are retained.
+Native101 send and Native103 Token confirmation/effect remain UNKNOWN;
+Native104 is not admitted. The existing PR stays Draft.

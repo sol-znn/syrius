@@ -43,7 +43,8 @@ SOURCE_FILES = (
     'harness/app/readonly_wallet_binding.dart', 'harness/app/native_window_owner.dart',
     'harness/app/logical_capture.dart', 'harness/app/readonly_shot_layout.dart',
     'harness/bin/readonly_home_catalog.dart', 'harness/bin/screen_capture.dart',
-    'harness/screens/home-rest.txt', 'harness/screens/home-hidden.txt', 'harness/screens/home-open.txt',
+    'harness/screens/home-rest.txt', 'harness/screens/home-hidden.txt',
+    'harness/screens/home-open.txt', 'harness/screens/home-goto.txt',
     '.github/workflows/public-contribution-qualification.yml',
     'pubspec.yaml', 'pubspec.lock',
 )
@@ -253,9 +254,12 @@ def home_script_source_pins(source_digests, schema):
     if schema == 2:
         return {'home-rest': first,
             'home-hidden': source_digests['harness/screens/home-hidden.txt']}
-    return {'home-rest': first,
+    pins = {'home-rest': first,
         'home-open': source_digests['harness/screens/home-open.txt'],
         'home-hidden': source_digests['harness/screens/home-hidden.txt']}
+    if schema == 4:
+        pins['home-goto'] = source_digests['harness/screens/home-goto.txt']
+    return pins
 
 
 def unpack_home_catalog(raw, expected_sha, expected_size, head, tree, run_id,

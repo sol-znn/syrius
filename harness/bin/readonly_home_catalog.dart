@@ -149,3 +149,46 @@ Future<Map<String, Object>> captureReadonlyHomeOpenStates({
     'width': 1280, 'height': 780, 'scale': 1, 'capture_returned': true,
   };
 }
+
+/// Captures four authored Home states in one fresh output directory.
+/// Tokens, balances and the palette restore only after each
+/// durably retained positive shot.
+Future<Map<String, Object>> captureReadonlyHomeGotoStates({
+  required Directory repository,
+  required ReadonlyInspectionSession session,
+}) async {
+  if (!session.walletBound) {
+    throw const ReadonlyInspectionRefused(ReadonlyInspectionReason.binding);
+  }
+  final ScreenCapture capture = _homeCapture(
+    repository: repository, session: session,
+  );
+  const List<String> files = <String>[
+    '01-home-rest-dark.png', '01-home-rest-light.png',
+    '02-home-open-dark.png', '02-home-open-light.png',
+    '03-home-hidden-dark.png', '03-home-hidden-light.png',
+    '05-home-goto-dark.png', '05-home-goto-light.png',
+  ];
+  final List<String> captured = await capture.captureSelection(
+    const <String>[
+      'home-rest', 'home-open', 'home-hidden', 'home-goto',
+    ],
+    directory: readonlyHomeCatalogDirectory,
+  );
+  if (captured.length != files.length) {
+    throw const ReadonlyInspectionRefused(ReadonlyInspectionReason.reply);
+  }
+  for (int index = 0; index < files.length; index++) {
+    if (captured[index] != '$readonlyHomeCatalogDirectory/${files[index]}') {
+      throw const ReadonlyInspectionRefused(ReadonlyInspectionReason.reply);
+    }
+  }
+  return <String, Object>{
+    'schema': 4, 'scope': 'readonly_native_home_catalog_capture',
+    'screens': const <String>[
+      'home-rest', 'home-open', 'home-hidden', 'home-goto',
+    ],
+    'themes': const <String>['dark', 'light'], 'files': files,
+    'width': 1280, 'height': 780, 'scale': 1, 'capture_returned': true,
+  };
+}

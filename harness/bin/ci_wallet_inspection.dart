@@ -37,7 +37,7 @@ class _InspectionInstance extends cli.Instance {
   Future<Map<String, dynamic>> bindWallet() => _session.bindWallet();
 
   Future<Map<String, Object>> captureHomeStates() =>
-      captureReadonlyHomeOpenStates(
+      captureReadonlyHomeGotoStates(
     repository: Directory(cli.repo), session: _session,
   );
 
