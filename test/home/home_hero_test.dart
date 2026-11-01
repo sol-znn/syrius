@@ -556,8 +556,8 @@ void main() {
         final Finder control = find.byKey(const Key('home_eye'));
         final Finder amount = find.byKey(const Key('home_znn_value'));
         final Finder symbol = find.byKey(const Key('home_znn_symbol'));
-        final State<EyeToggle> state = tester.state<EyeToggle>(eye);
-        final AnimationController controller = tester
+        final State<EyeToggle> state = tester.state<State<EyeToggle>>(eye);
+        final Animation<double> controller = tester
             .widget<AppLottie>(find.byType(AppLottie))
             .controller!;
         final FocusNode focus = Focus.of(
@@ -578,7 +578,7 @@ void main() {
         await tester.pump();
         await tester.pump(const Duration(milliseconds: 100));
         expect(visibility.hidden, isTrue);
-        expect(tester.state<EyeToggle>(eye), same(state));
+        expect(tester.state<State<EyeToggle>>(eye), same(state));
         expect(
           tester.widget<AppLottie>(find.byType(AppLottie)).controller,
           same(controller),
@@ -605,7 +605,7 @@ void main() {
 
         await tester.pumpWidget(host(light: light, textScale: 2));
         await tester.pump();
-        expect(tester.state<EyeToggle>(eye), same(state));
+        expect(tester.state<State<EyeToggle>>(eye), same(state));
         expect(focus.hasFocus, isTrue);
         await tester.pump(const Duration(milliseconds: 400));
         expect(
@@ -615,7 +615,7 @@ void main() {
         await tester.sendKeyEvent(LogicalKeyboardKey.space);
         await tester.pump();
         expect(visibility.hidden, isFalse);
-        expect(tester.state<EyeToggle>(eye), same(state));
+        expect(tester.state<State<EyeToggle>>(eye), same(state));
         expect(focus.hasFocus, isTrue);
         expect(
           tester.getRect(control).bottom,
@@ -634,7 +634,7 @@ void main() {
           host(light: light, noSnapshot: true, failed: true),
         );
         await tester.pump();
-        expect(tester.state<EyeToggle>(eye), same(state));
+        expect(tester.state<State<EyeToggle>>(eye), same(state));
         expect(control.hitTestable(), findsOneWidget);
         expect(find.byKey(const Key('home_hero_status')), findsOneWidget);
         expect(find.byType(AppLottie), findsOneWidget);

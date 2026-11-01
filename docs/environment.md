@@ -1,27 +1,28 @@
 # Redesign build environment
 
-## Current qualification status (2026-11-01T01:48Z)
+## Current qualification status (2026-11-01T01:55Z)
 
-Source272 has three successful runs: harness 41259908062, read-only native
-41260505235 and independent reader 41261948468. They qualify 750 ordinary
-Dart passes/zero skips, 918 Python controls/three original skips, fourteen
-asset phases, zero selected findings, 95 reader cases, 32 producer sources
-and all 34 PNGs. Required owned app/entry/five-node closure is normal,
-complete, unforced and zero. No visual match is accepted.
+Original Source273 run 41262728383 passes 918 Python controls/three skips
+and fourteen asset phases. Analysis exits three with seven errors, zero
+warnings and zero infos, bound only to the new Home widget test types.
+Output is complete at 1480 bytes. Dart/native are skipped; zero artifacts
+exist. This original failure remains retained without retrying its run.
 
-Source270 four-Home viewing is complete and its owned review is closed with
-original controller exit zero. Its hidden images show the eye in the address
-header and extra per-coin fiat masks. Source273 corrects these with one
-retained original EyeToggle State/controller and unchanged financial inputs.
-One both-theme case checks geometry, focus, playback, keyboard and reparenting.
-Expected Dart counts become 751/753; Python/memory/reader stay 918/453/95.
-Fresh harness, native/reader and full Windows producer/inspector qualification
-are required. Prior Source268 full baseline remains 4842 passes/one skip on
-its own exact source; current Source273 full acceptance is unqualified.
+Source274 corrects tester.state to request State<EyeToggle> and observes
+the controller as its exposed Animation<double>. Every assertion, case,
+input, production source, dependency, SDK guard and global bound is retained.
+Expectations stay 751/753 Dart and 918/453/95 Python/memory/reader with 32
+unchanged producer pins. Fresh harness admission is required. Source273 UI
+still needs native/reader capture and full Windows producer/inspector proof.
+
+Source272 retains three successful runs, 750 ordinary passes/zero skips,
+zero selected findings, 34 verified PNGs and normal required closure.
+Source270 four-Home viewing is closed and preserves its observed layout
+gaps. Source268 retains 4842 passes/one skip on its own exact source only.
 
 Main progress stays 72/80 by rows, zero of 94 matches, nineteen preparations
 and 84 missing outputs. X411 and Arabic fallback X414 remain. Original V04
-viewing retains its scope. All original FAILURE/HOLD/UNKNOWNs are preserved.
+viewing retains scope. All original FAILURE/HOLD/UNKNOWNs are preserved.
 Native101 send and Native103 Token effect remain UNKNOWN; Native104 is not
 admitted. The PR remains Draft.
 
@@ -10687,3 +10688,45 @@ Main progress stays 72/80 by rows, zero of 94 matches, nineteen preparations and
 Arabic fallback remains X414. All original failures, HOLDs and UNKNOWNs stay
 preserved. Native101 send and Native103 Token confirmation/effect remain UNKNOWN;
 Native104 is not admitted. The existing PR stays Draft.
+
+## Source274: correct the Home regression case's declared types
+
+2026-11-01T01:55Z: Original Source273 ffe9704f8bb5
+[harness run 41262728383](https://github.com/edgepillar/syrius/actions/runs/41262728383)
+passes 918 Python controls/three original skips and fourteen asset phases. Its
+selected analyzer then exits three with seven errors, zero warnings and zero
+infos. Complete output is 1480 bytes with SHA-256
+4b964f19bceef3d7f456674dd79b6a83eae7922baa54dc7fd5b08e4dbc7c53b8.
+Two INVALID_ASSIGNMENT and five TYPE_ARGUMENT_NOT_MATCHING_BOUNDS diagnostics
+bind only the new Home widget case. Dart/native remain unexecuted and zero
+artifacts exist. The failed original run is retained without retry.
+
+Source274 supplies State<EyeToggle> as the tester.state generic argument and
+declares the observed AppLottie controller as its exposed Animation<double>
+type. All five original State identity checks, controller identity, geometry,
+focus, Enter/Space, playback and missing-snapshot assertions are unchanged.
+No cast or weaker matcher is introduced; no case or input is removed.
+The original HomeHero privacy placement, original eye asset/player and fiat-row
+correction remain unchanged, with all financial inputs and arithmetic retained.
+
+Expectations remain 751/753 ordinary/startup-fidelity Dart and 918/453/95
+Python/memory/reader with 32 unchanged producer pins. Applied memory controls
+and a fresh harness-only gate are required before native admission. The changed
+application UI from Source273 still requires native/independent-reader capture
+and a new broad Windows producer/inspector baseline. Neither old positive
+Source272 capture nor Source268 full-suite evidence qualifies that new UI.
+
+Source272 retains three successful source-bound runs, 750 ordinary passes,
+zero skips or selected findings, reader 95, 32 source pins and 34 PNGs. Required
+app/entry/five-node closure is normal, complete, unforced and zero. Source270
+four-Home actual/reference viewing is complete and closed; its observed eye
+placement and extra fiat masks motivated the preserved Source273 production
+change. Prior Source268 broad baseline remains 4842 passes/one skip on its
+original exact UI source. Original V04 viewing retains its scope; Arabic
+fallback remains X414 and the existing X411 content/scope/status gaps remain.
+
+Main progress stays 72/80 by rows, zero of 94 matches, nineteen preparations and
+84 missing literal catalog outputs. All original FAILURE/HOLD/UNKNOWNs remain,
+including the original Source273 seven-error refusal. Native101 send and
+Native103 Token confirmation/effect remain UNKNOWN; Native104 is not admitted.
+The existing PR stays Draft.
