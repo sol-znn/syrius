@@ -1778,6 +1778,10 @@ void main() {
               <String, Object?>{'cmd': 'scroll', 'dy': 1000000},
               <String, Object?>{'cmd': 'scroll', 'dy': 1000000},
               <String, Object?>{'cmd': 'scroll', 'dy': 1000000},
+              if (pair >= 2) ...<Map<String, Object?>>[
+                <String, Object?>{'cmd': 'scroll', 'dy': 1000000},
+                <String, Object?>{'cmd': 'scroll', 'dy': 1000000},
+              ],
             ],
       ]));
       expect(commands.every((Map<String, Object?> value) => <String>{

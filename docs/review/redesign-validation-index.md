@@ -76,3 +76,5 @@ A prior successful run remains bound to its original source and scope.
 - 2026-11-01 22:49 UTC: [Source305 Windows and catalog results](source305-windows-and-catalog-results.md) preserve all eleven outcomes and closed actual views. [Source306 readiness and physical footer preparation](source306-readiness-and-footer-preparation.md) requires fresh focused/full/affected-family evidence.
 
 - 2026-11-01 23:06 UTC: [Source306 original readiness widget failure](source306-original-readiness-widget-failure.md) preserves the sole unretried failure. [Source307 readiness top fixture](source307-readiness-top-fixture.md) prepares Add physically and retains every original test byte.
+
+- 2026-11-01 23:55 UTC: [Source307 Windows and catalog outcomes](source307-windows-and-catalog-outcomes.md) preserve all seven terminal outcomes and both failures. [Source308 CLI readiness and gallery](source308-cli-readiness-and-gallery.md) requires fresh focused/full/all-four-family evidence.

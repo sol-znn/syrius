@@ -523,6 +523,17 @@ void report(Map<String, dynamic> r, Args a, {String? note}) {
   );
 }
 
+/// Uses the original selector and the agent's positive readiness guard.
+Future<Map<String, dynamic>> waitForTarget(Instance inst, Args a) =>
+    call(inst, <String, Object?>{
+      'cmd': 'wait',
+      ...selector(a.rest.isEmpty ? null : a.rest.first, a),
+      if (a.has('gone')) 'gone': true,
+      if (a.has('ready')) 'ready': true,
+      if (a.has('timeout'))
+        'timeoutMs': (num.parse(a['timeout']!) * 1000).round(),
+    });
+
 Map<String, Object?> assertionArgs(Args a) {
   const Set<String> allowed = <String>{
     'key',
@@ -651,13 +662,7 @@ Future<void> run(Instance inst, String command, Args a) async {
         a,
       );
     case 'wait':
-      final Map<String, dynamic> out = await call(inst, <String, Object?>{
-        'cmd': 'wait',
-        ...selector(arg(0), a),
-        if (a.has('gone')) 'gone': true,
-        if (a.has('timeout'))
-          'timeoutMs': (num.parse(a['timeout']!) * 1000).round(),
-      });
+      final Map<String, dynamic> out = await waitForTarget(inst, a);
       report(out, a, note: '${out['ms']} ms');
     case 'assert':
       report(

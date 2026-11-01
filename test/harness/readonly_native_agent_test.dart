@@ -231,11 +231,33 @@ void main() {
         'actual disabled target', ScreenCaptureReplyCode.targetDisabled,
       )));
       bool readinessDone = false;
-      final Future<Map<String, Object?>> readiness =
-          agent.commandForTest(<String, dynamic>{
-        'cmd': 'wait', 'key': 'node_settings_add',
-        'ready': true, 'timeoutMs': 5000,
-      });
+      final List<Map<String, Object?>> waitCommands =
+          <Map<String, Object?>>[];
+      final _InspectionInstance readyInstance = _InspectionInstance(
+        ReadonlyInspectionSession(
+          processId: pid,
+          original: (Map<String, Object?> command, Duration timeout) async {
+            waitCommands.add(Map<String, Object?>.of(command));
+            try {
+              return <String, dynamic>{
+                'ok': true,
+                ...await agent.commandForTest(
+                  Map<String, dynamic>.of(command),
+                ),
+              };
+            } on HarnessError catch (error) {
+              return <String, dynamic>{
+                'ok': false, 'error': error.message, 'detail': ?error.detail,
+              };
+            }
+          },
+        ),
+      );
+      final Future<Map<String, Object?>> readiness = cli.waitForTarget(
+        readyInstance, cli.Args(<String>[
+          '--key', 'node_settings_add', '--ready', '--timeout', '5',
+        ]),
+      );
       unawaited(readiness.then<void>((Map<String, Object?> value) {
         readinessDone = true;
       }, onError: (Object error, StackTrace stack) {
@@ -248,6 +270,12 @@ void main() {
           await _driveCatalogCommand(tester, readiness);
       expect((resumed['target']! as Map<String, Object?>)['key'],
         'node_settings_add');
+      expect(waitCommands, equals(<Map<String, Object?>>[
+        <String, Object?>{
+          'cmd': 'wait', 'key': 'node_settings_add',
+          'ready': true, 'timeoutMs': 5000,
+        },
+      ]));
       for (int frame = 0;
           frame < 100 && presenter.currentNetwork == null; frame++) {
         await tester.pump(const Duration(milliseconds: 10));
@@ -333,23 +361,34 @@ void main() {
       for (final bool light in <bool>[false, true]) {
         final OriginalsController discovery = OriginalsController();
         await tester.pumpWidget(about_fixture.aboutHost(
-          AboutCard(
-            loadInformation: () async => AboutInformation(version: 'fixture'),
-            loadLicences: () => Stream<LicenseEntry>.value(
-              about_fixture.FixtureLicence(<String>[
-                'fixture-package',
-                for (int index = 0; index < 120; index++)
-                  'fixture-registry-$index',
-              ], const <LicenseParagraph>[
-                LicenseParagraph('Complete fixture licence.', 0),
-              ]),
+          ListenableBuilder(
+            listenable: discovery,
+            builder: (BuildContext context, Widget? _) => AboutCard(
+              loadInformation: () async =>
+                  AboutInformation(version: 'fixture'),
+              loadLicences: () => Stream<LicenseEntry>.value(
+                about_fixture.FixtureLicence(<String>[
+                  'fixture-package',
+                  for (int index = 0; index < 120; index++)
+                    'fixture-registry-$index',
+                ], const <LicenseParagraph>[
+                  LicenseParagraph('Complete fixture licence.', 0),
+                ]),
+              ),
+              licencesTrailingBuilder: (BuildContext context) =>
+                  OriginalsDiscovery(
+                    controller: discovery,
+                    isCurrent: () => true,
+                  ),
+              // Real gallery geometry; artwork stays inert in this fixture.
+              afterLicences: discovery.revealed
+                  ? OriginalsCard(
+                      isCurrent: () => true,
+                      artBuilder: (BuildContext context, OriginalsArt art) =>
+                          const SizedBox.expand(),
+                    )
+                  : const SizedBox(height: 56),
             ),
-            licencesTrailingBuilder: (BuildContext context) =>
-                OriginalsDiscovery(
-                  controller: discovery,
-                  isCurrent: () => true,
-                ),
-            afterLicences: const SizedBox(height: 56),
           ),
           light: light, height: 674,
         ));
@@ -422,12 +461,35 @@ void main() {
         });
         expect((discoveryReady['target']! as Map<String, Object?>)['key'],
           'originals_discovery_field');
-        await _driveCatalogCommand(tester, agent.commandForTest(
-          <String, dynamic>{
+        await _driveCatalogCommand(tester, cli.call(inspection,
+          <String, Object?>{
             'cmd': 'type', 'key': 'originals_discovery_field', 'value': '321',
           },
         ));
         expect(discovery.revealed, isTrue);
+        await tester.pump();
+        expect(find.byKey(const Key('originals_card')), findsOneWidget);
+        await expectLater(agent.commandForTest(<String, dynamic>{
+          'cmd': 'wait', 'key': 'originals_card', 'timeoutMs': 0,
+        }), throwsA(isA<HarnessError>()));
+        for (int phase = 0; phase < 2; phase++) {
+          await _driveCatalogCommand(tester, cli.call(inspection,
+            <String, Object?>{'cmd': 'scroll', 'dy': 1000000},
+          ));
+        }
+        final Map<String, Object?> cardReady = await _driveCatalogCommand(
+          tester, cli.waitForTarget(inspection, cli.Args(<String>[
+            '--key', 'originals_card', '--timeout', '30',
+          ])),
+        );
+        expect((cardReady['target']! as Map<String, Object?>)['key'],
+          'originals_card');
+        final Map<String, Object?> play = await _driveCatalogCommand(
+          tester, cli.call(inspection, <String, Object?>{
+            'cmd': 'assert', 'key': 'originals_play_launch', 'exact': true,
+          }),
+        );
+        expect(play['asserted'], isTrue);
         expect(scope.disabled, isTrue);
         expect(tester.takeException(), isNull);
         await tester.pumpWidget(const SizedBox.shrink());
@@ -436,7 +498,10 @@ void main() {
       }
       expect(catalogCommands, equals(<String>[
         for (int theme = 0; theme < 2; theme++)
-          ...<String>['scroll', 'scroll', 'scroll', 'wait', 'wait'],
+          ...<String>[
+            'scroll', 'scroll', 'scroll', 'wait', 'wait',
+            'type', 'scroll', 'scroll', 'wait', 'assert',
+          ],
       ]));
     },
   );
