@@ -392,13 +392,13 @@ macOS; Windows provision and acceptance remain pending. See
 
 ### Now
 
-- Updated: 2026-11-01T06:43Z
-- Current work: Source283 passes all 779 focused and native-preflight Dart cases with zero skips/failures/errors and clean selected analysis. Its original native producer fails at lab_revalidation before profile input, with PRODUCTION_UNPROVEN. The independent 98-case reader preserves both failure manifests and zero PNGs. See [the original result](docs/review/source283-lab-revalidation-failure.md)
+- Updated: 2026-11-01T06:52Z
+- Current work: Source284 passes all 924 Python controls with three original skips and fourteen asset observations. One line-length analysis info stops its focused run before Dart execution; no native producer or artifacts are admitted. See [the original refusal](docs/review/source284-navigation-analysis-failure.md)
 - Main ledger: 72 of 80 rows done, 90 percent by rows. P03, P09, F06, V01-V03 and V05-V06 remain open; original V04 viewing is complete on its recorded scope
 - Source278 evidence: five successful runs, the 4849-pass/one-skip application baseline and actual eight-Home review retain their source scopes. No newer full-root result is inferred
-- Visual scope: zero of 94 accepted matches, nineteen preparations and 82 missing literal outputs. X419's four fixture failures remain corrected. Source282 Settings capture remains X420; the separate pre-input lab failure is X421. X411 and Arabic fallback X414 remain
-- Next gates: Source284 prepares seven exact Navigation states and retains Source283 progress. Fresh 780/782 ordinary/startup Dart, 924/459/101 Python/memory/reader and 51 producer pins are expected before native admission. Fourteen Navigation/42 total PNGs remain unqualified
-- Preserved scope: the original lab cause and Source282 Settings inner cause stay NOT_ESTABLISHED. Native101 Send and Native103 Token confirmation/effect stay UNKNOWN; Native104 is not admitted. All earlier failures remain. Attribution uses edgepillar, GitHub no-reply and UTC; the PR stays Draft
+- Visual scope: zero of 94 accepted matches, nineteen preparations and 82 missing literal outputs. X419's four fixture failures remain corrected. Settings capture X420, pre-input lab failure X421 and line-length refusal X422 remain separate; X411 and Arabic fallback X414 remain
+- Next gates: Source285 wraps one Navigation documentation comment. Expected gates remain 780/782 ordinary/startup Dart, 924/459/101 Python/memory/reader and 51 producer pins. Fourteen Navigation/42 total PNGs remain unqualified
+- Preserved scope: Source283 lab revalidation and Source282 Settings inner causes stay NOT_ESTABLISHED. Native101 Send and Native103 Token confirmation/effect stay UNKNOWN; Native104 is not admitted. All earlier failures remain. Attribution uses edgepillar, GitHub no-reply and UTC; the PR stays Draft
 
 ### Rows
 
@@ -478,12 +478,12 @@ macOS; Windows provision and acceptance remain pending. See
 | N05 | done | 2026-10-23T15:54Z | e13abb387577 adds the original globe crop and three captured entry routes, preserving owned callbacks and Welcome motion; strict and full local checks pass; native comparison pending |
 | N06 | done | 2026-10-23T15:54Z | e13abb387577 adds pure Import and the bounded three-word quiz with original decrypt, access release and shared-axis routes; strict and full local checks pass; native authentication and comparison remain unqualified |
 | N07 | done | 2026-10-23T15:54Z | e13abb387577 adds the original map and Ready glass card, captured first address and once-only opening bound to original creation and local initialization; connection mismatch and uncertainty remain distinct from readiness; strict and full local checks pass; native acceptance pending |
-| V01 | review | 2026-11-01T06:43Z | Source283 original native fails at pre-input lab revalidation; its 98-case reader qualifies failure manifests and zero PNGs. Source278 actual eight-Home review and four earlier entry outputs retain their scopes. Zero of 94 matches, nineteen preparations and 82 missing literal outputs remain. Source284 prepares seven exact Navigation states; Settings remains unqualified |
+| V01 | review | 2026-11-01T06:52Z | Source284 stops before Dart execution on one line-length info; no native or artifact is admitted. Source283 lab and Source282 Settings failures retain separate scopes. Actual entry/Home outputs stay twelve of 94, with zero accepted matches, nineteen preparations and 82 missing literal outputs. Source285 wraps one documentation comment before fresh hosted qualification |
 | V02 | blocked | 2026-10-23T12:26Z | Finite widget timing coverage is separate from the running-build motion, shader and frame-time pass; native execution and its baseline remain pending |
 | V03 | blocked | 2026-10-23T12:26Z | Seam registry and injected control checks are prepared; trying every control, shortcut and Go to entry in a running native wallet remains pending |
 | V04 | done | 2026-10-31T23:34Z | All four independently qualified Source265 minimum-window/Arabic originals were actually viewed in both themes. The owned review closes SUCCESS with actual controller exit zero; required original native closure stays source-bound. Minimum controls fit and RTL layout mirrors. English fallback/missing Arabic copy is retained as X414; exact saved locale preference and Arabic glyph quality remain separate unqualified observations |
 | V05 | blocked | 2026-10-28T12:48Z | The four source133 images and their exact references are now opened, with corrected Import family/counter placement and residual selector, Welcome frame/drop and draft-decoration differences. Font hinting and the selected brand colors remain allowed exceptions. No input buffer receives a decorative continuation mark. Complete independent review of all 94 pairs and the browser-rendered compare page remains pending; zero matches are accepted |
-| V06 | review | 2026-11-01T06:43Z | Main progress stays 72/80. Source283 passes all 779 focused and native-preflight cases with zero selected findings, then fails before profile input with PRODUCTION_UNPROVEN. Its independent 98-case reader preserves both failure manifests. Source284 adds a fixed seven-state Navigation catalog with expected 780/782 and 924/459/101 gates pending; all original acceptance boundaries remain |
+| V06 | review | 2026-11-01T06:52Z | Main progress stays 72/80. Source284 passes 924 Python controls with three original skips, then correctly stops at one line-length info; its Dart and native stages remain unexecuted. Source285 changes only one documentation comment plus dated reports. Fresh 780/782 and 924/459/101 gates remain pending; all original acceptance boundaries remain |
 | X01 | done | 2026-10-21T23:26Z | e13abb387577 restores loading-list sweep ink in lib/rearchitecture/utils/widgets/motion/skeleton.dart; all 19 existing Skeleton tests pass unchanged |
 | X02 | done | 2026-10-21T23:57Z | e13abb387577 keeps the status-strip dot visible at narrow widths and fixes asynchronous visibility tests |
 | X03 | done | 2026-10-21T23:57Z | e13abb387577 parses the bridge test's HTTP head before binary frames; compression refusal assertions retained |
@@ -1801,3 +1801,12 @@ A fixed seven-state catalog retains original scripts and inputs, exact reference
 | Row | Status | Updated | Note |
 | --- | --- | --- | --- |
 | X421 | review | 2026-11-01T06:43Z | Source283 native fails in the first lab revalidation before profile input with PRODUCTION_UNPROVEN. The independent reader preserves both original failure manifests, all 42 sources, forced required-wallet cleanup and zero admitted PNGs. Initial height one-to-two progress does not establish later production; the exact cause is NOT_ESTABLISHED |
+
+
+### Source285 Navigation documentation line wrap
+
+The [Source284 original refusal](docs/review/source284-navigation-analysis-failure.md) preserves one finite line-length info, positive 924-case Python/asset controls, skipped Dart execution and zero artifacts. Source285 wraps the single new documentation comment and retains all executable source, test bodies, selection and gates. Fresh hosted analysis and 780 Dart cases remain required.
+
+| Row | Status | Updated | Note |
+| --- | --- | --- | --- |
+| X422 | review | 2026-11-01T06:52Z | Source284 selected analysis reports one LINES_LONGER_THAN_80_CHARS info at line seven/column 81 with alias other, stopping before Dart or native execution. Source inspection finds the new helper comment at that position. Source285 wraps only that comment; fresh zero-finding analysis is required, and the original failed run remains unchanged |

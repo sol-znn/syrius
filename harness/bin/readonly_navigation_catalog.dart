@@ -4,7 +4,8 @@ import 'harness.dart' as cli;
 import 'readonly_inspection_session.dart';
 import 'screen_capture.dart';
 
-/// Literal navigation defaults, separate from Home, Settings and generic captures.
+/// Literal navigation defaults, separate from Home, Settings and generic
+/// captures.
 const String readonlyNavigationCatalogDirectory = '.harness/ci-navigation-catalog';
 
 class _NavigationInstance extends cli.Instance {

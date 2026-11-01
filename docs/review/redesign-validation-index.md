@@ -29,3 +29,5 @@ A prior successful run remains bound to its original source and scope.
 
 - [Source283 original pre-input lab failure](source283-lab-revalidation-failure.md): actual 779-case success, unchanged PRODUCTION_UNPROVEN, independent 98-case failure qualification and fixed seven-state Navigation preparation.
 - [Frozen PR body225](pr-body-225.md): exact 4403 bytes, SHA-256 b092698c116f54a58923c07690a828290b38d22266e54febc977157f3e1d9093; all seven inline URLs retained.
+
+- [Source284 original Navigation analysis refusal](source284-navigation-analysis-failure.md): 924 Python controls with three original skips, one finite line-length info, skipped Dart execution, no native admission or artifacts, and a one-comment formatting correction pending fresh hosted analysis.
