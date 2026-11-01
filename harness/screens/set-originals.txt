@@ -7,6 +7,8 @@ tap --key about_licences_toggle
 scroll --key about_licences_toggle 300
 wait --key about_licences_list --timeout 30
 scroll 1000000
+scroll 1000000
+scroll 1000000
 reveal --key originals_discovery_field
 type --key originals_discovery_field "" 321
 wait --key originals_card --timeout 30

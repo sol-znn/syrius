@@ -18,6 +18,9 @@ import '../../harness/app/agent.dart';
 import '../../harness/app/presentation_host.dart';
 import '../../harness/app/readonly_native_commands.dart';
 import '../../harness/app/readonly_sdk_admission.dart';
+import '../../harness/bin/harness.dart' as cli;
+import '../../harness/bin/readonly_inspection_session.dart';
+import '../../harness/bin/screen_capture.dart';
 
 import '../settings_about_redesign/support.dart' as about_fixture;
 import '../settings_node_redesign/support.dart' as node_fixture;
@@ -139,26 +142,18 @@ Future<T> _driveCatalogCommand<T>(
 }
 
 
-// Follow the original catalog reveal: observe first, then a physical wheel
-// step, with the same 20-iteration bound and 250-pixel step.
-Future<void> _revealCatalogKey(
-  WidgetTester tester,
-  HarnessAgent agent,
-  String key,
-) async {
-  for (int attempt = 0; attempt <= 20; attempt++) {
-    try {
-      await agent.commandForTest(<String, dynamic>{
-        'cmd': 'wait', 'key': key, 'timeoutMs': 0,
-      });
-      return;
-    } on HarnessError {
-      await _driveCatalogCommand(tester, agent.commandForTest(
-        <String, dynamic>{'cmd': 'scroll', 'dy': 250},
-      ));
-    }
-  }
-  throw StateError('The original catalog reveal bound was exhausted');
+class _InspectionInstance extends cli.Instance {
+  _InspectionInstance(this._session) : super('synthetic-widget-inspection');
+  final ReadonlyInspectionSession _session;
+
+  @override
+  Map<String, dynamic> read() =>
+      throw StateError('The widget actor has no filesystem state');
+
+  @override
+  Future<Map<String, dynamic>> send(Map<String, Object?> command, {
+    Duration timeout = const Duration(seconds: 30),
+  }) => _session.send(command, timeout);
 }
 
 void main() {
@@ -173,13 +168,21 @@ void main() {
         node_fixture.FakeNodeSettingsSession();
     final NodeSettingsPresenter presenter = node_fixture.nodePresenter(source);
     double height = 674;
-    for (final bool light in <bool>[false, true]) {
-      await tester.pumpWidget(about_fixture.aboutHost(
-        NodeSettingsView(
+    final ValueNotifier<bool> active = ValueNotifier<bool>(true);
+    Widget nodeContent() => ValueListenableBuilder<bool>(
+      valueListenable: active,
+      builder: (BuildContext context, bool current, Widget? _) => TickerMode(
+        enabled: current,
+        child: NodeSettingsView(
           presenter: presenter,
-          isCurrent: () => true,
+          isCurrent: () => current,
           embeddedNode: const SizedBox(height: 80),
         ),
+      ),
+    );
+    for (final bool light in <bool>[false, true]) {
+      await tester.pumpWidget(about_fixture.aboutHost(
+        nodeContent(),
         light: light, width: 992, height: height,
       ));
       for (int frame = 0;
@@ -201,11 +204,7 @@ void main() {
         )).top + 1;
         expect(height, inInclusiveRange(1, 674));
         await tester.pumpWidget(about_fixture.aboutHost(
-          NodeSettingsView(
-            presenter: presenter,
-            isCurrent: () => true,
-            embeddedNode: const SizedBox(height: 80),
-          ),
+          nodeContent(),
           light: light, width: 992, height: height,
         ));
         await tester.pump();
@@ -217,6 +216,38 @@ void main() {
         ).first,
       ).position;
       if (light) expect(position().pixels, greaterThan(0));
+      active.value = false;
+      await tester.pump();
+      await expectLater(agent.commandForTest(<String, dynamic>{
+        'cmd': 'assert', 'key': 'node_settings_add',
+      }), throwsA(isA<HarnessError>().having(
+        (HarnessError error) =>
+            classifyScreenCaptureReply(error.message, error.detail),
+        'actual disabled target', ScreenCaptureReplyCode.targetDisabled,
+      )));
+      bool readinessDone = false;
+      final Future<Map<String, Object?>> readiness =
+          agent.commandForTest(<String, dynamic>{
+        'cmd': 'wait', 'key': 'node_settings_add',
+        'ready': true, 'timeoutMs': 5000,
+      });
+      unawaited(readiness.then<void>((Map<String, Object?> value) {
+        readinessDone = true;
+      }, onError: (Object error, StackTrace stack) {
+        readinessDone = true;
+      }));
+      await tester.pump(const Duration(milliseconds: 40));
+      expect(readinessDone, isFalse);
+      active.value = true;
+      final Map<String, Object?> resumed =
+          await _driveCatalogCommand(tester, readiness);
+      expect((resumed['target']! as Map<String, Object?>)['key'],
+        'node_settings_add');
+      for (int frame = 0;
+          frame < 100 && presenter.currentNetwork == null; frame++) {
+        await tester.pump(const Duration(milliseconds: 10));
+      }
+      expect(presenter.currentNetwork, isNotNull);
       final List<String> callsBefore = List<String>.of(source.calls);
       await _driveCatalogCommand(tester, agent.commandForTest(
         <String, dynamic>{'cmd': 'scroll', 'dy': -1000000},
@@ -262,6 +293,7 @@ void main() {
     await tester.pumpWidget(const SizedBox.shrink());
     await tester.pump();
     await presenter.close();
+    active.dispose();
   });
 
   testWidgets(
@@ -271,6 +303,27 @@ void main() {
       final _Scope scope = _Scope();
       await scope.open();
       final HarnessAgent agent = scope.agent;
+      final List<String> catalogCommands = <String>[];
+      final _InspectionInstance inspection = _InspectionInstance(
+        ReadonlyInspectionSession(
+          processId: pid,
+          original: (Map<String, Object?> command, Duration timeout) async {
+            catalogCommands.add(command['cmd']! as String);
+            try {
+              return <String, dynamic>{
+                'ok': true,
+                ...await agent.commandForTest(
+                  Map<String, dynamic>.of(command),
+                ),
+              };
+            } on HarnessError catch (error) {
+              return <String, dynamic>{
+                'ok': false, 'error': error.message, 'detail': ?error.detail,
+              };
+            }
+          },
+        ),
+      );
       // One agent owns its mouse device across both theme renders.
       for (final bool light in <bool>[false, true]) {
         final OriginalsController discovery = OriginalsController();
@@ -332,10 +385,14 @@ void main() {
         await expectLater(agent.commandForTest(<String, dynamic>{
           'cmd': 'assert', 'key': 'about_licences_end',
         }), throwsA(isA<HarnessError>()));
-        await _driveCatalogCommand(tester, agent.commandForTest(
-          <String, dynamic>{'cmd': 'scroll', 'dy': 1000000},
+        for (int phase = 0; phase < 3; phase++) {
+          await _driveCatalogCommand(tester, cli.call(inspection,
+            <String, Object?>{'cmd': 'scroll', 'dy': 1000000},
+          ));
+        }
+        await _driveCatalogCommand(tester, cli.reveal(inspection,
+          <String, Object?>{'key': 'about_licences_end'},
         ));
-        await _revealCatalogKey(tester, agent, 'about_licences_end');
         final Map<String, Object?> endReady =
             await agent.commandForTest(<String, dynamic>{
           'cmd': 'wait', 'key': 'about_licences_end', 'timeoutMs': 0,
@@ -351,6 +408,9 @@ void main() {
           'cmd': 'tap', 'key': 'about_licences_end',
         }), throwsA(isA<HarnessError>()));
         expect(discovery.revealed, isFalse);
+        await _driveCatalogCommand(tester, cli.reveal(inspection,
+          <String, Object?>{'key': 'originals_discovery_field'},
+        ));
         final Map<String, Object?> discoveryReady =
             await agent.commandForTest(<String, dynamic>{
           'cmd': 'wait', 'key': 'originals_discovery_field', 'timeoutMs': 0,
@@ -369,6 +429,10 @@ void main() {
         await tester.pump();
         discovery.dispose();
       }
+      expect(catalogCommands, equals(<String>[
+        for (int theme = 0; theme < 2; theme++)
+          ...<String>['scroll', 'scroll', 'scroll', 'wait', 'wait'],
+      ]));
     },
   );
 

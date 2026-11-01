@@ -1776,6 +1776,8 @@ void main() {
                 'cmd': 'scroll', 'key': 'about_licences_toggle', 'dy': 300,
               },
               <String, Object?>{'cmd': 'scroll', 'dy': 1000000},
+              <String, Object?>{'cmd': 'scroll', 'dy': 1000000},
+              <String, Object?>{'cmd': 'scroll', 'dy': 1000000},
             ],
       ]));
       expect(commands.every((Map<String, Object?> value) => <String>{

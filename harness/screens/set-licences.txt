@@ -6,6 +6,8 @@ tap --key about_licences_toggle
 scroll --key about_licences_toggle 300
 wait --key about_licences_list --timeout 30
 scroll 1000000
+scroll 1000000
+scroll 1000000
 reveal --key about_licences_end
 assert --key about_licences_end
 # after-capture: goto dashboard

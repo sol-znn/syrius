@@ -7,6 +7,7 @@ wait --key node_settings_page --timeout 30
 scroll -1000000
 assert --key node_settings_nodes
 assert --key node_settings_count
+wait --key node_settings_add --ready --timeout 5
 assert --key node_settings_add
 assert --key node_settings_chain_toggle
 assert --key node_settings_peers_toggle

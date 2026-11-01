@@ -72,3 +72,5 @@ A prior successful run remains bound to its original source and scope.
 - 2026-11-01 21:12 UTC: [Source303 Windows and catalog results](source303-windows-and-catalog-results.md) retains eleven terminal outcomes and closed actual views. [Source304 closed reply diagnostics and QR contrast](source304-closed-reply-and-qr-contrast.md) preserves original controls and limits.
 
 - 2026-11-01 21:27 UTC: [Source304 original analysis refusal](source304-original-analysis-refusal.md) preserves both findings and the skipped Dart stage. [Source305 retired-session reply](source305-retired-session-reply.md) retains the closed category and every original command barrier.
+
+- 2026-11-01 22:49 UTC: [Source305 Windows and catalog results](source305-windows-and-catalog-results.md) preserve all eleven outcomes and closed actual views. [Source306 readiness and physical footer preparation](source306-readiness-and-footer-preparation.md) requires fresh focused/full/affected-family evidence.
