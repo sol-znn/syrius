@@ -1020,7 +1020,7 @@ void main() {
       ..setUint32(16, 1280)
       ..setUint32(20, 780);
     for (final String fault in <String>[
-      'unbound', 'none', 'first', 'shot', 'return', 'late',
+      'unbound', 'none', 'first', 'shot', 'return', 'late', 'png',
     ]) {
       final _CatalogStdout output = _CatalogStdout();
       final Directory repository = Directory.systemTemp.createTempSync(
@@ -1040,6 +1040,8 @@ void main() {
       int shots = 0;
       int returned = 0;
       final List<Map<String, Object?>> commands = <Map<String, Object?>>[];
+      final List<ScreenCaptureObservation> progress =
+          <ScreenCaptureObservation>[];
       final Map<String, dynamic> negative = <String, dynamic>{
         'ok': false, 'error': 'Synthetic capture refusal',
       };
@@ -1122,7 +1124,7 @@ void main() {
             if (name == 'shot') ...<String, dynamic>{
               'client': <int>[1280, 780], 'width': 1280, 'height': 780,
               'scale': 1, 'theme': mode, 'asserted': true,
-              'png': base64Encode(header),
+              'png': base64Encode(fault == 'png' ? Uint8List(33) : header),
             },
           };
         },
@@ -1130,7 +1132,7 @@ void main() {
       Future<Map<String, Object>> capture() =>
           IOOverrides.runZoned<Future<Map<String, Object>>>(
         () => captureReadonlySettingsDefaults(
-          repository: repository, session: session,
+          repository: repository, session: session, onStep: progress.add,
         ),
         stdout: () => output,
       );
@@ -1138,6 +1140,7 @@ void main() {
         await expectLater(capture(),
             throwsA(isA<ReadonlyInspectionRefused>()));
         expect(commands, isEmpty);
+        expect(progress, isEmpty);
         expect(output.lines, isEmpty);
         continue;
       }
@@ -1156,11 +1159,23 @@ void main() {
         expect(expanded, isTrue);
         expect(mode, 'light');
         expect(restoredWindow, isTrue);
+        expect(progress.last.step, ScreenCaptureStep.complete);
       } else {
         await expectLater(capture(), throwsA(isA<ScreenCaptureError>()));
-        expect(shots, fault == 'return' ? 1 : fault == 'late' ? 5 : 0);
+        expect(shots, fault == 'return' || fault == 'png' ? 1 :
+            fault == 'late' ? 5 : 0);
         expect(returned, fault == 'late' ? 5 : 0);
         expect(restoredWindow, isFalse);
+        final ScreenCaptureObservation last = progress.last;
+        expect(last.step, switch (fault) {
+          'first' => ScreenCaptureStep.scriptLine,
+          'return' => ScreenCaptureStep.afterCaptureLine,
+          'png' => ScreenCaptureStep.shotValidation,
+          _ => ScreenCaptureStep.shotRequest,
+        });
+        expect(last.screen, fault == 'late' ? 'set-display' : 'set-node');
+        expect(last.theme, fault == 'late' ? 'light' : 'dark');
+        expect(readonlySettingsFailureDiagnostic(last), isNotNull);
         // Original binding stays recorded; the held lane refuses later input.
         expect(session.walletBound, isTrue);
         final int originalCalls = commands.length;
@@ -1175,8 +1190,9 @@ void main() {
       final Directory images = Directory(
         '${repository.path}/$readonlySettingsCatalogDirectory',
       );
-      expect(images.existsSync() ? images.listSync().length : 0, shots);
-      for (int i = 0; i < shots; i++) {
+      final int retained = fault == 'png' ? 0 : shots;
+      expect(images.existsSync() ? images.listSync().length : 0, retained);
+      for (int i = 0; i < retained; i++) {
         expect(File('${images.path}/${files[i]}').readAsBytesSync(), header);
       }
       expect(commands.every((Map<String, Object?> value) => <String>{
@@ -1185,6 +1201,39 @@ void main() {
       }.contains(value['cmd'])), isTrue);
       expect(output.lines.every((Object? line) => line is String &&
           line.startsWith('ok')), isTrue);
+    }
+  });
+
+  test('Settings capture diagnostics retain only a closed step and context',
+      () {
+    expect(readonlySettingsFailureDiagnostic(null), isNull);
+    expect(readonlySettingsFailureDiagnostic(const ScreenCaptureObservation(
+      ScreenCaptureStep.preflight,
+    )), <String, Object>{
+      'schema': 1, 'kind': 'readonly_settings_capture_failure',
+      'last_entered_step': 'preflight',
+    });
+    expect(readonlySettingsFailureDiagnostic(const ScreenCaptureObservation(
+      ScreenCaptureStep.scriptLine, screen: 'set-node', theme: 'dark', line: 5,
+    )), <String, Object>{
+      'schema': 1, 'kind': 'readonly_settings_capture_failure',
+      'last_entered_step': 'scriptLine', 'screen': 'set-node',
+      'theme': 'dark', 'line': 5,
+    });
+    for (final ScreenCaptureObservation invalid in <ScreenCaptureObservation>[
+      const ScreenCaptureObservation(ScreenCaptureStep.homePreparation,
+        screen: 'Synthetic private path', theme: 'dark'),
+      const ScreenCaptureObservation(ScreenCaptureStep.homePreparation,
+        screen: 'set-node', theme: 'Synthetic private locale'),
+      const ScreenCaptureObservation(ScreenCaptureStep.scriptLine,
+        screen: 'set-node', theme: 'dark'),
+      const ScreenCaptureObservation(ScreenCaptureStep.scriptLine,
+        screen: 'set-node', theme: 'dark', line: 0),
+      const ScreenCaptureObservation(ScreenCaptureStep.scriptLine,
+        screen: 'set-node', theme: 'dark', line: 65536),
+      const ScreenCaptureObservation(ScreenCaptureStep.preflight, line: 5),
+    ]) {
+      expect(readonlySettingsFailureDiagnostic(invalid), isNull);
     }
   });
 

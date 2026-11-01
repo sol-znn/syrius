@@ -11,6 +11,26 @@ class ScreenCaptureError implements Exception {
   String toString() => message;
 }
 
+/// The original operation entered before a capture result is known.
+enum ScreenCaptureStep {
+  preflight, outputPreflight, themeSnapshot, windowSnapshot, windowShow,
+  railSnapshot, clientResize, homePreparation, themeSelection, scriptLine,
+  shotRequest, shotValidation, outputRetention, afterCaptureLine,
+  railRestoration, themeRestoration, windowRestoration, complete,
+}
+
+/// A fixed step and catalog context, without commands, paths or response text.
+class ScreenCaptureObservation {
+  const ScreenCaptureObservation(this.step, {
+    this.screen, this.theme, this.line,
+  });
+
+  final ScreenCaptureStep step;
+  final String? screen;
+  final String? theme;
+  final int? line;
+}
+
 class ScreenSpec {
   const ScreenSpec(this.number, this.id);
 
@@ -162,6 +182,7 @@ class ScreenCapture {
     required this.assertionFor,
     this.readRailState,
     this.restoreRailState,
+    this.onStep,
   });
 
   final Directory repository;
@@ -171,6 +192,7 @@ class ScreenCapture {
   final AssertionParser assertionFor;
   final Future<bool> Function()? readRailState;
   final Future<void> Function({required bool expanded})? restoreRailState;
+  final void Function(ScreenCaptureObservation step)? onStep;
 
   static const String _afterCapturePrefix = '# after-capture:';
 
@@ -377,12 +399,21 @@ class ScreenCapture {
     List<ScreenSpec> screens, {
     String? directory,
   }) async {
+    void enter(ScreenCaptureStep step, {
+      ScreenSpec? screen, String? theme, int? line,
+    }) {
+      onStep?.call(ScreenCaptureObservation(
+        step, screen: screen?.id, theme: theme, line: line,
+      ));
+    }
+    enter(ScreenCaptureStep.preflight);
     if ((readRailState == null) != (restoreRailState == null)) {
       throw const ScreenCaptureError('rail snapshot needs a restore callback');
     }
     // Complete preflight before changing the theme, moving the window or
     // creating outputs. A missing page script must not produce partial proof.
     final List<ScreenScript> scripts = screens.map(_script).toList();
+    enter(ScreenCaptureStep.outputPreflight);
     final List<String> output = _outputParts(directory);
     for (final ScreenSpec screen in screens) {
       for (final String theme in <String>['dark', 'light']) {
@@ -394,9 +425,11 @@ class ScreenCapture {
         }
       }
     }
+    enter(ScreenCaptureStep.themeSnapshot);
     final Map<String, dynamic> originalTheme = await call(
       <String, Object?>{'cmd': 'theme'},
     );
+    enter(ScreenCaptureStep.windowSnapshot);
     final Map<String, dynamic> originalWindow = await call(
       <String, Object?>{'cmd': 'window'},
     );
@@ -405,10 +438,15 @@ class ScreenCapture {
     Object? failure;
     final List<String> restorationFailures = <String>[];
     try {
+      enter(ScreenCaptureStep.windowShow);
       await call(<String, Object?>{'cmd': 'window', 'do': 'show'});
+      enter(ScreenCaptureStep.railSnapshot);
       originalRail = await readRailState?.call();
       for (final ScreenScript script in scripts) {
         for (final String theme in <String>['dark', 'light']) {
+          enter(ScreenCaptureStep.clientResize,
+            screen: script.screen, theme: theme,
+          );
           final Map<String, dynamic> window = await call(<String, Object?>{
             'cmd': 'window',
             'do': 'show',
@@ -419,7 +457,13 @@ class ScreenCapture {
           if (window['clientMatched'] != true) {
             throw const ScreenCaptureError('client resize was not established');
           }
+          enter(ScreenCaptureStep.homePreparation,
+            screen: script.screen, theme: theme,
+          );
           await prepareHome();
+          enter(ScreenCaptureStep.themeSelection,
+            screen: script.screen, theme: theme,
+          );
           final Map<String, dynamic> themed = await call(
             <String, Object?>{'cmd': 'theme', 'mode': theme},
           );
@@ -427,6 +471,9 @@ class ScreenCapture {
             throw const ScreenCaptureError('requested theme was not observed');
           }
           for (final ScreenLine line in script.lines) {
+            enter(ScreenCaptureStep.scriptLine,
+              screen: script.screen, theme: theme, line: line.number,
+            );
             try {
               await runLine(line.words);
             } on Object catch (e) {
@@ -435,6 +482,9 @@ class ScreenCapture {
               );
             }
           }
+          enter(ScreenCaptureStep.shotRequest,
+            screen: script.screen, theme: theme,
+          );
           final Map<String, dynamic> shot = await call(<String, Object?>{
             'cmd': 'shot',
             'width': 1280,
@@ -442,7 +492,13 @@ class ScreenCapture {
             'theme': theme,
             'expect': script.assertion,
           });
+          enter(ScreenCaptureStep.shotValidation,
+            screen: script.screen, theme: theme,
+          );
           final Uint8List bytes = _png(shot, theme);
+          enter(ScreenCaptureStep.outputRetention,
+            screen: script.screen, theme: theme,
+          );
           _checkParents(output);
           Directory(_join(output)).createSync(recursive: true);
           final List<String> path = <String>[
@@ -461,6 +517,9 @@ class ScreenCapture {
           // These real UI inputs run once after a fully retained positive shot.
           // A refusal propagates; neither capture nor restoration is replayed.
           for (final ScreenLine line in script.afterCapture) {
+            enter(ScreenCaptureStep.afterCaptureLine,
+              screen: script.screen, theme: theme, line: line.number,
+            );
             try {
               await runLine(line.words);
             } on Object catch (e) {
@@ -476,17 +535,26 @@ class ScreenCapture {
     } finally {
       if (originalRail != null) {
         try {
+          if (failure == null && restorationFailures.isEmpty) {
+            enter(ScreenCaptureStep.railRestoration);
+          }
           await restoreRailState!(expanded: originalRail);
         } on Object catch (e) {
           restorationFailures.add('rail restore: $e');
         }
       }
       try {
+        if (failure == null && restorationFailures.isEmpty) {
+          enter(ScreenCaptureStep.themeRestoration);
+        }
         await call(<String, Object?>{'cmd': 'theme', 'restore': originalTheme});
       } on Object catch (e) {
         restorationFailures.add('theme restore: $e');
       }
       try {
+        if (failure == null && restorationFailures.isEmpty) {
+          enter(ScreenCaptureStep.windowRestoration);
+        }
         await call(<String, Object?>{
           'cmd': 'window',
           'restoreState': originalWindow,
@@ -505,6 +573,7 @@ class ScreenCapture {
         ].join('; '),
       );
     }
+    enter(ScreenCaptureStep.complete);
     return captured;
   }
 }

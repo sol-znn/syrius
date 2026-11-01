@@ -55,6 +55,28 @@ def decode(raw):
     return json.loads(raw, object_pairs_hook=unique)
 
 
+FAILURE_STEPS = ('preflight', 'outputPreflight', 'themeSnapshot', 'windowSnapshot', 'windowShow', 'railSnapshot', 'clientResize', 'homePreparation', 'themeSelection', 'scriptLine', 'shotRequest', 'shotValidation', 'outputRetention', 'afterCaptureLine', 'railRestoration', 'themeRestoration', 'windowRestoration', 'complete')
+
+
+def failure_diagnostic(value):
+    required = {'schema', 'kind', 'last_entered_step'}
+    optional = {'screen', 'theme', 'line'}
+    need(type(value) is dict and required <= set(value) <= required | optional)
+    need(type(value['schema']) is int and value['schema'] == 1
+         and value['kind'] == 'readonly_settings_capture_failure'
+         and type(value['last_entered_step']) is str
+         and value['last_entered_step'] in FAILURE_STEPS)
+    need(('screen' in value) == ('theme' in value))
+    if 'screen' in value:
+        need(type(value['screen']) is str and value['screen'] in SCREENS
+             and type(value['theme']) is str and value['theme'] in THEMES)
+    script = value['last_entered_step'] in ('scriptLine', 'afterCaptureLine')
+    need(not script or {'screen', 'theme', 'line'} <= set(value))
+    if 'line' in value:
+        need(script and type(value['line']) is int and 1 <= value['line'] <= 65535)
+    return value
+
+
 def catalog_files(schema):
     need(type(schema) is int and schema == 1)
     return FILES

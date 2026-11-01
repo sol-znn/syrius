@@ -8,6 +8,7 @@ import 'harness.dart' as cli;
 import 'readonly_inspection_session.dart';
 import 'readonly_settings_catalog.dart';
 import 'readonly_viewport_probe.dart';
+import 'screen_capture.dart';
 import 'wallet_recipe.dart';
 
 class _InspectionInstance extends cli.Instance {
@@ -36,9 +37,11 @@ class _InspectionInstance extends cli.Instance {
 
   Future<Map<String, dynamic>> bindWallet() => _session.bindWallet();
 
-  Future<Map<String, Object>> captureSettingsDefaults() =>
+  Future<Map<String, Object>> captureSettingsDefaults({
+    void Function(ScreenCaptureObservation step)? onStep,
+  }) =>
       captureReadonlySettingsDefaults(
-    repository: Directory(cli.repo), session: _session,
+    repository: Directory(cli.repo), session: _session, onStep: onStep,
   );
 
   Future<Map<String, Object>> captureViewport({
@@ -74,6 +77,7 @@ Future<void> main() async {
   );
   String stage = 'admission';
   ReadonlyViewportStep? lastViewportStep;
+  ScreenCaptureObservation? lastSettingsStep;
   try {
     final Map<String, String> environment = Platform.environment;
     final String name = environment['SYRIUS_CI_INSPECTION_INSTANCE'] ?? '';
@@ -225,7 +229,9 @@ Future<void> main() async {
     }
     stage = 'settings_catalog';
     final Map<String, Object> catalog =
-        await instance.captureSettingsDefaults();
+        await instance.captureSettingsDefaults(
+      onStep: (ScreenCaptureObservation value) => lastSettingsStep = value,
+    );
     await marker('SYRIUS_INSPECTION_CATALOG:${jsonEncode(catalog)}');
     stage = 'viewport';
     final Map<String, Object> viewport = await instance.captureViewport(
@@ -249,6 +255,9 @@ Future<void> main() async {
       Map<String, Object>? diagnostic = error is WalletRecipeRefused
           ? walletRecipePublicDiagnostic(error.diagnostic)
           : error is cli.WalletTourFailure ? error.diagnostic : null;
+      if (stage == 'settings_catalog') {
+        diagnostic = readonlySettingsFailureDiagnostic(lastSettingsStep);
+      }
       final ReadonlyViewportStep? observed = lastViewportStep;
       if (stage == 'viewport' && observed != null) {
         diagnostic = <String, Object>{

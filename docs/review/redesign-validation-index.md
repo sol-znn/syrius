@@ -23,3 +23,6 @@ A prior successful run remains bound to its original source and scope.
 
 - [Source281 original fixture failures](source281-settings-fixture-failure.md): actual 774/four-failure engine, zero findings, bounded original locations and the Source282 stream expectation correction.
 - [Frozen PR body221](pr-body-221.md): exact 4904 bytes, SHA-256 2a2b50062c946c0c55019e46f3540359e68555f9191c36de883cb7445c688a84; all eight original URLs retained.
+
+- [Source282 original native Settings failure](source282-settings-native-failure.md): actual 778-case success, unchanged original native failure, independent 97-case failure inspection and finite Source283 progress preparation.
+- [Frozen PR body224](pr-body-224.md): exact 5617 bytes, SHA-256 0aa845c24e55a8c4cc6d08447822012c0aab1b1747cc76c791ab3b061a623608; all nine inline URLs retained.

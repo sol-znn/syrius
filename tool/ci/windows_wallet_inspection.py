@@ -457,6 +457,14 @@ def entry_failure(value):
     if 'diagnostic' in value:
         if value['stage'] in ('onboarding', 'address_selection'):
             shared.entry_failure(value)
+        elif value['stage'] == 'settings_catalog':
+            need(value['code'] is None or value['code'] in {
+                'inspection-' + reason for reason in
+                ('process', 'retired', 'command', 'reply', 'binding')}, 'ENTRY_REFUSED')
+            try:
+                settings.failure_diagnostic(value['diagnostic'])
+            except settings.Refused:
+                need(False, 'ENTRY_REFUSED')
         elif value['stage'] == 'viewport':
             need(value['code'] is None or value['code'] in {
                 'inspection-' + reason for reason in

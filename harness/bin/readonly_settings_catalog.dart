@@ -24,11 +24,40 @@ class _SettingsInstance extends cli.Instance {
       ? const Duration(seconds: 30) : timeout);
 }
 
+/// Exports only a fixed catalog step. It does not reconstruct a missing cause.
+Map<String, Object>? readonlySettingsFailureDiagnostic(
+  ScreenCaptureObservation? observation,
+) {
+  if (observation == null) return null;
+  final String? screen = observation.screen;
+  final String? theme = observation.theme;
+  final int? line = observation.line;
+  const Set<String> screens = <String>{
+    'set-node', 'set-security', 'set-display', 'set-wallet',
+    'set-apps', 'set-addresses', 'set-about',
+  };
+  final bool script = observation.step == ScreenCaptureStep.scriptLine ||
+      observation.step == ScreenCaptureStep.afterCaptureLine;
+  if ((screen == null) != (theme == null) ||
+      screen != null && !screens.contains(screen) ||
+      theme != null && theme != 'dark' && theme != 'light' ||
+      script && (screen == null || line == null) ||
+      line != null && (!script || line < 1 || line > 65535)) {
+    return null;
+  }
+  return <String, Object>{
+    'schema': 1, 'kind': 'readonly_settings_capture_failure',
+    'last_entered_step': observation.step.name,
+    'screen': ?screen, 'theme': ?theme, 'line': ?line,
+  };
+}
+
 /// Runs seven original navigation scripts through the same bound UI owner.
 /// Each positive shot returns to Home before the next preparation can run.
 Future<Map<String, Object>> captureReadonlySettingsDefaults({
   required Directory repository,
   required ReadonlyInspectionSession session,
+  void Function(ScreenCaptureObservation step)? onStep,
 }) async {
   if (!session.walletBound) {
     throw const ReadonlyInspectionRefused(ReadonlyInspectionReason.binding);
@@ -45,6 +74,7 @@ Future<Map<String, Object>> captureReadonlySettingsDefaults({
         cli.assertionArgs(cli.Args(words.sublist(1))),
     readRailState: session.railExpanded,
     restoreRailState: session.restoreScreenRail,
+    onStep: onStep,
   );
   const List<String> screens = <String>[
     'set-node', 'set-security', 'set-display', 'set-wallet',

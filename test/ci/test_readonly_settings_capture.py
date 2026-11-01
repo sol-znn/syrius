@@ -102,6 +102,41 @@ class SettingsCatalogTests(unittest.TestCase):
             with self.subTest(key=key), self.assertRaises(settings.Refused):
                 settings.public_catalog(dict(report, **{key: bad}))
 
+    def test_failure_diagnostic_is_closed_and_cannot_disclose_commands_or_paths(self):
+        base = dict(schema=1, kind='readonly_settings_capture_failure',
+            last_entered_step='preflight')
+        self.assertIs(settings.failure_diagnostic(base), base)
+        valid = dict(base, last_entered_step='scriptLine',
+            screen='set-node', theme='dark', line=5)
+        self.assertIs(settings.failure_diagnostic(valid), valid)
+        self.assertIs(legacy.entry_failure(dict(stage='settings_catalog',
+            code=None, diagnostic=valid))['diagnostic'], valid)
+        for delta in (
+            dict(schema=True), dict(kind='other'),
+            dict(last_entered_step='Synthetic private step'),
+            dict(screen='Synthetic private path'), dict(theme='dark'),
+            dict(line=True), dict(line=1),
+            dict(command='Synthetic private input'), dict(extra='unapproved'),
+        ):
+            with self.subTest(delta=delta), self.assertRaises(settings.Refused):
+                settings.failure_diagnostic(dict(base, **delta))
+        for delta in (
+            dict(screen='home-rest'), dict(theme='ar'), dict(line=True),
+            dict(line=0), dict(line=65536), dict(last_entered_step='preflight'),
+            dict(extra='Synthetic private path'),
+        ):
+            with self.subTest(delta=delta), self.assertRaises(legacy.Refused):
+                legacy.entry_failure(dict(stage='settings_catalog', code=None,
+                    diagnostic=dict(valid, **delta)))
+        for missing in ('screen', 'theme', 'line'):
+            broken = dict(valid)
+            broken.pop(missing)
+            with self.subTest(missing=missing), self.assertRaises(settings.Refused):
+                settings.failure_diagnostic(broken)
+        with self.assertRaises(legacy.Refused):
+            legacy.entry_failure(dict(stage='settings_catalog',
+                code='wallet-recipe-other', diagnostic=valid))
+
     def test_exact_archive_pins_pixels_and_namespace_are_bound_independently(self):
         report, images = fixture()
         raw, reference = bundle(report, images)
