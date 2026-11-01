@@ -10,6 +10,7 @@ import 'package:zenon_syrius_wallet_flutter/seams/seam.dart';
 import 'package:zenon_syrius_wallet_flutter/utils/original_publications.dart';
 import 'package:zenon_syrius_wallet_flutter/widgets/modular_widgets/help_widgets/about_card.dart';
 import 'package:zenon_syrius_wallet_flutter/widgets/modular_widgets/help_widgets/about_information.dart';
+import 'package:zenon_syrius_wallet_flutter/widgets/modular_widgets/help_widgets/originals_card.dart';
 import 'package:zenon_syrius_wallet_flutter/widgets/modular_widgets/settings_widgets/node_settings_presenter.dart';
 import 'package:zenon_syrius_wallet_flutter/widgets/modular_widgets/settings_widgets/node_settings_view.dart';
 
@@ -145,18 +146,18 @@ void main() {
     final _Scope scope = _Scope();
     await scope.open();
     final HarnessAgent agent = scope.agent;
+    final node_fixture.FakeNodeSettingsSession source =
+        node_fixture.FakeNodeSettingsSession();
+    final NodeSettingsPresenter presenter = node_fixture.nodePresenter(source);
+    double height = 674;
     for (final bool light in <bool>[false, true]) {
-      final node_fixture.FakeNodeSettingsSession source =
-          node_fixture.FakeNodeSettingsSession();
-      final NodeSettingsPresenter presenter =
-          node_fixture.nodePresenter(source);
       await tester.pumpWidget(about_fixture.aboutHost(
         NodeSettingsView(
           presenter: presenter,
           isCurrent: () => true,
           embeddedNode: const SizedBox(height: 80),
         ),
-        light: light, width: 992, height: 674,
+        light: light, width: 992, height: height,
       ));
       for (int frame = 0;
           frame < 100 && presenter.currentNetwork == null; frame++) {
@@ -167,12 +168,51 @@ void main() {
       final Finder gate = find.byKey(
         const Key('node_settings_sporks_gate'),
       );
+      if (!light) {
+        // End the inert viewport just below the actual Peers header.
+        // The original scroll must expose Sporks through real clipping.
+        height = tester.getRect(find.byKey(
+          const Key('node_settings_peers_toggle'),
+        )).bottom - tester.getRect(find.byKey(
+          const Key('node_settings_page'),
+        )).top + 1;
+        expect(height, inInclusiveRange(1, 674));
+        await tester.pumpWidget(about_fixture.aboutHost(
+          NodeSettingsView(
+            presenter: presenter,
+            isCurrent: () => true,
+            embeddedNode: const SizedBox(height: 80),
+          ),
+          light: light, width: 992, height: height,
+        ));
+        await tester.pump();
+      }
+      final ScrollPosition position = tester.state<ScrollableState>(
+        find.descendant(
+          of: find.byKey(const Key('node_settings_page')),
+          matching: find.byType(Scrollable),
+        ).first,
+      ).position;
+      if (light) expect(position.pixels, greaterThan(0));
       final List<String> callsBefore = List<String>.of(source.calls);
+      await _driveCatalogCommand(tester, agent.commandForTest(
+        <String, dynamic>{'cmd': 'scroll', 'dy': -1000000},
+      ));
+      expect(position.pixels, 0);
+      final Map<String, Object?> addReady =
+          await agent.commandForTest(<String, dynamic>{
+        'cmd': 'assert', 'key': 'node_settings_add',
+      });
+      expect(addReady['asserted'], isTrue);
+      await expectLater(agent.commandForTest(<String, dynamic>{
+        'cmd': 'assert', 'key': 'node_settings_sporks_gate',
+      }), throwsA(isA<HarnessError>()));
       await _driveCatalogCommand(tester, agent.commandForTest(
         <String, dynamic>{
           'cmd': 'scroll', 'key': 'node_settings_peers_toggle', 'dy': 300,
         },
       ));
+      expect(position.pixels, greaterThan(0));
       expect(tester.widget<SeamGate>(gate).seam, Seam.sporks);
       for (final String command in <String>['assert', 'wait']) {
         final Map<String, Object?> result =
@@ -195,10 +235,10 @@ void main() {
       expect(find.byKey(const Key('node_settings_sporks_body'))
         .hitTestable(), findsNothing);
       expect(tester.takeException(), isNull);
-      await tester.pumpWidget(const SizedBox.shrink());
-      await tester.pump();
-      await presenter.close();
     }
+    await tester.pumpWidget(const SizedBox.shrink());
+    await tester.pump();
+    await presenter.close();
   });
 
   testWidgets(
@@ -210,6 +250,7 @@ void main() {
       final HarnessAgent agent = scope.agent;
       // One agent owns its mouse device across both theme renders.
       for (final bool light in <bool>[false, true]) {
+        final OriginalsController discovery = OriginalsController();
         await tester.pumpWidget(about_fixture.aboutHost(
           AboutCard(
             loadInformation: () async => AboutInformation(version: 'fixture'),
@@ -222,6 +263,11 @@ void main() {
                 LicenseParagraph('Complete fixture licence.', 0),
               ]),
             ),
+            licencesTrailingBuilder: (BuildContext context) =>
+                OriginalsDiscovery(
+                  controller: discovery,
+                  isCurrent: () => true,
+                ),
             afterLicences: const SizedBox(height: 56),
           ),
           light: light, height: 674,
@@ -280,10 +326,24 @@ void main() {
         await expectLater(agent.commandForTest(<String, dynamic>{
           'cmd': 'tap', 'key': 'about_licences_end',
         }), throwsA(isA<HarnessError>()));
+        expect(discovery.revealed, isFalse);
+        final Map<String, Object?> discoveryReady =
+            await agent.commandForTest(<String, dynamic>{
+          'cmd': 'wait', 'key': 'originals_discovery_field', 'timeoutMs': 0,
+        });
+        expect((discoveryReady['target']! as Map<String, Object?>)['key'],
+          'originals_discovery_field');
+        await _driveCatalogCommand(tester, agent.commandForTest(
+          <String, dynamic>{
+            'cmd': 'type', 'key': 'originals_discovery_field', 'value': '321',
+          },
+        ));
+        expect(discovery.revealed, isTrue);
         expect(scope.disabled, isTrue);
         expect(tester.takeException(), isNull);
         await tester.pumpWidget(const SizedBox.shrink());
         await tester.pump();
+        discovery.dispose();
       }
     },
   );

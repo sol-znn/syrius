@@ -1222,13 +1222,18 @@ void main() {
       ).toList();
       expect(scrolls, hasLength(switch (fault) {
         'first' => 0,
-        'none' || 'late' => 2,
-        'shot' || 'return' || 'png' => 1,
+        'none' || 'late' => 4,
+        'shot' || 'return' || 'png' => 2,
         _ => throw StateError('Unexpected bound capture fault'),
       }));
-      expect(scrolls, everyElement(<String, Object?>{
-        'cmd': 'scroll', 'key': 'node_settings_peers_toggle', 'dy': 300,
-      }));
+      expect(scrolls, orderedEquals(<Map<String, Object?>>[
+        for (int pair = 0; pair < scrolls.length ~/ 2; pair++) ...[
+          <String, Object?>{'cmd': 'scroll', 'dy': -1000000},
+          <String, Object?>{
+            'cmd': 'scroll', 'key': 'node_settings_peers_toggle', 'dy': 300,
+          },
+        ],
+      ]));
       expect(commands.every((Map<String, Object?> value) => <String>{
         'readonly-wallet-bind', 'state', 'tree', 'tap', 'theme', 'window',
         'wait', 'assert', 'shot', 'scroll',
@@ -1749,6 +1754,18 @@ void main() {
       for (int i = 0; i < retained; i++) {
         expect(File('${images.path}/${files[i]}').readAsBytesSync(), header);
       }
+      final List<Map<String, Object?>> scrolls = commands.where(
+        (Map<String, Object?> value) => value['cmd'] == 'scroll',
+      ).toList();
+      expect(scrolls, orderedEquals(<Map<String, Object?>>[
+        if (fault == 'none')
+          for (int pair = 0; pair < 4; pair++) ...[
+            <String, Object?>{
+              'cmd': 'scroll', 'key': 'about_licences_toggle', 'dy': 300,
+            },
+            <String, Object?>{'cmd': 'scroll', 'dy': 1000000},
+          ],
+      ]));
       expect(commands.every((Map<String, Object?> value) => <String>{
         'readonly-wallet-bind', 'state', 'tree', 'tap', 'theme', 'window',
         'wait', 'assert', 'shot', 'type', 'key', 'scroll',
