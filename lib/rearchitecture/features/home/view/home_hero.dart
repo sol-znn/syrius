@@ -33,7 +33,7 @@ part 'home_hero_plasma.dart';
 ///
 /// The page owns its snapshot and navigation. Keeping this surface separate
 /// lets the activity and side cards change without altering the money header.
-class HomeHero extends StatelessWidget {
+class HomeHero extends StatefulWidget {
   /// Draws the current [snapshot], retaining it through a failed refresh.
   const HomeHero({
     required this.address,
@@ -68,9 +68,18 @@ class HomeHero extends StatelessWidget {
   final Stream<PowGenerationState>? powStatus;
 
   @override
+  State<HomeHero> createState() => _HomeHeroState();
+}
+
+class _HomeHeroState extends State<HomeHero> {
+  // One original player keeps its state across privacy and responsive layouts.
+  final GlobalKey<State<EyeToggle>> _eyeKey = GlobalKey<State<EyeToggle>>();
+
+  @override
   Widget build(BuildContext context) {
-    final BalanceVisibility balances = visibility ?? BalanceVisibility.instance;
-    final PriceFeed prices = priceFeed ?? PriceFeed.instance;
+    final BalanceVisibility balances =
+        widget.visibility ?? BalanceVisibility.instance;
+    final PriceFeed prices = widget.priceFeed ?? PriceFeed.instance;
     final AppTokens tokens = AppTokens.of(context);
     return Panel(
       child: Stack(
@@ -102,13 +111,13 @@ class HomeHero extends StatelessWidget {
                   final Widget plasma = SizedBox(
                     width: plasmaWidth,
                     child: _HomeHeroPlasma(
-                      snapshot: snapshot,
-                      status:
-                          powStatus ?? sl.get<PowGeneratingStatusBloc>().stream,
+                      snapshot: widget.snapshot,
+                      status: widget.powStatus ??
+                          sl.get<PowGeneratingStatusBloc>().stream,
                     ),
                   );
                   final Widget actions = _HomeHeroActions(
-                    onOpenTransfer: onOpenTransfer,
+                    onOpenTransfer: widget.onOpenTransfer,
                   );
                   // Keep the measured desktop row at normal type size. Larger
                   // text gets another line instead of clipping an amount or
@@ -162,7 +171,7 @@ class HomeHero extends StatelessWidget {
   }
 
   double _balanceWidth(BuildContext context, bool hidden) {
-    final HomeSnapshot? current = snapshot;
+    final HomeSnapshot? current = widget.snapshot;
     if (current == null) return 0;
     final AppTokens tokens = AppTokens.of(context);
     // A large holding must not lose its final base unit to the headline's
@@ -191,8 +200,11 @@ class HomeHero extends StatelessWidget {
       ),
     );
     final TextStyle symbol = tokens.heroSymbolText;
+    final double hiddenEyeWidth = hidden
+        ? tokens.heroDollarGap + tokens.heroHiddenEyeSize
+        : 0;
     return math.max(
-          znn + _textWidth(context, kZnnCoin.symbol, symbol),
+          znn + _textWidth(context, kZnnCoin.symbol, symbol) + hiddenEyeWidth,
           qsr + _textWidth(context, kQsrCoin.symbol, symbol),
         ) +
         tokens.heroSymbolGap;
@@ -228,18 +240,34 @@ class HomeHero extends StatelessWidget {
     BalanceVisibility balances,
     PriceFeed prices,
   ) {
-    final HomeSnapshot? current = snapshot;
+    final HomeSnapshot? current = widget.snapshot;
     final AppTokens tokens = AppTokens.of(context);
+    final bool inAmountRow = balances.hidden && current != null;
+    final Widget eye = EyeToggle(
+      key: _eyeKey,
+      keyPrefix: 'home',
+      tooltip: balances.hidden
+          ? context.l10n.homeShowBalances
+          : context.l10n.displayHideBalances,
+      visibility: balances,
+      size: inAmountRow
+          ? tokens.heroHiddenEyeSize
+          : tokens.heroAddressIconSize,
+      padding: EdgeInsets.zero,
+    );
     return Column(
       key: const Key('home_hero_balances'),
       mainAxisSize: MainAxisSize.min,
       crossAxisAlignment: CrossAxisAlignment.start,
       children: <Widget>[
-        _HomeHeroAddress(address: address, visibility: balances),
+        _HomeHeroAddress(
+          address: widget.address,
+          eye: inAmountRow ? null : eye,
+        ),
         SizedBox(height: tokens.heroBalanceGap),
         if (current == null)
           Text(
-            failed
+            widget.failed
                 ? context.l10n.homeNodeNotAnswering
                 : context.l10n.homeLoading,
             key: const Key('home_hero_status'),
@@ -250,6 +278,7 @@ class HomeHero extends StatelessWidget {
             snapshot: current,
             visibility: balances,
             feed: prices,
+            eye: inAmountRow ? eye : null,
           ),
       ],
     );

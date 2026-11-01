@@ -394,6 +394,9 @@ class AppTokens extends ThemeExtension<AppTokens> {
   /// Home's address controls follow the reference's small inline icons.
   double get heroAddressIconSize => 14;
 
+  /// Hidden balances place the original eye beside the primary amount.
+  double get heroHiddenEyeSize => 20;
+
   /// Home uses the reference's tighter gap around its body panels.
   double get homePanelGap => 12;
 

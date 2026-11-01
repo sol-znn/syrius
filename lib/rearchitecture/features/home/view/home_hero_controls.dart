@@ -1,10 +1,10 @@
 part of 'home_hero.dart';
 
 class _HomeHeroAddress extends StatelessWidget {
-  const _HomeHeroAddress({required this.address, required this.visibility});
+  const _HomeHeroAddress({required this.address, this.eye});
 
   final String address;
-  final BalanceVisibility visibility;
+  final Widget? eye;
 
   @override
   Widget build(BuildContext context) {
@@ -72,18 +72,7 @@ class _HomeHeroAddress extends StatelessWidget {
               ],
             ),
           ),
-        ListenableBuilder(
-          listenable: visibility,
-          builder: (BuildContext context, Widget? child) => EyeToggle(
-            keyPrefix: 'home',
-            tooltip: visibility.hidden
-                ? context.l10n.homeShowBalances
-                : context.l10n.displayHideBalances,
-            visibility: visibility,
-            size: tokens.heroAddressIconSize,
-            padding: EdgeInsets.zero,
-          ),
-        ),
+        if (eye case final Widget control) control,
       ],
     );
   }

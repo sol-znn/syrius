@@ -392,13 +392,13 @@ macOS; Windows provision and acceptance remain pending. See
 
 ### Now
 
-- Updated: 2026-11-01T01:06Z
-- Current work: Source271 passes 918 Python controls/three original skips and fourteen asset phases, then its strict gate refuses one CAST_NULLABLE_TO_NON_NULLABLE info. Dart/native are unexecuted and zero artifacts exist. Source272 binds and promotes only the synthetic tab value; a fresh 750-case harness-only gate is required
+- Updated: 2026-11-01T01:48Z
+- Current work: Source272 harness, native and independent reader all succeed with 750 ordinary passes and 34 verified PNGs. The closed Source270 four-Home review finds hidden-eye placement and extra fiat masks. Source273 corrects these while retaining one original player; new 751-case harness, native/reader and full-baseline qualification are required
 - Main ledger: 72 of 80 main rows are done, or 90 percent by rows. P03, P09, F06, V01-V03 and V05-V06 remain open; original V04 viewing is complete and Arabic fallback stays X414
-- Current focused and native evidence: Source270 passes 918 Python controls/three original skips, fourteen asset phases, zero selected findings and 749 Dart cases/zero skips. Native 41257907083 and independent reader 41258919158 verify normal required closure and all 32 PNGs. Source268 full producer 41253919663/inspector 41255744645 retain 4842 passes/one skip, Debug/Release and twelve checks on that prior exact application UI source
-- Visual scope: Source270 four-Home archive is independently verified at 660819 bytes; local transport and actual viewing remain pending. Closed Source268 Home and Source265 V04 reviews retain their original scope. Notifications is visible on Source268; scope/content/hero differences stay X411. Zero of 94 matches, nineteen preparations and 86 missing literal catalog outputs remain
+- Current focused and native evidence: Source272 harness 41259908062, native 41260505235 and reader 41261948468 qualify 750 ordinary Dart cases, 918 Python controls/three original skips, fourteen asset phases, zero selected findings, 95 reader cases, 32 producer sources and 34 PNGs. Source268 retains its original 4842-pass/one-skip broad baseline; it does not qualify changed Source273 UI
+- Visual scope: Source270 four-Home actual viewing is complete with normal original controller exit and closed owned review. Hidden-eye and per-coin fiat-mask differences motivate Source273; X411 content/scope/status gaps remain. Source265 V04 viewing retains its scope and Arabic fallback stays X414. Zero of 94 matches, nineteen preparations and 84 missing literal outputs remain
 - Original failures: Source271 original one-info analysis refusal and skipped Dart stage remain. Source269 five-info refusal, Source267 home_catalog, Source266 transport/Windows skip, Source264 covered-target, Source263/262 native failures and all earlier FAILURE/HOLD/UNKNOWNs stay source-bound; Source267/263 inner causes remain NOT_ESTABLISHED
-- Publication and limits: Published identities use edgepillar, GitHub no-reply and UTC; the PR stays Draft. Source272 retains 750/752 Dart, 918/453/95 Python/memory/reader, 32 producer pins and all input/SDK/source/closure bounds. Native101 send and Native103 Token effect stay UNKNOWN; Native104 is not admitted
+- Publication and limits: Published identities use edgepillar, GitHub no-reply and UTC; the PR stays Draft. Source273 expects 751/753 Dart and 918/453/95 Python/memory/reader with 32 producer pins. Original inputs, SDK authority and source/closure bounds remain. Native101 send and Native103 Token effect stay UNKNOWN; Native104 is not admitted
 
 ### Rows
 
@@ -483,7 +483,7 @@ macOS; Windows provision and acceptance remain pending. See
 | V03 | blocked | 2026-10-23T12:26Z | Seam registry and injected control checks are prepared; trying every control, shortcut and Go to entry in a running native wallet remains pending |
 | V04 | done | 2026-10-31T23:34Z | All four independently qualified Source265 minimum-window/Arabic originals were actually viewed in both themes. The owned review closes SUCCESS with actual controller exit zero; required original native closure stays source-bound. Minimum controls fit and RTL layout mirrors. English fallback/missing Arabic copy is retained as X414; exact saved locale preference and Arabic glyph quality remain separate unqualified observations |
 | V05 | blocked | 2026-10-28T12:48Z | The four source133 images and their exact references are now opened, with corrected Import family/counter placement and residual selector, Welcome frame/drop and draft-decoration differences. Font hinting and the selected brand colors remain allowed exceptions. No input buffer receives a decorative continuation mark. Complete independent review of all 94 pairs and the browser-rendered compare page remains pending; zero matches are accepted |
-| V06 | review | 2026-11-01T01:06Z | Main progress remains 72/80 with Source270 positive native/reader evidence and prior Source268 full baseline. Source271 has one original strict-analysis cast info, skipped Dart/native and zero artifacts. Source272 only promotes the fake actor tab value and awaits fresh 750-case admission. Zero of 94 matches, nineteen preparations, 86 missing outputs and all original gates remain |
+| V06 | review | 2026-11-01T01:48Z | Main progress remains 72/80. Source272 has three successful source-bound runs and 34 independently verified PNGs. Source270 four-Home viewing is closed; its observed hidden-eye and fiat-mask layout gaps are corrected by Source273 pending fresh 751-case/native/reader/full-baseline qualification. Zero of 94 matches, nineteen preparations, 84 missing outputs and all original acceptance gates remain |
 | X01 | done | 2026-10-21T23:26Z | e13abb387577 restores loading-list sweep ink in lib/rearchitecture/utils/widgets/motion/skeleton.dart; all 19 existing Skeleton tests pass unchanged |
 | X02 | done | 2026-10-21T23:57Z | e13abb387577 keeps the status-strip dot visible at narrow widths and fixes asynchronous visibility tests |
 | X03 | done | 2026-10-21T23:57Z | e13abb387577 parses the bridge test's HTTP head before binary frames; compression refusal assertions retained |
@@ -1574,3 +1574,51 @@ Main progress stays 72/80 by rows, zero of 94 matches, nineteen preparations and
 earlier FAILURE/HOLD/UNKNOWNs remain source-bound. Source267/263 original inner
 causes stay NOT_ESTABLISHED. Native101 send and Native103 Token
 confirmation/effect remain UNKNOWN; Native104 is not admitted. The PR is Draft.
+
+## Source273: retain one original eye beside hidden Home balances
+
+2026-11-01T01:48Z: Source272 1e0e7da070b6 now has three successful original runs:
+[harness 41259908062](https://github.com/edgepillar/syrius/actions/runs/41259908062),
+[read-only native 41260505235](https://github.com/edgepillar/syrius/actions/runs/41260505235)
+and [independent reader 41261948468](https://github.com/edgepillar/syrius/actions/runs/41261948468).
+They establish 750 ordinary Dart passes/zero skips, 918 Python controls/three
+original skips, fourteen asset phases, zero selected findings and 95 independent
+reader cases. The reader binds 32 producer files, four original archives and all
+34 PNGs, including six literal Home rest/open/hidden captures. Required owned
+app, entry and five-node closure is normal, complete, unforced and zero.
+This is source-bound inspection evidence; no visual match or full-baseline
+qualification of this revision is inferred.
+
+The separately approved Source270 four-Home review is complete: one verified
+660819-byte archive was transported once; all four actual images and their four
+references were viewed. Its original controller exits zero and the owned review
+closes successfully. Only registered disposable extraction was removed; verified
+archive evidence and all prior HOLDs were retained. Both hidden images show two
+specific layout gaps: the eye remains in the address header, and individual fiat
+conversion masks remain beside the coin rows. Existing X411 content, selected-
+address scope and status differences remain; no backend cause is inferred.
+
+Source273 places the same original EyeToggle beside masked ZNN when a snapshot
+exists. A stable key owned by HomeHero preserves its State, animation controller
+and focus across privacy and responsive layout changes. The original asset,
+half-second transition, blink and keyboard actions are retained. Hidden per-coin
+DollarText fields are omitted while the total-fiat mask remains. Visible fiat
+fields, loading/failure access, amount arithmetic, feeds and all financial
+inputs are retained. One both-theme case checks geometry, controller identity,
+focus, Enter/Space, responsive reparenting and a missing-snapshot failure state.
+
+Expected ordinary/startup-fidelity counts become 751/753. Python/memory/reader
+remain 918/453/95. All earlier finite numeric refusals remain, except the newly
+valid ordinary 751 count; old 750/752 counts are explicitly stale. Three Home
+schemas, six filenames, 34 expected PNGs, 32 producer pins, SDK authority, original
+financial/profile/password/send/seed/reopen commands, workflow, dependencies and
+global bounds are retained. Applied source controls, a fresh harness gate,
+native/independent-reader inspection and a new broad Windows baseline with an
+independent inspector are required for this changed application UI. Source268's
+4842-pass/one-skip baseline remains qualified only on its original source.
+
+Main progress stays 72/80 by rows, zero of 94 matches, nineteen preparations and
+84 missing literal catalog outputs. Original V04 viewing retains its scope;
+Arabic fallback remains X414. All original failures, HOLDs and UNKNOWNs stay
+preserved. Native101 send and Native103 Token confirmation/effect remain UNKNOWN;
+Native104 is not admitted. The existing PR stays Draft.

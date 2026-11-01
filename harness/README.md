@@ -1031,3 +1031,51 @@ Main progress stays 72/80 by rows, zero of 94 matches, nineteen preparations and
 earlier FAILURE/HOLD/UNKNOWNs remain source-bound. Source267/263 original inner
 causes stay NOT_ESTABLISHED. Native101 send and Native103 Token
 confirmation/effect remain UNKNOWN; Native104 is not admitted. The PR is Draft.
+
+## Source273: retain one original eye beside hidden Home balances
+
+2026-11-01T01:48Z: Source272 1e0e7da070b6 now has three successful original runs:
+[harness 41259908062](https://github.com/edgepillar/syrius/actions/runs/41259908062),
+[read-only native 41260505235](https://github.com/edgepillar/syrius/actions/runs/41260505235)
+and [independent reader 41261948468](https://github.com/edgepillar/syrius/actions/runs/41261948468).
+They establish 750 ordinary Dart passes/zero skips, 918 Python controls/three
+original skips, fourteen asset phases, zero selected findings and 95 independent
+reader cases. The reader binds 32 producer files, four original archives and all
+34 PNGs, including six literal Home rest/open/hidden captures. Required owned
+app, entry and five-node closure is normal, complete, unforced and zero.
+This is source-bound inspection evidence; no visual match or full-baseline
+qualification of this revision is inferred.
+
+The separately approved Source270 four-Home review is complete: one verified
+660819-byte archive was transported once; all four actual images and their four
+references were viewed. Its original controller exits zero and the owned review
+closes successfully. Only registered disposable extraction was removed; verified
+archive evidence and all prior HOLDs were retained. Both hidden images show two
+specific layout gaps: the eye remains in the address header, and individual fiat
+conversion masks remain beside the coin rows. Existing X411 content, selected-
+address scope and status differences remain; no backend cause is inferred.
+
+Source273 places the same original EyeToggle beside masked ZNN when a snapshot
+exists. A stable key owned by HomeHero preserves its State, animation controller
+and focus across privacy and responsive layout changes. The original asset,
+half-second transition, blink and keyboard actions are retained. Hidden per-coin
+DollarText fields are omitted while the total-fiat mask remains. Visible fiat
+fields, loading/failure access, amount arithmetic, feeds and all financial
+inputs are retained. One both-theme case checks geometry, controller identity,
+focus, Enter/Space, responsive reparenting and a missing-snapshot failure state.
+
+Expected ordinary/startup-fidelity counts become 751/753. Python/memory/reader
+remain 918/453/95. All earlier finite numeric refusals remain, except the newly
+valid ordinary 751 count; old 750/752 counts are explicitly stale. Three Home
+schemas, six filenames, 34 expected PNGs, 32 producer pins, SDK authority, original
+financial/profile/password/send/seed/reopen commands, workflow, dependencies and
+global bounds are retained. Applied source controls, a fresh harness gate,
+native/independent-reader inspection and a new broad Windows baseline with an
+independent inspector are required for this changed application UI. Source268's
+4842-pass/one-skip baseline remains qualified only on its original source.
+
+Main progress stays 72/80 by rows, zero of 94 matches, nineteen preparations and
+84 missing literal catalog outputs. Original V04 viewing retains its scope;
+Arabic fallback remains X414. All original failures, HOLDs and UNKNOWNs stay
+preserved. Native101 send and Native103 Token confirmation/effect remain UNKNOWN;
+Native104 is not admitted. The existing PR stays Draft.

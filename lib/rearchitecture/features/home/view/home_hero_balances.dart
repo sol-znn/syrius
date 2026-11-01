@@ -5,11 +5,13 @@ class _HomeHeroBalances extends StatelessWidget {
     required this.snapshot,
     required this.visibility,
     required this.feed,
+    this.eye,
   });
 
   final HomeSnapshot snapshot;
   final BalanceVisibility visibility;
   final PriceFeed feed;
+  final Widget? eye;
 
   @override
   Widget build(BuildContext context) {
@@ -36,6 +38,7 @@ class _HomeHeroBalances extends StatelessWidget {
                 symbolColor: tokens.znnInk,
                 coin: PricedCoin.znn,
                 primary: true,
+                eye: eye,
                 priced: znnPriced,
                 visibility: visibility,
                 feed: feed,
@@ -94,6 +97,7 @@ class _HomeHeroBalanceLine extends StatelessWidget {
     required this.priced,
     required this.visibility,
     required this.feed,
+    this.eye,
   });
 
   final String keyPrefix;
@@ -106,6 +110,7 @@ class _HomeHeroBalanceLine extends StatelessWidget {
   final bool priced;
   final BalanceVisibility visibility;
   final PriceFeed feed;
+  final Widget? eye;
 
   @override
   Widget build(BuildContext context) {
@@ -150,7 +155,8 @@ class _HomeHeroBalanceLine extends StatelessWidget {
             ],
           ),
         ),
-        if (priced)
+        if (eye case final Widget control) control,
+        if (priced && !visibility.hidden)
           DollarText(
             key: ValueKey<String>('${keyPrefix}_dollars'),
             amount: amount,

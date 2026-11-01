@@ -544,6 +544,111 @@ void main() {
     },
   );
 
+  testWidgets(
+    'hidden balances move one original eye and preserve focus and playback',
+    (
+      WidgetTester tester,
+    ) async {
+      for (final bool light in <bool>[false, true]) {
+        visibility.set(false);
+        await show(tester, light: light);
+        final Finder eye = find.byType(EyeToggle);
+        final Finder control = find.byKey(const Key('home_eye'));
+        final Finder amount = find.byKey(const Key('home_znn_value'));
+        final Finder symbol = find.byKey(const Key('home_znn_symbol'));
+        final State<EyeToggle> state = tester.state<EyeToggle>(eye);
+        final AnimationController controller = tester
+            .widget<AppLottie>(find.byType(AppLottie))
+            .controller!;
+        final FocusNode focus = Focus.of(
+          tester.element(
+            find.descendant(of: eye, matching: find.byType(GestureDetector)),
+          ),
+        )..requestFocus();
+        await tester.pump();
+        expect(focus.hasFocus, isTrue);
+        expect(
+          tester.getRect(control).bottom,
+          lessThan(tester.getRect(amount).top),
+        );
+        expect(find.byKey(const Key('home_znn_dollars')), findsOneWidget);
+        expect(find.byKey(const Key('home_qsr_dollars')), findsOneWidget);
+
+        await tester.sendKeyEvent(LogicalKeyboardKey.enter);
+        await tester.pump();
+        await tester.pump(const Duration(milliseconds: 100));
+        expect(visibility.hidden, isTrue);
+        expect(tester.state<EyeToggle>(eye), same(state));
+        expect(
+          tester.widget<AppLottie>(find.byType(AppLottie)).controller,
+          same(controller),
+        );
+        expect(focus.hasFocus, isTrue);
+        final Rect hiddenEye = tester.getRect(control);
+        final Rect hiddenAmount = tester.getRect(amount);
+        final AppTokens tokens = AppTokens.of(tester.element(eye));
+        expect(
+          hiddenEye.left - tester.getRect(symbol).right,
+          closeTo(tokens.heroDollarGap, 0.01),
+        );
+        expect(hiddenEye.top, greaterThanOrEqualTo(hiddenAmount.top));
+        expect(hiddenEye.bottom, lessThanOrEqualTo(hiddenAmount.bottom));
+        expect(find.byKey(const Key('home_znn_dollars')), findsNothing);
+        expect(find.byKey(const Key('home_qsr_dollars')), findsNothing);
+        expect(find.byKey(const Key('home_total_dollars')), findsOneWidget);
+        expect(find.text('≈ ••••'), findsOneWidget);
+        expect(controller.value * EyeToggle.frames, greaterThan(3.25));
+        expect(
+          controller.value * EyeToggle.frames,
+          lessThan(EyeToggle.hiddenFrame),
+        );
+
+        await tester.pumpWidget(host(light: light, textScale: 2));
+        await tester.pump();
+        expect(tester.state<EyeToggle>(eye), same(state));
+        expect(focus.hasFocus, isTrue);
+        await tester.pump(const Duration(milliseconds: 400));
+        expect(
+          controller.value * EyeToggle.frames,
+          closeTo(EyeToggle.hiddenFrame, 1e-6),
+        );
+        await tester.sendKeyEvent(LogicalKeyboardKey.space);
+        await tester.pump();
+        expect(visibility.hidden, isFalse);
+        expect(tester.state<EyeToggle>(eye), same(state));
+        expect(focus.hasFocus, isTrue);
+        expect(
+          tester.getRect(control).bottom,
+          lessThan(tester.getRect(amount).top),
+        );
+        expect(find.byKey(const Key('home_znn_dollars')), findsOneWidget);
+        expect(find.byKey(const Key('home_qsr_dollars')), findsOneWidget);
+        await tester.pump(const Duration(milliseconds: 500));
+        expect(
+          controller.value * EyeToggle.frames,
+          closeTo(EyeToggle.shownFrame, 1e-6),
+        );
+
+        visibility.set(true);
+        await tester.pumpWidget(
+          host(light: light, noSnapshot: true, failed: true),
+        );
+        await tester.pump();
+        expect(tester.state<EyeToggle>(eye), same(state));
+        expect(control.hitTestable(), findsOneWidget);
+        expect(find.byKey(const Key('home_hero_status')), findsOneWidget);
+        expect(find.byType(AppLottie), findsOneWidget);
+        expect(
+          tester.widget<AppLottie>(find.byType(AppLottie)).controller,
+          same(controller),
+        );
+        expect(tester.takeException(), isNull);
+        await tester.pumpWidget(const SizedBox.shrink());
+        await tester.pump();
+      }
+    },
+  );
+
   testWidgets('hidden width reveals neither balance length nor its changes', (
     WidgetTester tester,
   ) async {
