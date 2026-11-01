@@ -1,0 +1,11 @@
+# Source294 original About-agent pointer failure
+
+Recorded 2026-11-01 12:25 UTC. Exact source `2f962fb7877cd8cbbbf59c337828fce2999f10be`, tree `9cb7454d67bfbae70f76d1e69ec85b1eced88e0b`. The [original focused run 41305637682](https://github.com/edgepillar/syrius/actions/runs/41305637682), job 124845336547, attempt one, is terminal failure. Selected analysis has zero errors, warnings and infos. All 928 Python controls run with three original skips and zero failures/errors; fourteen asset observations and both original asset commands pass.
+
+The original Flutter engine reports 789 passes, one failed case, one error event and zero skips. Its observed exit is one, without forced cleanup, after 144.594 seconds. The complete output is 402,200 bytes with no overflow; SHA-256 is `dfce2206dc444fdd51c71f08bc8d0f85579e41fd0a1dbaf9247c49336345a5e2`. Both original pre-build refusals and all three startup-ownership checks pass separately.
+
+The finite failure projection binds an unhandled ASSERTION/OTHER to `agent.dart` line 3332 and `readonly_native_agent_test.dart` line 223. Exact source places these at the original pointer-event dispatch and the About case's initial `tap --key about_licences_toggle` call. The exported Flutter widget-tester location is a stack frame, not an exported assertion condition. The failing theme and precise original assertion remain NOT_EXPORTED; the component inner cause remains NOT_ESTABLISHED. Later clipped-list, header-scroll and final visibility assertions are not qualified by this attempt. No raw test log is downloaded.
+
+The single original run is terminal with zero artifacts. No full Windows, native wallet or archive-reader run is dispatched; the original run is not retried. Source293's separate two-info analysis failure and skipped Dart stage remain. Source292's independently qualified full baseline, closed Home/Navigation image reviews and both native catalog failures retain their exact source scopes. No prior evidence qualifies a new revision.
+
+Main acceptance remains 72/80 rows, nineteen preparations, 26 available literal outputs, 68 missing and zero accepted matches. Native101 Send and Native103 Token confirmation/effect remain UNKNOWN; Native104 is not admitted. All earlier FAILURE/HOLD/UNKNOWN evidence is preserved.

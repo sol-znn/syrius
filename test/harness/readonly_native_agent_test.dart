@@ -202,10 +202,11 @@ void main() {
     'actual licences list becomes visible after header-targeted scrolling',
     (WidgetTester tester) async {
       about_fixture.prepareAboutViewport(tester);
+      final _Scope scope = _Scope();
+      await scope.open();
+      final HarnessAgent agent = scope.agent;
+      // One agent owns its mouse device across both theme renders.
       for (final bool light in <bool>[false, true]) {
-        final _Scope scope = _Scope();
-        await scope.open();
-        final HarnessAgent agent = scope.agent;
         await tester.pumpWidget(about_fixture.aboutHost(
           AboutCard(
             loadInformation: () async => AboutInformation(version: 'fixture'),
