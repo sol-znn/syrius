@@ -259,7 +259,7 @@ def main():
         counts = test_counts(outcome.output)
         report['counts'] = counts
         debug.need(outcome.success and counts['terminal_success'] is True
-            and counts['passed'] == (785 if asset_fidelity else 783)
+            and counts['passed'] == (786 if asset_fidelity else 784)
             and counts['skipped'] == counts['failed'] == counts['error_events'] == 0,
             'TESTS_FAILED')
         if asset_fidelity:

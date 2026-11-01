@@ -26,7 +26,33 @@ import 'package:zenon_syrius_wallet_flutter/utils/utils.dart';
 import 'package:zenon_syrius_wallet_flutter/widgets/reusable_widgets/app_lottie.dart';
 import 'package:znn_sdk_dart/znn_sdk_dart.dart';
 
+import '../../../harness/app/agent.dart';
+
 import '../../helpers/hydrated_bloc.dart';
+
+Future<T> _driveReceiveCommand<T>(
+  WidgetTester tester,
+  Future<T> command,
+) async {
+  bool done = false;
+  T? result;
+  Object? failure;
+  StackTrace? trace;
+  unawaited(command.then((T value) {
+    result = value;
+    done = true;
+  }, onError: (Object error, StackTrace stack) {
+    failure = error;
+    trace = stack;
+    done = true;
+  }));
+  for (int frame = 0; frame < 80 && !done; frame++) {
+    await tester.pump(const Duration(milliseconds: 40));
+  }
+  expect(done, isTrue, reason: 'The original UI command did not finish');
+  if (failure != null) Error.throwWithStackTrace(failure!, trace!);
+  return result as T;
+}
 
 class _Balances extends MockBloc<MultipleBalanceEvent, MultipleBalanceState>
     implements MultipleBalanceBloc {}
@@ -367,6 +393,50 @@ void main() {
       },
     );
   }
+
+  testWidgets('actual Receive popup selects QSR through original agent input',
+    (WidgetTester tester) async {
+      await show(tester, reduced: true);
+      await select(tester, TransferMode.receive);
+      final HarnessAgent agent = HarnessAgent.forTest()..booted = true;
+      Future<Map<String, Object?>> command(Map<String, dynamic> value) =>
+          _driveReceiveCommand(tester, agent.commandForTest(value));
+      await command(<String, dynamic>{'cmd': 'key', 'key': 'escape'});
+      await command(<String, dynamic>{'cmd': 'key', 'key': 'escape'});
+      await command(<String, dynamic>{
+        'cmd': 'tap', 'key': 'receive_qr_toggle',
+      });
+      await command(<String, dynamic>{
+        'cmd': 'tap', 'key': 'receive_request_toggle',
+      });
+      await command(<String, dynamic>{
+        'cmd': 'type', 'key': 'receive_amount_field', 'value': '100',
+      });
+      await command(<String, dynamic>{
+        'cmd': 'tap', 'key': 'receive_token_picker',
+      });
+      await command(<String, dynamic>{
+        'cmd': 'tap', 'text': 'QSR', 'exact': true,
+      });
+      final DropdownMenu<Token> picker = tester.widget<DropdownMenu<Token>>(
+        find.byKey(const Key('receive_token_picker')),
+      );
+      expect(picker.controller!.text, 'QSR');
+      expect(find.text('Hide QR'), findsOneWidget);
+      final String payload = tester.widget<Tooltip>(
+        find.byKey(const Key('receive_qr_payload')),
+      ).message!;
+      expect(payload, startsWith('qsr:'));
+      expect(payload, contains('zts=${kQsrCoin.tokenStandard}'));
+      expect(payload, endsWith('&amount=10000000000'));
+      expect(find.byKey(const Key('receive_share_image')), findsOneWidget);
+      expect(find.byKey(const Key('receive_save_image')), findsOneWidget);
+      expect(tester.takeException(), isNull);
+      await tester.pumpWidget(const SizedBox.shrink());
+      await tester.pump();
+    },
+    timeout: const Timeout(Duration(seconds: 45)),
+  );
 
   testWidgets(
     'modes retain live form state and deny hidden focus, semantics and tickers',
