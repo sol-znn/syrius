@@ -4,6 +4,8 @@ import 'dart:io';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/gestures.dart';
 import 'package:flutter/services.dart';
+import 'package:flutter/widgets.dart' as widgets
+    show OverlayPortal, OverlayPortalController;
 import 'package:flutter_test/flutter_test.dart';
 import 'package:material_ui/material_ui.dart';
 
@@ -40,6 +42,91 @@ Future<T> _drive<T>(WidgetTester tester, Future<T> command) async {
 }
 
 void main() {
+  testWidgets('painted portal options escape only the caller scroll clip', (
+    WidgetTester tester,
+  ) async {
+    tester.view.devicePixelRatio = 1;
+    tester.view.physicalSize = const Size(1280, 780);
+    addTearDown(tester.view.resetDevicePixelRatio);
+    addTearDown(tester.view.resetPhysicalSize);
+    final HarnessAgent agent = HarnessAgent.forTest()..booted = true;
+    for (final Brightness brightness in <Brightness>[
+      Brightness.dark, Brightness.light,
+    ]) {
+      final widgets.OverlayPortalController portal =
+          widgets.OverlayPortalController();
+      int selected = 0;
+      int clipped = 0;
+      await tester.pumpWidget(MaterialApp(
+        theme: ThemeData(
+          brightness: brightness, platform: TargetPlatform.windows,
+        ),
+        home: Scaffold(
+          body: Align(
+            alignment: Alignment.topLeft,
+            child: SizedBox(
+              width: 320, height: 80,
+              child: SingleChildScrollView(
+                child: Column(children: <Widget>[
+                  TextField(
+                    decoration: InputDecoration(
+                      labelText: 'Synthetic field',
+                      suffixIcon: widgets.OverlayPortal(
+                        controller: portal,
+                        overlayChildBuilder: (BuildContext context) =>
+                            Positioned(
+                          left: 16, top: 140, width: 240, height: 48,
+                          child: TextButton(
+                            key: const Key('portal_option'),
+                            onPressed: () {
+                              selected++;
+                              portal.hide();
+                            },
+                            child: const Text('Synthetic popup option'),
+                          ),
+                        ),
+                        child: IconButton(
+                          key: const Key('portal_open'),
+                          onPressed: portal.show,
+                          icon: const Icon(Icons.arrow_drop_down),
+                        ),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 200),
+                  TextButton(
+                    onPressed: () => clipped++,
+                    child: const Text('Clipped original control'),
+                  ),
+                ]),
+              ),
+            ),
+          ),
+        ),
+      ));
+      await tester.pump();
+      await _drive(tester, agent.commandForTest(<String, dynamic>{
+        'cmd': 'tap', 'key': 'portal_open', 'settleMs': 0,
+      }));
+      expect(portal.isShowing, isTrue);
+      expect(find.text('Synthetic popup option').hitTestable(), findsOneWidget);
+      expect(find.text('Clipped original control').hitTestable(), findsNothing);
+      await _drive(tester, agent.commandForTest(<String, dynamic>{
+        'cmd': 'tap', 'text': 'Synthetic popup option',
+        'exact': true, 'settleMs': 0,
+      }));
+      expect(selected, 1);
+      expect(portal.isShowing, isFalse);
+      await expectLater(agent.commandForTest(<String, dynamic>{
+        'cmd': 'tap', 'text': 'Clipped original control', 'exact': true,
+      }), throwsA(isA<HarnessError>()));
+      expect(clipped, 0);
+      expect(tester.takeException(), isNull);
+      await tester.pumpWidget(const SizedBox.shrink());
+      await tester.pump();
+    }
+  });
+
   testWidgets('a client edge tap clears another mouse tooltip without drag', (
     WidgetTester tester,
   ) async {

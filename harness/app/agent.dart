@@ -2785,6 +2785,21 @@ class HarnessAgent {
     }
     if (n.blocked) return;
 
+    // OverlayPortal paints its deferred child in the actual overlay owner.
+    // The caller's field decoration, button and scroll clip do not paint it.
+    if (type == '_DeferredLayout') {
+      final RenderObject? object = e.renderObject;
+      final RenderObject? owner = object?.parent;
+      if (object?.runtimeType.toString() == '_RenderDeferredLayoutBox' &&
+          owner is RenderBox && owner.attached && owner.hasSize &&
+          owner.runtimeType.toString() == '_RenderTheater') {
+        n = _Ctx(
+          clip: logicalClientRect(owner).intersect(Offset.zero & _viewSize()),
+          path: n.path,
+        );
+      }
+    }
+
     if (w is ErrorWidget) {
       final Rect? r = _rectOf(e);
       if (r != null) {
