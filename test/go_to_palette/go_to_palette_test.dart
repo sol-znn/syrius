@@ -162,6 +162,16 @@ void main() {
           ));
           await tester.pumpAndSettle();
           final AppTokens tokens = AppTokens.of(tester.element(_row('short')));
+          for (final String id in <String>['short', 'long']) {
+            final Icon icon = tester.widget<Icon>(find.descendant(
+              of: _row(id), matching: find.byType(Icon),
+            ));
+            expect(icon.color, tokens.foreground);
+            final RichText label = tester.widget<RichText>(_rowRichText(
+              id, id == 'short' ? 'Delegation' : 'Long destination ' * 24,
+            ));
+            expect(label.text.style?.color, tokens.foreground);
+          }
           for (final MapEntry<String, String> pair in <String, String>{
             'short': 'Ctrl 4', 'long': 'Ctrl D',
           }.entries) {

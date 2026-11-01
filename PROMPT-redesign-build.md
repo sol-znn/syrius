@@ -392,8 +392,8 @@ macOS; Windows provision and acceptance remain pending. See
 
 ### Now
 
-- Updated: 2026-11-01T03:46Z
-- Current work: Source276 original harness attempt 41269747877 completed with 776 Dart passes and one LAYOUT failure in the new Go To geometry test; selected analysis has zero findings. Source277 adds bounded diagnostic projection only; the inner cause remains NOT_ESTABLISHED. See [the preserved failure record](docs/review/source276-goto-layout-failure.md)
+- Updated: 2026-11-01T03:56Z
+- Current work: Source277 original diagnostic attempt 41270607722 completed with 776 passes, one failure and zero selected analysis findings. It records a dark RTL/2x bottom overflow of 449 pixels. Source278 adds a responsive footer and reference foreground ink while preserving the failed original observations. See [the diagnostic record](docs/review/source277-goto-layout-diagnostic.md)
 - Main ledger: 72 of 80 rows done, 90 percent by rows. P03, P09, F06, V01-V03 and V05-V06 remain open; original V04 viewing is complete on its recorded scope
 - Source275 evidence: harness 41266079174, native 41266634177 and reader 41267953384 qualify 752 Dart passes, 918 Python controls with three skips, zero selected findings, reader 95, 33 source files and 36 PNGs
 - Visual scope: eight actual Home images and eight references viewed; zero of 94 matches, nineteen preparations and 82 missing literal outputs. The hidden eye row and fiat omission fixes are observed. Remaining X411/X414 differences and new X417 are separate
@@ -1747,3 +1747,8 @@ The prepared Settings catalog is deferred until this correction is qualified.
 ### Source277 bounded Go To layout diagnostics
 
 Source276 remains a failed original attempt. Only fixed theme, direction and scale labels and bounded overflow geometry are added to the new synthetic test report. Product UI, all original inputs and assertions, 777/779 expected cases, time and byte caps are unchanged. No native execution is admitted before a successful focused gate. Fresh full and native qualification remain pending for the Source276 UI change.
+
+
+### Source278 responsive Go To footer and foreground ink
+
+The Source277 finite diagnostic identifies the outer palette Column overflowing in dark RTL/2x layout. Scaled or narrower footers now wrap movement/open controls above a full-width shortcut summary; the reference-width 1x row remains. Unselected labels and icons use the reference foreground token. Existing secondary ink, selection, seams, shortcuts, focus, animations and all old inputs and assertions remain. No text scale, deadline or byte limit is relaxed. Expected 777/779 focused and 4849/1 full counts remain pending; fresh full/native/reader and actual Home review are required. Source276 and Source277 retain separate original failures.

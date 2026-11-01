@@ -432,18 +432,52 @@ class _GoToPaletteState<T> extends State<GoToPalette<T>> {
 
   Widget _buildFooter(AppTokens tokens) => Padding(
     padding: tokens.goToFooterPadding,
-    child: Row(
-      children: <Widget>[
-        const _KeyHint('↑↓'),
-        SizedBox(width: tokens.inlineGap),
-        Text(context.l10n.goToPaletteMove, style: tokens.captionText),
-        SizedBox(width: tokens.goToFooterGap),
-        const _KeyHint('↵'),
-        SizedBox(width: tokens.inlineGap),
-        Text(context.l10n.goToPaletteOpen, style: tokens.captionText),
-        SizedBox(width: tokens.goToFooterGap),
-        Expanded(child: _ShortcutSummary(chordName: widget.chordName)),
-      ],
+    child: LayoutBuilder(
+      builder: (BuildContext context, BoxConstraints constraints) {
+        final List<Widget> move = <Widget>[
+          const _KeyHint('↑↓'),
+          SizedBox(width: tokens.inlineGap),
+          Text(context.l10n.goToPaletteMove, style: tokens.captionText),
+        ];
+        final List<Widget> open = <Widget>[
+          const _KeyHint('↵'),
+          SizedBox(width: tokens.inlineGap),
+          Text(context.l10n.goToPaletteOpen, style: tokens.captionText),
+        ];
+        final double fontSize = tokens.captionText.fontSize!;
+        final double scaledWidth =
+            (tokens.goToWidth - tokens.goToFooterPadding.horizontal) *
+            MediaQuery.textScalerOf(context).scale(fontSize) / fontSize;
+        // Keep the reference row when it fits. A scaled or narrower palette
+        // gives the full shortcut summary its own width instead of a sliver.
+        if (constraints.maxWidth < scaledWidth) {
+          return Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: <Widget>[
+              Wrap(
+                spacing: tokens.goToFooterGap,
+                runSpacing: tokens.inlineGap,
+                children: <Widget>[
+                  Row(mainAxisSize: MainAxisSize.min, children: move),
+                  Row(mainAxisSize: MainAxisSize.min, children: open),
+                ],
+              ),
+              SizedBox(height: tokens.inlineGap),
+              _ShortcutSummary(chordName: widget.chordName),
+            ],
+          );
+        }
+        return Row(
+          children: <Widget>[
+            ...move,
+            SizedBox(width: tokens.goToFooterGap),
+            ...open,
+            SizedBox(width: tokens.goToFooterGap),
+            Expanded(child: _ShortcutSummary(chordName: widget.chordName)),
+          ],
+        );
+      },
     ),
   );
 
@@ -583,7 +617,7 @@ class _PaletteRowState<T> extends State<_PaletteRow<T>>
 
   Widget _buildContents(AppTokens tokens) {
     final GoToEntry<T> entry = widget.entry;
-    final Color ink = widget.highlighted ? tokens.foreground : tokens.dim;
+    final Color ink = tokens.foreground;
     final GoToIconBuilder? iconBuilder = entry.iconBuilder;
     final String? identifier = entry.identifier;
     final bool address = entry.category == GoToCategory.addresses;

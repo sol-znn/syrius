@@ -9,3 +9,5 @@ Small versioned records extend the preserved original validation history.
 A prior successful run remains bound to its original source and scope.
 
 - [Source276 Go To layout failure](source276-goto-layout-failure.md): original 776-pass, one-failure result and the limited next diagnostic scope.
+
+- [Source277 Go To diagnostic](source277-goto-layout-diagnostic.md): fixed RTL/2x overflow observation and the pending responsive-footer/ink correction.
