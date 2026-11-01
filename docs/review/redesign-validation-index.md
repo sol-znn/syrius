@@ -66,3 +66,5 @@ A prior successful run remains bound to its original source and scope.
 - 2026-11-01 15:16 UTC: [Source300 original test failures](source300-original-test-failures.md) preserve 787 passes/three failures and clean selected analysis. [Source301 passive paint clips](source301-passive-paint-clips.md) retains the original negative and exact ordered maps, adds paint-clip/Clip.none counterexamples and requires fresh full/four-family qualification. Exact PR body 244 remains unchanged in its existing public archive.
 
 - 2026-11-01 19:08 UTC: [Source301 original analysis refusal](source301-original-analysis-failure.md) preserves one info and zero executed Flutter cases. [Source302 condition braces](source302-passive-clip-braces.md) retains every guard and counterexample. [Exact PR body 245](pr-body-245.md) preserves preceding submitted text and URLs.
+
+- 2026-11-01 19:43 UTC: [Source302 original widget failures](source302-original-widget-failures.md) preserves both failures without inferred causes. [Source303 widget scroll correspondence](source303-widget-scroll-correspondence.md) retains runtime guards and all original assertions.

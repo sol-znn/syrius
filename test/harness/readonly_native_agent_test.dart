@@ -138,6 +138,29 @@ Future<T> _driveCatalogCommand<T>(
   return result as T;
 }
 
+
+// Follow the original catalog reveal: observe first, then a physical wheel
+// step, with the same 20-iteration bound and 250-pixel step.
+Future<void> _revealCatalogKey(
+  WidgetTester tester,
+  HarnessAgent agent,
+  String key,
+) async {
+  for (int attempt = 0; attempt <= 20; attempt++) {
+    try {
+      await agent.commandForTest(<String, dynamic>{
+        'cmd': 'wait', 'key': key, 'timeoutMs': 0,
+      });
+      return;
+    } on HarnessError {
+      await _driveCatalogCommand(tester, agent.commandForTest(
+        <String, dynamic>{'cmd': 'scroll', 'dy': 250},
+      ));
+    }
+  }
+  throw StateError('The original catalog reveal bound was exhausted');
+}
+
 void main() {
   testWidgets('readonly observes the actual disabled Sporks card', (
     WidgetTester tester,
@@ -187,18 +210,18 @@ void main() {
         ));
         await tester.pump();
       }
-      final ScrollPosition position = tester.state<ScrollableState>(
+      ScrollPosition position() => tester.state<ScrollableState>(
         find.descendant(
           of: find.byKey(const Key('node_settings_page')),
           matching: find.byType(Scrollable),
         ).first,
       ).position;
-      if (light) expect(position.pixels, greaterThan(0));
+      if (light) expect(position().pixels, greaterThan(0));
       final List<String> callsBefore = List<String>.of(source.calls);
       await _driveCatalogCommand(tester, agent.commandForTest(
         <String, dynamic>{'cmd': 'scroll', 'dy': -1000000},
       ));
-      expect(position.pixels, 0);
+      expect(position().pixels, 0);
       final Map<String, Object?> addReady =
           await agent.commandForTest(<String, dynamic>{
         'cmd': 'assert', 'key': 'node_settings_add',
@@ -212,7 +235,7 @@ void main() {
           'cmd': 'scroll', 'key': 'node_settings_peers_toggle', 'dy': 300,
         },
       ));
-      expect(position.pixels, greaterThan(0));
+      expect(position().pixels, greaterThan(0));
       expect(tester.widget<SeamGate>(gate).seam, Seam.sporks);
       for (final String command in <String>['assert', 'wait']) {
         final Map<String, Object?> result =
@@ -312,6 +335,7 @@ void main() {
         await _driveCatalogCommand(tester, agent.commandForTest(
           <String, dynamic>{'cmd': 'scroll', 'dy': 1000000},
         ));
+        await _revealCatalogKey(tester, agent, 'about_licences_end');
         final Map<String, Object?> endReady =
             await agent.commandForTest(<String, dynamic>{
           'cmd': 'wait', 'key': 'about_licences_end', 'timeoutMs': 0,
