@@ -3815,10 +3815,12 @@ class HarnessAgent {
       return <_Node>[];
     }
     final Rect? rect = _rectOf(matches.single);
+    final RenderObject? region = matches.single.renderObject;
     if (rect == null || rect.width <= 0 || rect.height <= 0 ||
         <double>[rect.left, rect.top, rect.right, rect.bottom].any(
           (double value) => !value.isFinite || value.abs() > 32768,
-        ) || rect.intersect(Offset.zero & _viewSize()) != rect) {
+        ) || rect.intersect(Offset.zero & _viewSize()) != rect ||
+        region == null || !_readonlyRegionInsidePaintClips(region, rect)) {
       return <_Node>[];
     }
     // No durable control ref is cached or added to the original snapshot.
@@ -3826,6 +3828,29 @@ class HarnessAgent {
       _Node('region', matches.single.widget.runtimeType.toString(),
           matches.single, rect, const <String>[])..key = key,
     ];
+  }
+
+  bool _readonlyRegionInsidePaintClips(RenderObject region, Rect rect) {
+    RenderObject child = region;
+    try {
+      for (RenderObject? parent = child.parent;
+          parent != null; parent = child.parent) {
+        if (!child.attached || !parent.attached) return false;
+        final Rect? localClip = parent.describeApproximatePaintClip(child);
+        if (localClip != null) {
+          final Rect clip = MatrixUtils.transformRect(
+            parent.getTransformTo(null), localClip,
+          );
+          if (<double>[clip.left, clip.top, clip.right, clip.bottom].any(
+            (double value) => !value.isFinite,
+          ) || clip.intersect(rect) != rect) return false;
+        }
+        child = parent;
+      }
+    } on Object catch (_) {
+      return false;
+    }
+    return true;
   }
 
   Future<Map<String, Object?>> _wait(Map<String, dynamic> c) async {

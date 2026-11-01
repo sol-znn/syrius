@@ -513,6 +513,17 @@ void main() {
         child: Text('Synthetic child', key: Key('synthetic_child')),
       ),
     );
+    Widget overflowRegion(String key, Clip behavior) => SizedBox(
+      width: 100, height: 40,
+      child: ClipRect(
+        clipBehavior: behavior,
+        child: OverflowBox(
+          alignment: Alignment.topLeft,
+          minWidth: 200, maxWidth: 200, minHeight: 80, maxHeight: 80,
+          child: region(key),
+        ),
+      ),
+    );
     Future<void> show(Widget content) => tester.pumpWidget(Directionality(
       textDirection: TextDirection.ltr,
       child: Align(alignment: Alignment.topLeft, child: content),
@@ -556,8 +567,22 @@ void main() {
           tree['nodes']! as List<Map<String, Object?>>;
       expect(nodes.where((Map<String, Object?> node) =>
           node['kind'] == 'region'), isEmpty);
+      await show(overflowRegion(key, Clip.none));
+      for (final String command in <String>['assert', 'wait']) {
+        final Map<String, Object?> result =
+            await scope.agent.commandForTest(<String, dynamic>{
+          'cmd': command, 'key': key,
+          if (command == 'wait') 'ready': true,
+          if (command == 'wait') 'timeoutMs': 0,
+        });
+        final Map<String, Object?> target =
+            result['target']! as Map<String, Object?>;
+        expect(target['key'], key);
+        expect(target['kind'], 'region');
+        expect(target['ref'], 0);
+      }
       for (final String fault in <String>[
-        'duplicate', 'offstage', 'hidden', 'zero', 'covered',
+        'duplicate', 'offstage', 'hidden', 'zero', 'covered', 'clipped',
       ]) {
         final Widget content = switch (fault) {
           'duplicate' => Column(mainAxisSize: MainAxisSize.min,
@@ -567,6 +592,7 @@ void main() {
           'offstage' => Offstage(child: region(key)),
           'hidden' => Visibility(visible: false, maintainSize: true,
             maintainAnimation: true, maintainState: true, child: region(key)),
+          'clipped' => overflowRegion(key, Clip.hardEdge),
           'covered' => Stack(children: <Widget>[
             region(key),
             const Positioned.fill(

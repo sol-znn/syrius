@@ -1226,7 +1226,7 @@ void main() {
         'shot' || 'return' || 'png' => 2,
         _ => throw StateError('Unexpected bound capture fault'),
       }));
-      expect(scrolls, orderedEquals(<Map<String, Object?>>[
+      expect(scrolls, equals(<Map<String, Object?>>[
         for (int pair = 0; pair < scrolls.length ~/ 2; pair++)
           ...<Map<String, Object?>>[
             <String, Object?>{'cmd': 'scroll', 'dy': -1000000},
@@ -1758,7 +1758,7 @@ void main() {
       final List<Map<String, Object?>> scrolls = commands.where(
         (Map<String, Object?> value) => value['cmd'] == 'scroll',
       ).toList();
-      expect(scrolls, orderedEquals(<Map<String, Object?>>[
+      expect(scrolls, equals(<Map<String, Object?>>[
         if (fault == 'none')
           for (int pair = 0; pair < 4; pair++)
             ...<Map<String, Object?>>[
