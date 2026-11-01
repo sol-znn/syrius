@@ -474,8 +474,9 @@ void main() {
               return negative;
             }
           }
-          if (name == 'tap' && command['tab'] is String) {
-            currentTab = command['tab'] as String;
+          final Object? requestedTab = command['tab'];
+          if (name == 'tap' && requestedTab is String) {
+            currentTab = requestedTab;
             if (currentTab == 'transfer') {
               tokensOpen = false;
             }

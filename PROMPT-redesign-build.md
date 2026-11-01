@@ -392,13 +392,13 @@ macOS; Windows provision and acceptance remain pending. See
 
 ### Now
 
-- Updated: 2026-11-01T00:58Z
-- Current work: Source270 has three terminal successful runs with 749 ordinary Dart passes and independently verified 32 PNGs/31 producer files. Source271 prepares the original expanded Home state, positive-shot-only Tokens restoration and strict six-file schema three; a fresh 750-case harness-only gate is required
+- Updated: 2026-11-01T01:06Z
+- Current work: Source271 passes 918 Python controls/three original skips and fourteen asset phases, then its strict gate refuses one CAST_NULLABLE_TO_NON_NULLABLE info. Dart/native are unexecuted and zero artifacts exist. Source272 binds and promotes only the synthetic tab value; a fresh 750-case harness-only gate is required
 - Main ledger: 72 of 80 main rows are done, or 90 percent by rows. P03, P09, F06, V01-V03 and V05-V06 remain open; original V04 viewing is complete and Arabic fallback stays X414
 - Current focused and native evidence: Source270 passes 918 Python controls/three original skips, fourteen asset phases, zero selected findings and 749 Dart cases/zero skips. Native 41257907083 and independent reader 41258919158 verify normal required closure and all 32 PNGs. Source268 full producer 41253919663/inspector 41255744645 retain 4842 passes/one skip, Debug/Release and twelve checks on that prior exact application UI source
 - Visual scope: Source270 four-Home archive is independently verified at 660819 bytes; local transport and actual viewing remain pending. Closed Source268 Home and Source265 V04 reviews retain their original scope. Notifications is visible on Source268; scope/content/hero differences stay X411. Zero of 94 matches, nineteen preparations and 86 missing literal catalog outputs remain
-- Original failures: Source269 five-info analysis refusal, Source267 home_catalog, Source266 transport/Windows skip, Source264 covered-target, Source263/262 native failures and all earlier FAILURE/HOLD/UNKNOWNs stay source-bound. Source267/263 original native inner causes remain NOT_ESTABLISHED. The private Source271 three-failure fixture run remains retained separately from later passing controls
-- Publication and limits: Published identities use edgepillar, GitHub no-reply and UTC; the PR stays Draft. Source271 expects 750/752 Dart and unchanged 918/453/95 Python/memory/reader counts, 32 producer pins and strict source/closure/input/SDK bounds. Native101 send and Native103 Token effect stay UNKNOWN; Native104 is not admitted
+- Original failures: Source271 original one-info analysis refusal and skipped Dart stage remain. Source269 five-info refusal, Source267 home_catalog, Source266 transport/Windows skip, Source264 covered-target, Source263/262 native failures and all earlier FAILURE/HOLD/UNKNOWNs stay source-bound; Source267/263 inner causes remain NOT_ESTABLISHED
+- Publication and limits: Published identities use edgepillar, GitHub no-reply and UTC; the PR stays Draft. Source272 retains 750/752 Dart, 918/453/95 Python/memory/reader, 32 producer pins and all input/SDK/source/closure bounds. Native101 send and Native103 Token effect stay UNKNOWN; Native104 is not admitted
 
 ### Rows
 
@@ -483,7 +483,7 @@ macOS; Windows provision and acceptance remain pending. See
 | V03 | blocked | 2026-10-23T12:26Z | Seam registry and injected control checks are prepared; trying every control, shortcut and Go to entry in a running native wallet remains pending |
 | V04 | done | 2026-10-31T23:34Z | All four independently qualified Source265 minimum-window/Arabic originals were actually viewed in both themes. The owned review closes SUCCESS with actual controller exit zero; required original native closure stays source-bound. Minimum controls fit and RTL layout mirrors. English fallback/missing Arabic copy is retained as X414; exact saved locale preference and Arabic glyph quality remain separate unqualified observations |
 | V05 | blocked | 2026-10-28T12:48Z | The four source133 images and their exact references are now opened, with corrected Import family/counter placement and residual selector, Welcome frame/drop and draft-decoration differences. Font hinting and the selected brand colors remain allowed exceptions. No input buffer receives a decorative continuation mark. Complete independent review of all 94 pairs and the browser-rendered compare page remains pending; zero matches are accepted |
-| V06 | review | 2026-11-01T00:58Z | Main progress stays 72/80 with three terminal positive Source270 runs, 749 ordinary Dart passes and independently verified 32 PNGs/31 producer files. Source268 retains its 4842-pass/one-skip broad baseline. Source271 expanded Home capture expects 750/752 Dart with new hosted evidence pending. Zero matches, nineteen preparations, 86 missing outputs and all original gates remain |
+| V06 | review | 2026-11-01T01:06Z | Main progress remains 72/80 with Source270 positive native/reader evidence and prior Source268 full baseline. Source271 has one original strict-analysis cast info, skipped Dart/native and zero artifacts. Source272 only promotes the fake actor tab value and awaits fresh 750-case admission. Zero of 94 matches, nineteen preparations, 86 missing outputs and all original gates remain |
 | X01 | done | 2026-10-21T23:26Z | e13abb387577 restores loading-list sweep ink in lib/rearchitecture/utils/widgets/motion/skeleton.dart; all 19 existing Skeleton tests pass unchanged |
 | X02 | done | 2026-10-21T23:57Z | e13abb387577 keeps the status-strip dot visible at narrow widths and fixes asynchronous visibility tests |
 | X03 | done | 2026-10-21T23:57Z | e13abb387577 parses the bridge test's HTTP head before binary frames; compression refusal assertions retained |
@@ -1536,3 +1536,41 @@ Source269 five-info refusal, Source267/266/264/263/262 failures and all earlier
 FAILURE/HOLD/UNKNOWNs stay source-bound. Source267/263 original inner causes
 remain NOT_ESTABLISHED. Native101 send and Native103 Token confirmation/effect
 stay UNKNOWN; Native104 is not admitted. The PR remains Draft.
+
+## Source272: promote the synthetic Home tab value
+
+2026-11-01T01:06Z: Original Source271 f3405b801f16
+[harness run 41259332493](https://github.com/edgepillar/syrius/actions/runs/41259332493)
+passes 918 Python controls/three original skips and fourteen asset phases. Its
+strict selected analysis gate then refuses one CAST_NULLABLE_TO_NON_NULLABLE
+info at the new fake actor's tab cast. The analyzer exits zero with complete
+178-byte output and SHA-256
+47ccce5501ec43efde920b889d3ac861a82fde262cdd4ac8aa92984b917bcbff.
+Dart and native stages remain unexecuted, no lab is selected and zero artifacts
+exist. The original failure remains retained and its run is not retried.
+
+Source272 reads that synthetic command tab once as Object?, checks it is String
+and uses the promoted value. This removes the nullable cast without changing the
+actor's tab transitions, input maps, assertions, case registrations or counts.
+Production capture/reader/SDK code, all three strict Home schemas, positive-shot
+Tokens restoration, original financial/profile/password/send/seed/reopen inputs,
+workflow, dependencies and global bounds are unchanged. Expectations remain
+750/752 ordinary/fidelity Dart and 918/453/95 Python/memory/reader, with 32
+unchanged producer pins. Applied memory controls and a fresh harness-only gate
+are required before new native admission. The six-Home path remains unqualified.
+
+Latest positive native evidence stays bound to Source270: all three runs finish
+successfully with 749 ordinary passes, 918 Python/three skips, fourteen asset
+phases, zero selected findings and independently verified 32 PNGs/31 producer
+files. Required app/entry/five-node closure is normal, complete, unforced and
+zero; auxiliary telemetry cleanup is separate. Its 660819-byte four-Home archive
+is verified; local transport and actual viewing remain pending. Prior Source268
+closed two-Home review and 4842-pass/one-skip broad baseline retain original
+scope. Original Source265 V04 viewing stays complete and Arabic fallback stays
+X414. Product UI is unchanged; no new full-suite qualification is inferred.
+
+Main progress stays 72/80 by rows, zero of 94 matches, nineteen preparations and
+86 missing literal outputs. All original Source271/269/267/266/264/263/262 and
+earlier FAILURE/HOLD/UNKNOWNs remain source-bound. Source267/263 original inner
+causes stay NOT_ESTABLISHED. Native101 send and Native103 Token
+confirmation/effect remain UNKNOWN; Native104 is not admitted. The PR is Draft.

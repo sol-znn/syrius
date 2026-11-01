@@ -1,37 +1,30 @@
 # Redesign build environment
 
-## Current qualification status (2026-11-01T00:58Z)
+## Current qualification status (2026-11-01T01:06Z)
 
-Source270 has three terminal successful hosted runs. Both ordinary engine
-selections pass 749 cases with zero failures/errors/skips and selected
-findings. All 918 Python controls/three original skips and fourteen asset
-phases pass. Native 41257907083 and independent reader 41258919158 verify
-31 producer files, the immutable workflow and 32 original PNGs: 24 generic,
-four literal Home rest/hidden and four V04. Required app/entry/five-node
-closure is normal, complete, unforced and zero; telemetry remains separate.
+Original Source271 run 41259332493 passes 918 Python controls/three skips
+and fourteen asset phases, then the strict analysis gate refuses one
+CAST_NULLABLE_TO_NON_NULLABLE info in the new fake Home actor. Analyzer
+output is complete and zero-exit; Dart/native remain skipped and there are
+zero artifacts. This failure is retained without retrying its run.
 
-The four-Home archive is independently verified at 660819 bytes. Its local
-transport and actual viewing remain pending. Closed Source268 Home and
-Source265 V04 reviews retain their original scope and zero matches. The
-Arabic resource remains a locale declaration; English fallback stays X414.
+Source272 binds the synthetic tab value once and uses type promotion.
+Production code, all three Home schemas, six-file capture, original inputs,
+SDK authority, dependencies, workflow, bounds and counts stay unchanged.
+A fresh 750-case harness-only gate is required; fidelity remains 752 and
+Python/memory/reader remain 918/453/95 with 32 unchanged producer pins.
 
-The broad baseline stays bound to Source268: 4842 passes/one skip, twelve
-checks and Debug/Release, zero root errors/warnings with 1296 infos and
-clean vendored analysis. Exact application UI evidence is retained; no
-current full-suite qualification is inferred for the new controller.
+Latest positive native evidence remains Source270: three successful runs,
+749 ordinary Dart passes, zero selected findings, independent reader 95,
+32 PNGs/31 producer files and normal required closure. Its four-Home archive
+is verified at 660819 bytes; local transport/viewing remain pending.
+Source268 retains its closed two-Home review and 4842-pass/one-skip broad
+baseline. Original V04 viewing is complete; Arabic fallback stays X414.
 
-Source271 prepares the separate original Home-open capture and durable
-positive-shot-only Tokens close/wait. Schema three binds six files and
-three scripts, while legacy schemas stay strict. One new bound Dart case
-raises expected ordinary/fidelity counts to 750/752; Python/memory/reader
-stay 918/453/95 and producer pins become 32. Fresh harness-only admission
-comes first. Product UI, assets, dependencies, SDK authority, original
-financial/profile/password/send/seed/reopen inputs and bounds are retained.
-
-Main progress remains 72/80 by rows, zero of 94 matches, nineteen
-preparations and 86 missing outputs. All original failures/HOLD/UNKNOWNs
-stay source-bound. Native101 send and Native103 Token effect stay UNKNOWN;
-Native104 is not admitted. The PR remains Draft.
+Main progress stays 72/80 by rows, zero of 94 matches, nineteen preparations
+and 86 missing outputs. All original failures/HOLD/UNKNOWNs are preserved.
+Native101 send and Native103 Token effect remain UNKNOWN; Native104 is not
+admitted. The PR remains Draft.
 
 
 ## Qualified PNG capture and Welcome border inset follow-up (2026-10-30T19:37Z)
@@ -10609,3 +10602,41 @@ Source269 five-info refusal, Source267/266/264/263/262 failures and all earlier
 FAILURE/HOLD/UNKNOWNs stay source-bound. Source267/263 original inner causes
 remain NOT_ESTABLISHED. Native101 send and Native103 Token confirmation/effect
 stay UNKNOWN; Native104 is not admitted. The PR remains Draft.
+
+## Source272: promote the synthetic Home tab value
+
+2026-11-01T01:06Z: Original Source271 f3405b801f16
+[harness run 41259332493](https://github.com/edgepillar/syrius/actions/runs/41259332493)
+passes 918 Python controls/three original skips and fourteen asset phases. Its
+strict selected analysis gate then refuses one CAST_NULLABLE_TO_NON_NULLABLE
+info at the new fake actor's tab cast. The analyzer exits zero with complete
+178-byte output and SHA-256
+47ccce5501ec43efde920b889d3ac861a82fde262cdd4ac8aa92984b917bcbff.
+Dart and native stages remain unexecuted, no lab is selected and zero artifacts
+exist. The original failure remains retained and its run is not retried.
+
+Source272 reads that synthetic command tab once as Object?, checks it is String
+and uses the promoted value. This removes the nullable cast without changing the
+actor's tab transitions, input maps, assertions, case registrations or counts.
+Production capture/reader/SDK code, all three strict Home schemas, positive-shot
+Tokens restoration, original financial/profile/password/send/seed/reopen inputs,
+workflow, dependencies and global bounds are unchanged. Expectations remain
+750/752 ordinary/fidelity Dart and 918/453/95 Python/memory/reader, with 32
+unchanged producer pins. Applied memory controls and a fresh harness-only gate
+are required before new native admission. The six-Home path remains unqualified.
+
+Latest positive native evidence stays bound to Source270: all three runs finish
+successfully with 749 ordinary passes, 918 Python/three skips, fourteen asset
+phases, zero selected findings and independently verified 32 PNGs/31 producer
+files. Required app/entry/five-node closure is normal, complete, unforced and
+zero; auxiliary telemetry cleanup is separate. Its 660819-byte four-Home archive
+is verified; local transport and actual viewing remain pending. Prior Source268
+closed two-Home review and 4842-pass/one-skip broad baseline retain original
+scope. Original Source265 V04 viewing stays complete and Arabic fallback stays
+X414. Product UI is unchanged; no new full-suite qualification is inferred.
+
+Main progress stays 72/80 by rows, zero of 94 matches, nineteen preparations and
+86 missing literal outputs. All original Source271/269/267/266/264/263/262 and
+earlier FAILURE/HOLD/UNKNOWNs remain source-bound. Source267/263 original inner
+causes stay NOT_ESTABLISHED. Native101 send and Native103 Token
+confirmation/effect remain UNKNOWN; Native104 is not admitted. The PR is Draft.
