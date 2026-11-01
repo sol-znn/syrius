@@ -15,3 +15,7 @@ All 459 selected memory controls were qualified before this formatting change. F
 Source278's full 4849-pass/one-skip application baseline and actual eight-Home review keep their earlier source scopes. Main progress stays 72/80 rows, zero of 94 accepted matches, nineteen preparations and 82 missing literal outputs. V04 retains its recorded scope; X411 and Arabic fallback X414 remain.
 
 All earlier FAILURE/HOLD/UNKNOWN records and original validation history remain. Native101 Send and Native103 Token confirmation/effect stay UNKNOWN; Native104 is not admitted. No original financial, profile, password, seed or reopen operation is replayed. Public metadata uses edgepillar, GitHub no-reply and UTC, and the PR stays Draft.
+
+## Dated qualification clarification
+
+2026-11-01T07:32Z: Source285's focused run passes all 780 Dart cases with zero selected analysis findings, as recorded in [the Source285 report](source285-navigation-capture-failure.md). X422 is closed only on that narrow scope. The earlier phrase "executable bytes" describes unchanged Dart operations after reversing the documentation comment; independently compiled binaries were not measured byte-identical. The original Source284 failed run and skipped Dart stage remain unchanged.

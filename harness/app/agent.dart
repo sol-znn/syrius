@@ -3701,7 +3701,23 @@ class HarnessAgent {
   List<_Node>? _readonlyPositiveKeyNodes(Map<String, dynamic> command) {
     final Object? key = command['key'];
     if (_readonlyNative == null || key is! String ||
-        !const <String>{'home_hero', 'home_znn', 'rail_label_dashboard'}
+        !const <String>{
+          'home_hero', 'home_znn', 'rail_label_dashboard',
+          'send_form_ready',
+          'receive_form_ready',
+          'receive_screen_marker',
+          'nodes_pillars_strip',
+          'pillar_dev1_detail',
+          'plasma_strip',
+          'plasma_fused_list',
+          'plasma_screen',
+          'tokens_strip',
+          'tokens_list',
+          'p2p_swaps_strip',
+          'p2p_swaps_list',
+          'accelerator_strip',
+          'accelerator_list',
+        }
             .contains(key)) {
       return null;
     }

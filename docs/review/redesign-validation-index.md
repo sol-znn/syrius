@@ -31,3 +31,5 @@ A prior successful run remains bound to its original source and scope.
 - [Frozen PR body225](pr-body-225.md): exact 4403 bytes, SHA-256 b092698c116f54a58923c07690a828290b38d22266e54febc977157f3e1d9093; all seven inline URLs retained.
 
 - [Source284 original Navigation analysis refusal](source284-navigation-analysis-failure.md): 924 Python controls with three original skips, one finite line-length info, skipped Dart execution, no native admission or artifacts, and a one-comment formatting correction pending fresh hosted analysis.
+
+- [Source285 original Navigation capture failure](source285-navigation-capture-failure.md): 780 passing Dart cases and zero selected analysis findings, then dark/send-rest line six, zero admitted PNGs, failed required-wallet closure, a 101-case independent reader and a fixed passive-key observation candidate. [Exact prior PR body 226](pr-body-226.md) retains all eight submitted URLs.

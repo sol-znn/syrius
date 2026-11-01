@@ -226,6 +226,107 @@ void main() {
     expect(OriginalPublications.snapshot(scope.sdk), isEmpty);
   });
 
+
+  testWidgets('readonly navigation regions preserve passive ancestor keys', (
+    WidgetTester tester,
+  ) async {
+    final _Scope scope = _Scope();
+    await scope.open();
+    final HarnessAgent ordinary = HarnessAgent.forTest()..booted = true;
+    const List<String> keys = <String>[
+      'send_form_ready', 'receive_form_ready', 'receive_screen_marker',
+      'nodes_pillars_strip', 'pillar_dev1_detail', 'plasma_strip',
+      'plasma_fused_list', 'plasma_screen', 'tokens_strip', 'tokens_list',
+      'p2p_swaps_strip', 'p2p_swaps_list',
+      'accelerator_strip', 'accelerator_list',
+    ];
+    Widget region(String key) => SizedBox(
+      key: Key(key), width: 200, height: 80,
+      child: const ColoredBox(
+        color: Color(0xff222222),
+        child: Text('Synthetic child', key: Key('synthetic_child')),
+      ),
+    );
+    Future<void> show(Widget content) => tester.pumpWidget(Directionality(
+      textDirection: TextDirection.ltr,
+      child: Align(alignment: Alignment.topLeft, child: content),
+    ));
+    Future<void> refused(Map<String, dynamic> command) =>
+        expectLater(scope.agent.commandForTest(command),
+          throwsA(isA<HarnessError>()));
+    for (final String key in keys) {
+      await show(region(key));
+      await expectLater(ordinary.commandForTest(<String, dynamic>{
+        'cmd': 'assert', 'key': key,
+      }), throwsA(isA<HarnessError>()));
+      for (final String command in <String>['assert', 'wait']) {
+        final Map<String, Object?> result =
+            await scope.agent.commandForTest(<String, dynamic>{
+          'cmd': command, 'key': key,
+          if (command == 'wait') 'ready': true,
+          if (command == 'wait') 'timeoutMs': 0,
+        });
+        final Map<String, Object?> target =
+            result['target']! as Map<String, Object?>;
+        final Rect rect = tester.getRect(find.byKey(Key(key)));
+        expect(target['key'], key);
+        expect(target['kind'], 'region');
+        expect(target['ref'], 0);
+        expect(target['rect'], <int>[
+          rect.left.round(), rect.top.round(),
+          rect.width.round(), rect.height.round(),
+        ]);
+      }
+      for (final Map<String, dynamic> command in <Map<String, dynamic>>[
+        <String, dynamic>{'cmd': 'tap', 'key': key},
+        <String, dynamic>{'cmd': 'assert', 'key': key, 'nth': 1},
+        <String, dynamic>{'cmd': 'wait', 'key': key, 'gone': true},
+      ]) {
+        await refused(command);
+      }
+      final Map<String, Object?> tree =
+          await scope.agent.commandForTest(<String, dynamic>{'cmd': 'tree'});
+      final List<Map<String, Object?>> nodes =
+          tree['nodes']! as List<Map<String, Object?>>;
+      expect(nodes.where((Map<String, Object?> node) =>
+          node['kind'] == 'region'), isEmpty);
+      for (final String fault in <String>[
+        'duplicate', 'offstage', 'hidden', 'zero', 'covered',
+      ]) {
+        final Widget content = switch (fault) {
+          'duplicate' => Column(mainAxisSize: MainAxisSize.min,
+            children: <Widget>[
+              SizedBox(child: region(key)), SizedBox(child: region(key)),
+            ]),
+          'offstage' => Offstage(child: region(key)),
+          'hidden' => Visibility(visible: false, maintainSize: true,
+            maintainAnimation: true, maintainState: true, child: region(key)),
+          'covered' => Stack(children: <Widget>[
+            region(key),
+            const Positioned.fill(
+              child: ColoredBox(color: Color(0xff444444))),
+          ]),
+          _ => SizedBox.shrink(child: region(key)),
+        };
+        await show(content);
+        await refused(<String, dynamic>{'cmd': 'assert', 'key': key});
+        await refused(<String, dynamic>{'cmd': 'wait', 'key': key,
+          'timeoutMs': 0, 'ready': true});
+        expect(tester.takeException(), isNull);
+      }
+    }
+    for (final String key in <String>[
+      'unapproved_passive_region', 'send_amount_field', 'plasma_open_fuse',
+    ]) {
+      await show(region(key));
+      await refused(<String, dynamic>{'cmd': 'assert', 'key': key});
+      await refused(<String, dynamic>{'cmd': 'wait', 'key': key,
+        'timeoutMs': 0, 'ready': true});
+    }
+    expect((await scope.ping())['booted'], isTrue);
+    expect(OriginalPublications.snapshot(scope.sdk), isEmpty);
+  });
+
   test('inspection entry refuses foreign nodes and chains before UI access',
       () async {
     final _Scope scope = _Scope();
