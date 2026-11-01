@@ -43,7 +43,7 @@ SOURCE_FILES = (
     'harness/app/readonly_wallet_binding.dart', 'harness/app/native_window_owner.dart',
     'harness/app/logical_capture.dart', 'harness/app/readonly_shot_layout.dart',
     'harness/bin/readonly_home_catalog.dart', 'harness/bin/screen_capture.dart',
-    'harness/screens/home-rest.txt', 'harness/screens/home-hidden.txt',
+    'harness/screens/home-rest.txt', 'harness/screens/home-hidden.txt', 'harness/screens/home-open.txt',
     '.github/workflows/public-contribution-qualification.yml',
     'pubspec.yaml', 'pubspec.lock',
 )
@@ -250,7 +250,11 @@ def home_script_source_pins(source_digests, schema):
     first = source_digests['harness/screens/home-rest.txt']
     if schema == 1:
         return first
+    if schema == 2:
+        return {'home-rest': first,
+            'home-hidden': source_digests['harness/screens/home-hidden.txt']}
     return {'home-rest': first,
+        'home-open': source_digests['harness/screens/home-open.txt'],
         'home-hidden': source_digests['harness/screens/home-hidden.txt']}
 
 
@@ -263,7 +267,7 @@ def unpack_home_catalog(raw, expected_sha, expected_size, head, tree, run_id,
     script_field = producer._home_script_field(schema)
     pins = {'home-rest': script_sha} if schema == 1 else script_sha
     need(type(pins) is dict and set(pins) == set(
-        ('home-rest',) if schema == 1 else producer.HOME_STATE_SCREENS)
+        producer.home_catalog_screens(schema))
         and all(digest(pin) for pin in pins.values()))
     need(type(raw) is bytes and type(expected_size) is int and digest(expected_sha)
          and 0 < len(raw) == expected_size <= MAX_HOME_ARCHIVE and archive.sha(raw) == expected_sha)
@@ -309,7 +313,7 @@ def unpack_home_catalog(raw, expected_sha, expected_size, head, tree, run_id,
         wallet_qualified=False, seed_admitted=False, financial_send_qualified=False,
         visual_matches=0)
     result.update(dict(screen='home-rest', number=1) if schema == 1
-                  else dict(screens=list(producer.HOME_STATE_SCREENS)))
+                  else dict(screens=list(producer.home_catalog_screens(schema))))
     result[script_field] = script_sha
     return result
 

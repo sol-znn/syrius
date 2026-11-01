@@ -765,3 +765,105 @@ Source270 changes only those three path expressions in two existing Dart test fi
 Latest positive evidence remains Source268 with five terminal successful hosted runs, 746 focused passes, a 4842-pass/one-skip non-chain baseline, clean selected analysis, all twelve baseline checks and normal complete unforced required-wallet/five-node closure. Its independent reader qualifies thirty PNGs and all thirty sources. Both actual Home originals and references are viewed in a closed SUCCESS review/controller zero, with Notifications painted in both themes. Scope/content/hero differences remain X411. Its 339318-byte original archive is retained. These results do not qualify Source270 runtime or hidden-state pixels.
 
 Main progress remains 72/80 by rows, zero accepted matches out of 94, nineteen preparations and 88 missing catalog outputs. Original V04 viewing stays complete on Source265; the locale-only Arabic resource and unqualified full localization/glyph quality remain X414. Source267/263 original native inner causes remain NOT_ESTABLISHED. All original failures/HOLD/UNKNOWNs remain source-bound. Native101 send and Native103 Token confirmation/effect remain UNKNOWN; Native104 is not admitted. The PR remains Draft.
+
+
+## Frozen Draft PR body revision 210
+
+Implements the desktop wallet redesign and capture/seam harness for 47 screen IDs in both themes. Brand colors follow RULES.md: #00D557 and #0061EB. This PR remains Draft.
+
+- Current [Source270](https://github.com/edgepillar/syrius/commit/33fa9485d6de958e017916e4767a8c7eaad72517) replaces three test path compositions with equivalent Dart interpolation. Values, assertions, counts, runtime code, SDK authority, lint rules and global bounds stay unchanged. All 453 applied memory controls pass; expected counts remain 749/751 ordinary/fidelity Dart and 918/453/95 Python/memory/reader. [Harness-only Windows 41257114219](https://github.com/edgepillar/syrius/actions/runs/41257114219) is dispatched and pending. The original Home rest/hidden wiring retains strict four-file/two-script schema-two binding, separate legacy schema one, 31 producer pins, positive-shot restoration and failed-command hold. New native/hidden-state evidence follows only after the selected gate passes.
+
+- Original [Source269](https://github.com/edgepillar/syrius/commit/aa343d30ecdf30b4d0e58fdd4282b881fe3494f6) / [analysis refusal 41256403443](https://github.com/edgepillar/syrius/actions/runs/41256403443) stays FAILURE: 918 Python controls/three original skips and fourteen asset phases pass, then the strict gate refuses five PREFER_INTERPOLATION_TO_COMPOSE_STRINGS infos. The analyzer exits zero with complete 912-byte output. Flutter/native stages are unexecuted and zero artifacts exist. The original run is not retried.
+
+- Prior [Source268](https://github.com/edgepillar/syrius/commit/2a2f04584dbc2ab1b2403b64ba4fc6a9efb5f812) has five successful terminal runs: [harness 41253439482](https://github.com/edgepillar/syrius/actions/runs/41253439482), [native 41253886913](https://github.com/edgepillar/syrius/actions/runs/41253886913), [native reader 41255095090](https://github.com/edgepillar/syrius/actions/runs/41255095090), [full Windows 41253919663](https://github.com/edgepillar/syrius/actions/runs/41253919663) and [baseline inspector 41255744645](https://github.com/edgepillar/syrius/actions/runs/41255744645). Focused lanes: 746 passes, zero failures/errors/skips/findings. Native/reader qualify 24 generic, two literal Home and four V04 PNGs, all thirty producer files and normal complete unforced zero closure of required app/entry/five nodes. Auxiliary telemetry cleanup is separate. SDK publication remains paused and automatic receive disabled.
+
+- Both actual Source268 Home originals and exact references are viewed in a closed SUCCESS owned review/controller zero. Notifications is now painted in both themes. Selected-address scope rather than the All addresses selector, Unknown/Units unavailable, empty collection/tokens and fixture/hero differences remain X411. Zero matches are accepted. The verified 339318-byte archive is retained; only owned disposable extraction is removed. Actual hidden-state pixels remain pending.
+
+- Source268 non-chain baseline: 4842 passes/one skip, twelve checks and unchanged restoration/generation/l10n. Root analysis has zero errors/warnings and 1296 infos; vendored is clean. Debug/Release exit normally, completely, unforced and zero in 109.453/144.719s. DLL initialization, unfiltered chain, financial actions and release remain unqualified.
+
+- Original [Source267](https://github.com/edgepillar/syrius/commit/b5f9b34f3a40aea4683afd8a7b9cc82461d58ec3) / [native failure 41250424634](https://github.com/edgepillar/syrius/actions/runs/41250424634) / [negative reader 41251749359](https://github.com/edgepillar/syrius/actions/runs/41251749359) remain retained: 746 focused passes, then a home_catalog entry failure, null inner code, forced required-wallet closure and zero exported PNGs. Both negative archives are independently qualified. The exact original cause remains NOT_ESTABLISHED; the later positive flow does not backfill it.
+
+- Earlier Source265 [native 41246130776](https://github.com/edgepillar/syrius/actions/runs/41246130776) / [reader 41247342231](https://github.com/edgepillar/syrius/actions/runs/41247342231) retain 723 passes/thirty PNGs; its [full baseline 41246690485](https://github.com/edgepillar/syrius/actions/runs/41246690485) / [inspector 41248885882](https://github.com/edgepillar/syrius/actions/runs/41248885882) retain 4838 passes/two skips. V04's original viewing is complete on its four actual minimum/Arabic-locale images. RTL mirroring is observed; the locale-only Arabic resource keeps English fallback in X414. Full localization/glyph quality, exact saved locale preference and atomic restoration remain unqualified.
+
+Main progress is 72/80 (90 percent by rows, not effort): zero accepted matches out of 94, nineteen unqualified preparations and 88 missing catalog outputs. P03/P09/F06/V01-V03/V05-V06 remain open. Motion/shaders/frame time, native seam controls/shortcuts, complete independent comparison and the written Docker Desktop/lab.sh route are separate gates. Native101 send and Native103 Token confirmation/effect stay UNKNOWN; Native104 is not admitted. All original failures, observer-exit UNKNOWN and ownership HOLD remain source-bound.
+
+All 360 contribution author/committer identities are edgepillar with GitHub no-reply and UTC. Public content is English and privacy-safe. Earlier [Source269 history](https://github.com/edgepillar/syrius/blob/aa343d30ecdf30b4d0e58fdd4282b881fe3494f6/docs/review/redesign-validation-history.md) stays frozen. [Source270 history](https://github.com/edgepillar/syrius/blob/33fa9485d6de958e017916e4767a8c7eaad72517/docs/review/redesign-validation-history.md) retains revision-209 verbatim and all thirty-six links.
+
+Preserved earlier source-bound evidence:
+
+- [Source266](https://github.com/edgepillar/syrius/commit/a690215820e1309c8ef57274ce652121454684c2) / [original failure 41249583868](https://github.com/edgepillar/syrius/actions/runs/41249583868): 744 passes, one stale Home output-count failure, one original Windows symlink skip and zero artifacts. Source267 fixes the component gate; its later native failure is separate.
+- [Source263 source](https://github.com/edgepillar/syrius/commit/899f55bce6d8e52f9d4f46693b856e1ebf5636cf); Source262 [native failure 41238977735](https://github.com/edgepillar/syrius/actions/runs/41238977735) / [negative-archive reader 41240488104](https://github.com/edgepillar/syrius/actions/runs/41240488104).
+- Source260 [producer 41235727833](https://github.com/edgepillar/syrius/actions/runs/41235727833) / [reader 41236776174](https://github.com/edgepillar/syrius/actions/runs/41236776174); Source259 [controller failure 41235368397](https://github.com/edgepillar/syrius/actions/runs/41235368397).
+- Source257 [native failure 41231991847](https://github.com/edgepillar/syrius/actions/runs/41231991847) / [reader failure 41233307044](https://github.com/edgepillar/syrius/actions/runs/41233307044); Source258 [negative-archive reader 41234273027](https://github.com/edgepillar/syrius/actions/runs/41234273027).
+- Source251 [producer 41220083078](https://github.com/edgepillar/syrius/actions/runs/41220083078) / [reader 41221571770](https://github.com/edgepillar/syrius/actions/runs/41221571770); Source249 [full baseline 41215021211](https://github.com/edgepillar/syrius/actions/runs/41215021211) / [inspector 41217328796](https://github.com/edgepillar/syrius/actions/runs/41217328796).
+- Frozen histories retain prior bodies and all original evidence scopes: [Source260](https://github.com/edgepillar/syrius/blob/82e29feb67e10fa97e58eb6c5d46ecb951e30f60/docs/review/redesign-validation-history.md), [Source263](https://github.com/edgepillar/syrius/blob/899f55bce6d8e52f9d4f46693b856e1ebf5636cf/docs/review/redesign-validation-history.md), [Source266](https://github.com/edgepillar/syrius/blob/a690215820e1309c8ef57274ce652121454684c2/docs/review/redesign-validation-history.md), [Source267](https://github.com/edgepillar/syrius/blob/b5f9b34f3a40aea4683afd8a7b9cc82461d58ec3/docs/review/redesign-validation-history.md). [Source268 frozen history](https://github.com/edgepillar/syrius/blob/2a2f04584dbc2ab1b2403b64ba4fc6a9efb5f812/docs/review/redesign-validation-history.md) preserves revision-207 verbatim and all twenty-five links.
+
+## Source271: prepare the original expanded Home state
+
+2026-11-01T00:58Z: Source270 33fa9485d6de has three terminal successful hosted runs:
+[harness-only 41257114219](https://github.com/edgepillar/syrius/actions/runs/41257114219),
+[native Windows 41257907083](https://github.com/edgepillar/syrius/actions/runs/41257907083)
+and [independent reader 41258919158](https://github.com/edgepillar/syrius/actions/runs/41258919158).
+Both engine selections pass 749 ordinary cases with zero failures/errors/skips
+and zero selected findings. Each retains 918 Python controls with three original
+skips and fourteen asset phases. The native engine completes normally, completely,
+unforced and zero in 138.609 seconds with 378105 bytes and SHA-256
+cdd5e3d3e912d54f6043f3f9cbcefce24cfbf26ff725367ae2a388db20da13e3.
+The 751-case startup-fidelity selection remains unexecuted.
+
+The independent reader passes all 95 controls and verifies 31 producer files,
+the immutable workflow and all four original archives: 24 generic, four literal
+Home rest/hidden and four V04 PNGs. Required application, entry and five nodes
+exit normally, completely, unforced and zero; auxiliary VCTIP termination is
+separate. SDK publication stays paused, automatic receive stays disabled and
+selection remains generated, persisted index one of two. Entry output is complete
+at 47427 bytes with SHA-256
+cc6800883e6803f734c0bdfef6ce8a82154f862b5e2ca632ff8c00b8331d98bf.
+The independently verified four-Home archive is 660819 bytes with SHA-256
+36d9eee8fed60fb970aabc7f80a68cc415c4fa337534bbf0cd40003949b4ebff.
+Its local transport and actual viewing remain pending, separately from the
+completed Source268 two-Home and Source265 V04 reviews. Two new hidden outputs
+reduce missing literal catalog outputs from 88 to 86; zero matches are accepted.
+
+Source271 adds a separate captureReadonlyHomeOpenStates entry point, keeping the
+original rest and rest/hidden APIs. It selects only authored home-rest, home-open
+and home-hidden in one fresh output. The original open script's inputs are
+retained; after each fully retained positive shot it closes Tokens and waits for
+its body to disappear. A failed shot or restoration holds the original session
+and is never replayed. Schema three binds exactly six ordered filenames and all
+three script digests; schemas one and two stay separately strict. The independent
+reader binds 32 producer files, including the open script, without increasing
+the archive count, sixteen-request full budget or any global byte/time bound.
+
+One new Dart case runs the real three-script selection through the same bound
+transport. It checks open state at both open shots, closed state before both
+hidden shots, durable pixels before each Tokens restoration, and first shot,
+open-shot, restoration and hidden-shot refusals without replay or success
+metadata. The fake actor retains actual tab transitions for the original goto
+wait. Existing Python cases extend strict metadata, generator and complete
+artifact-reader controls to schema three while retaining all older cases.
+The original private three-failure fixture run remains retained; corrected
+partial memory controls pass 453 cases with no scratch, network or shared-store
+access. Dart execution remains pending. Expected ordinary/fidelity counts become
+750/752, while Python/memory/reader remain 918/453/95. Applied memory controls and
+a fresh harness-only gate are required before new native admission.
+
+The last broad Windows baseline remains source-bound to Source268:
+[producer 41253919663](https://github.com/edgepillar/syrius/actions/runs/41253919663)
+and [inspector 41255744645](https://github.com/edgepillar/syrius/actions/runs/41255744645)
+qualify 4842 passes/one skip, twelve checks and Debug/Release. Root analysis has
+zero errors/warnings and 1296 infos; vendored analysis is clean. Product UI,
+assets, dependencies, financial/profile/password/send/seed/reopen inputs and SDK
+authority are unchanged. That prior exact application UI evidence is reused
+within its original scope; no new full-suite run or current full qualification
+is claimed for this controller change.
+
+Main progress remains 72/80, or 90 percent by rows rather than effort. P03, P09,
+F06, V01-V03 and V05-V06 remain open. Original V04 viewing is complete on
+Source265; the locale-only Arabic resource and unqualified glyph/localization
+quality stay X414. Zero of 94 matches, nineteen preparations and 86 missing
+outputs remain. Generic and V04 frames are not literal catalog aliases. Original
+Source269 five-info refusal, Source267/266/264/263/262 failures and all earlier
+FAILURE/HOLD/UNKNOWNs stay source-bound. Source267/263 original inner causes
+remain NOT_ESTABLISHED. Native101 send and Native103 Token confirmation/effect
+stay UNKNOWN; Native104 is not admitted. The PR remains Draft.

@@ -222,6 +222,45 @@ class ReaderTests(unittest.TestCase):
                     (reader.archive.Refused, reader.producer.Refused)):
                 inspect_states(state_files, pins=pins)
 
+        open_script = b'synthetic distinct open script'
+        states = wallet_fixtures.home_manifest(pixels, script, schema=3,
+            hidden_script=hidden_script, open_script=open_script)
+        state_files = [('manifest.json', encode(states), stat.S_IFREG)] + [
+            (row['file'], pixels, stat.S_IFREG) for row in states['captures']]
+        state_pins = {'home-rest': reader.archive.sha(script),
+            'home-open': reader.archive.sha(open_script),
+            'home-hidden': reader.archive.sha(hidden_script)}
+
+        def inspect_states(files, *, pins=None, reference=None):
+            raw = packed(files)
+            ref = reference or wallet_fixtures.home_reference(
+                reader.archive.sha(files[0][1]), schema=3)
+            return reader.unpack_home_catalog(raw, reader.archive.sha(raw),
+                len(raw), 'a' * 40, 'b' * 40, 1, ref,
+                state_pins if pins is None else pins)
+
+        observed = inspect_states(state_files)
+        self.assertEqual(observed['verified_png_count'], 6)
+        self.assertEqual(observed['screens'], ['home-rest', 'home-open', 'home-hidden'])
+        self.assertEqual(observed['filenames'], list(reader.producer.HOME_OPEN_FILES))
+        self.assertEqual(observed['script_sha256_by_screen'], state_pins)
+        self.assertFalse(observed['catalog_capture_qualified'])
+        self.assertFalse(observed['parent_closure_qualified'])
+        self.assertEqual(observed['visual_matches'], 0)
+        for bad_files in (state_files[:-1], state_files + [originals[1]], originals):
+            with self.subTest(schema=3, members=len(bad_files)), self.assertRaises(
+                    (reader.archive.Refused, reader.producer.Refused)):
+                with warnings.catch_warnings():
+                    warnings.simplefilter('ignore', UserWarning)
+                    inspect_states(bad_files)
+        for pins in (reader.archive.sha(script), {'home-rest': reader.archive.sha(script)},
+                     {**state_pins, 'home-hidden': reader.archive.sha(script)},
+                     {**state_pins, 'home-open': reader.archive.sha(script)},
+                     {**state_pins, 'private': 'e' * 64}):
+            with self.subTest(schema=3, pins=pins), self.assertRaises(
+                    (reader.archive.Refused, reader.producer.Refused)):
+                inspect_states(state_files, pins=pins)
+
     def test_readonly_parent_needs_explicit_scope_and_cannot_adopt_financial_owners(self):
         lab = lab_report()
         with self.assertRaises(reader.archive.Refused):
@@ -575,7 +614,7 @@ class ReaderTests(unittest.TestCase):
         return value, calls, output.getvalue()
 
     def test_full_reader_binds_both_archives_metadata_and_all_twenty_four_pngs(self):
-        for forced, home_schema in ((False, 1), (True, 1), (False, 2), (True, 2)):
+        for forced, home_schema in ((False, 1), (True, 1), (False, 2), (True, 2), (False, 3), (True, 3)):
             with self.subTest(auxiliary_forced=forced, home_schema=home_schema):
                 value, calls, text = self.run_main(auxiliary_forced=forced, home_schema=home_schema)
                 self.assertTrue(value['native_inspection_qualified'])
@@ -592,7 +631,7 @@ class ReaderTests(unittest.TestCase):
                 self.assertTrue(measured['metadata_revalidated'])
                 self.assertEqual(measured['producer_source_files_verified'], len(reader.SOURCE_FILES))
 
-                self.assertEqual(value['verified_catalog_png_count'], 2 if home_schema == 1 else 4)
+                self.assertEqual(value['verified_catalog_png_count'], {1: 2, 2: 4, 3: 6}[home_schema])
                 home_notices = [line.split('::', 2)[-1] for line in text.splitlines()
                     if line.startswith('::notice title=Retained readonly Home catalog::')]
                 self.assertEqual(len(home_notices), 1)
@@ -600,7 +639,7 @@ class ReaderTests(unittest.TestCase):
                 self.assertTrue(home_observed['catalog_capture_qualified'])
                 self.assertTrue(home_observed['parent_closure_qualified'])
                 self.assertTrue(home_observed['metadata_revalidated'])
-                self.assertEqual(home_observed['verified_png_count'], 2 if home_schema == 1 else 4)
+                self.assertEqual(home_observed['verified_png_count'], {1: 2, 2: 4, 3: 6}[home_schema])
                 self.assertFalse(home_observed['atomic_frame_qualified'])
                 self.assertFalse(home_observed['wallet_qualified'])
                 self.assertEqual(home_observed['visual_matches'], 0)

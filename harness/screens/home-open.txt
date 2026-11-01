@@ -11,3 +11,7 @@ tap --key home_tokens_toggle
 wait --key home_tokens_body --timeout 5
 assert --key home_collect_all
 assert --key home_tokens_body
+
+# Restore Tokens only after each fully retained positive shot.
+# after-capture: tap --key home_tokens_toggle
+# after-capture: wait --key home_tokens_body --gone --timeout 5

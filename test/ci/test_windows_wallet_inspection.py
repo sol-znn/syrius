@@ -48,7 +48,7 @@ def home_receipt(*, schema=1):
         themes=['dark', 'light'], files=list(inspection.home_catalog_files(schema)),
         width=1280, height=780, scale=1, capture_returned=True)
     value.update(dict(screen='home-rest', number=1) if schema == 1
-                 else dict(screens=list(inspection.HOME_STATE_SCREENS)))
+                 else dict(screens=list(inspection.home_catalog_screens(schema))))
     return value
 
 
@@ -56,12 +56,12 @@ def home_reference(digest='e' * 64, *, schema=1):
     value = dict(schema=schema, scope='readonly_native_home_catalog_reference',
         captured=len(inspection.home_catalog_files(schema)), manifest_sha256=digest)
     value.update(dict(screen='home-rest') if schema == 1
-                 else dict(screens=list(inspection.HOME_STATE_SCREENS)))
+                 else dict(screens=list(inspection.home_catalog_screens(schema))))
     return value
 
 
 def home_manifest(pixels, script=b'synthetic public script', *, schema=1,
-                  hidden_script=None):
+                  hidden_script=None, open_script=None):
     value = dict(schema=schema, scope='readonly_native_home_catalog_capture_bundle',
         source_sha='a' * 40, source_tree='b' * 40, run_id='1', run_attempt='1',
         capture=home_receipt(schema=schema),
@@ -76,8 +76,12 @@ def home_manifest(pixels, script=b'synthetic public script', *, schema=1,
     if schema == 1:
         value['script_sha256'] = first
     else:
-        value['script_sha256_by_screen'] = dict(zip(inspection.HOME_STATE_SCREENS,
-            (first, hashlib.sha256(script if hidden_script is None else hidden_script).hexdigest())))
+        hidden = hashlib.sha256(script if hidden_script is None else hidden_script).hexdigest()
+        if schema == 2:
+            value['script_sha256_by_screen'] = dict(zip(inspection.HOME_STATE_SCREENS, (first, hidden)))
+        else:
+            value['script_sha256_by_screen'] = dict(zip(inspection.HOME_OPEN_SCREENS,
+                (first, hashlib.sha256(script if open_script is None else open_script).hexdigest(), hidden)))
     return value
 
 
@@ -238,14 +242,39 @@ class InspectionTests(unittest.TestCase):
                 with self.subTest(schema=schema, captured=count), self.assertRaises(inspection.Refused):
                     inspection.home_catalog_reference(reference)
 
+        expanded = home_manifest(pixels, schema=3)
+        self.assertIs(inspection.public_home_catalog(expanded), expanded)
+        self.assertEqual(expanded['capture']['screens'], ['home-rest', 'home-open', 'home-hidden'])
+        self.assertEqual(len(expanded['captures']), 6)
+        for change in (
+            lambda value: value['capture'].update(screens=['home-rest', 'home-hidden', 'home-open']),
+            lambda value: value['capture'].update(schema=2),
+            lambda value: value['captures'].pop(),
+            lambda value: value['captures'][2].update(file='03-home-hidden-dark.png'),
+            lambda value: value['captures'][3].update(theme='dark'),
+            lambda value: value['script_sha256_by_screen'].pop('home-open'),
+            lambda value: value['script_sha256_by_screen'].update(private='synthetic'),
+            lambda value: value.update(script_sha256='e' * 64),
+        ):
+            bad = copy.deepcopy(expanded)
+            change(bad)
+            with self.subTest(schema=3, change=change), self.assertRaises(inspection.Refused):
+                inspection.public_home_catalog(bad)
+        for count in (True, 2, 3, 4, 8):
+            bad = home_reference(schema=3)
+            bad['captured'] = count
+            with self.subTest(schema=3, count=count), self.assertRaises(inspection.Refused):
+                inspection.home_catalog_reference(bad)
+
         class RetainedBytes(io.BytesIO):
             def close(self):
                 pass
 
-        for schema in (1, 2):
+        for schema in (1, 2, 3):
             written = RetainedBytes()
             scripts = {'home-rest.txt': b'first original public script',
-                'home-hidden.txt': b'distinct original hidden script'}
+                'home-hidden.txt': b'distinct original hidden script',
+                'home-open.txt': b'distinct original open script'}
 
             def read(path, cap):
                 if path.suffix == '.png':
@@ -263,16 +292,22 @@ class InspectionTests(unittest.TestCase):
             manifest = json.loads(written.getvalue())
             self.assertEqual(reference['manifest_sha256'],
                 hashlib.sha256(written.getvalue()).hexdigest())
-            self.assertEqual(reference['captured'], 2 if schema == 1 else 4)
+            self.assertEqual(reference['captured'], {1: 2, 2: 4, 3: 6}[schema])
             self.assertEqual([row['file'] for row in manifest['captures']],
                 list(inspection.home_catalog_files(schema)))
-            self.assertEqual(reads.call_count, 3 if schema == 1 else 6)
+            self.assertEqual(reads.call_count, {1: 3, 2: 6, 3: 9}[schema])
             self.assertTrue(written.getvalue().endswith(b'\n'))
             opened.assert_called_once_with('xb')
             if schema == 2:
                 self.assertEqual(manifest['script_sha256_by_screen'],
                     {'home-rest': hashlib.sha256(scripts['home-rest.txt']).hexdigest(),
                      'home-hidden': hashlib.sha256(scripts['home-hidden.txt']).hexdigest()})
+                self.assertFalse(manifest['parent_closure_qualified'])
+                self.assertEqual(manifest['visual_matches'], 0)
+            if schema == 3:
+                self.assertEqual(manifest['script_sha256_by_screen'],
+                    {name: hashlib.sha256(scripts[name + '.txt']).hexdigest()
+                     for name in inspection.HOME_OPEN_SCREENS})
                 self.assertFalse(manifest['parent_closure_qualified'])
                 self.assertEqual(manifest['visual_matches'], 0)
         with mock.patch.object(inspection, 'home_output_bytes', return_value=0), \
@@ -540,6 +575,7 @@ class InspectionTests(unittest.TestCase):
             reads.append(path)
             if path in (Path('/fixture') / inspection.HOME_SCRIPT,
                         Path('/fixture') / inspection.HOME_HIDDEN_SCRIPT,
+                        Path('/fixture') / inspection.HOME_OPEN_SCRIPT,
                         Path('/fixture') / inspection.viewport.PROBE):
                 self.assertEqual(cap, 65536)
                 return script
@@ -607,6 +643,14 @@ class InspectionTests(unittest.TestCase):
         self.assertEqual(len(set(paths)), 25)
         self.assertEqual(len(reads), 38)
         for filename in inspection.HOME_STATE_FILES:
+            self.assertIn('ci-home-catalog/' + filename, output)
+        self.assertNotIn('private', output)
+
+        paths, reads, output = self.artifact_case(value, pixels=pixels, home_schema=3)
+        self.assertEqual(len(paths), 25)
+        self.assertEqual(len(set(paths)), 25)
+        self.assertEqual(len(reads), 41)
+        for filename in inspection.HOME_OPEN_FILES:
             self.assertIn('ci-home-catalog/' + filename, output)
         self.assertNotIn('private', output)
 

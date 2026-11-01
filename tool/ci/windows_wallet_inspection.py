@@ -39,6 +39,9 @@ HOME_SCRIPT = Path('harness/screens/home-rest.txt')
 HOME_HIDDEN_SCRIPT = Path('harness/screens/home-hidden.txt')
 HOME_STATE_FILES = HOME_FILES + ('03-home-hidden-dark.png', '03-home-hidden-light.png')
 HOME_STATE_SCREENS = ('home-rest', 'home-hidden')
+HOME_OPEN_SCRIPT = Path('harness/screens/home-open.txt')
+HOME_OPEN_FILES = HOME_FILES + ('02-home-open-dark.png', '02-home-open-light.png') + HOME_STATE_FILES[2:]
+HOME_OPEN_SCREENS = ('home-rest', 'home-open', 'home-hidden')
 CHECKS = ('environment', 'source', 'unused_destinations', 'job_owned',
     'entry_gate', 'entry_ready', 'application_owned', 'lab_revalidated',
     'input_released', 'wallet_bound', 'tours_complete', 'locale_verified',
@@ -109,8 +112,17 @@ def read_original(path, cap):
 
 def home_catalog_files(schema):
     """Each version admits a finite literal family, never a generic alias."""
-    need(type(schema) is int and schema in (1, 2), 'CAPTURE_REFUSED')
-    return HOME_FILES if schema == 1 else HOME_STATE_FILES
+    need(type(schema) is int and schema in (1, 2, 3), 'CAPTURE_REFUSED')
+    if schema == 1:
+        return HOME_FILES
+    return HOME_STATE_FILES if schema == 2 else HOME_OPEN_FILES
+
+
+def home_catalog_screens(schema):
+    home_catalog_files(schema)
+    if schema == 1:
+        return ('home-rest',)
+    return HOME_STATE_SCREENS if schema == 2 else HOME_OPEN_SCREENS
 
 
 def home_capture_receipt(value):
@@ -122,7 +134,7 @@ def home_capture_receipt(value):
         themes=list(THEMES), files=list(files),
         width=1280, height=780, scale=1, capture_returned=True)
     expected.update(dict(screen='home-rest', number=1) if schema == 1
-                    else dict(screens=list(HOME_STATE_SCREENS)))
+                    else dict(screens=list(home_catalog_screens(schema))))
     need(set(value) == set(expected)
          and all(type(value[k]) is type(v) and value[k] == v
                  for k, v in expected.items()), 'CAPTURE_REFUSED')
@@ -154,7 +166,7 @@ def home_catalog_reference(value):
     expected = dict(schema=schema, scope='readonly_native_home_catalog_reference',
         captured=len(files))
     expected.update(dict(screen='home-rest') if schema == 1
-                    else dict(screens=list(HOME_STATE_SCREENS)))
+                    else dict(screens=list(home_catalog_screens(schema))))
     need(set(value) == set(expected) | {'manifest_sha256'}
          and all(type(value[k]) is type(v) and value[k] == v
                  for k, v in expected.items())
@@ -172,8 +184,11 @@ def _home_script_pins(repo, schema):
     first = hashlib.sha256(read_original(repo / HOME_SCRIPT, 65536)).hexdigest()
     if schema == 1:
         return first
-    return dict(zip(HOME_STATE_SCREENS, (first,
-        hashlib.sha256(read_original(repo / HOME_HIDDEN_SCRIPT, 65536)).hexdigest())))
+    hidden = hashlib.sha256(read_original(repo / HOME_HIDDEN_SCRIPT, 65536)).hexdigest()
+    if schema == 2:
+        return dict(zip(HOME_STATE_SCREENS, (first, hidden)))
+    return dict(zip(HOME_OPEN_SCREENS, (first,
+        hashlib.sha256(read_original(repo / HOME_OPEN_SCRIPT, 65536)).hexdigest(), hidden)))
 
 
 def public_home_catalog(value):
@@ -200,7 +215,7 @@ def public_home_catalog(value):
     if schema == 1:
         pins = {'home-rest': pins}
     need(type(pins) is dict and set(pins) == set(
-        ('home-rest',) if schema == 1 else HOME_STATE_SCREENS)
+        home_catalog_screens(schema))
         and all(type(pin) is str and re.fullmatch('[a-f0-9]{64}', pin)
                 for pin in pins.values()), 'OUTPUT_REFUSED')
     home_capture_receipt(value['capture'])
@@ -259,7 +274,7 @@ def collect_home_catalog(repo, receipt, source, tree, parent):
     reference = dict(schema=schema, scope='readonly_native_home_catalog_reference',
         captured=len(records), manifest_sha256=hashlib.sha256(data).hexdigest())
     reference.update(dict(screen='home-rest') if schema == 1
-                     else dict(screens=list(HOME_STATE_SCREENS)))
+                     else dict(screens=list(home_catalog_screens(schema))))
     return home_catalog_reference(reference)
 
 
@@ -715,7 +730,7 @@ def run(repo, parent, runtime, lab_root, observation, revalidate):
                     logical = shared.sample_workspace((home, app, build, profile),
                         expected_profile=profile_identity)
                     logical += output_bytes(output)
-                    logical += home_output_bytes(repo / HOME_OUTPUT)
+                    logical += home_output_bytes(repo / HOME_OUTPUT, schema=3)
                     logical += viewport.output_bytes(repo / viewport.OUTPUT)
                     need(logical <= shared.WORK_CAP, 'STORAGE_REFUSED')
                     free = shutil.disk_usage(repo).free
@@ -778,7 +793,7 @@ def run(repo, parent, runtime, lab_root, observation, revalidate):
                          and 'wallet' in used and set(report['stalls']) == set(THEMES),
                          'ENTRY_REFUSED')
                     catalog_receipt = home_capture_receipt(json.loads(line.partition(b':')[2]))
-                    need(catalog_receipt['schema'] == 2, 'ENTRY_REFUSED')
+                    need(catalog_receipt['schema'] == 3, 'ENTRY_REFUSED')
                 elif line.startswith(b'SYRIUS_INSPECTION_VIEWPORT:'):
                     need(marker == b'CI_INSPECT_DONE' and viewport_receipt is None
                          and catalog_receipt is not None, 'ENTRY_REFUSED')
