@@ -552,9 +552,14 @@ void main() {
       textDirection: TextDirection.ltr,
       child: Align(alignment: Alignment.topLeft, child: content),
     ));
-    Future<void> refused(Map<String, dynamic> command) =>
-        expectLater(scope.agent.commandForTest(command),
-          throwsA(isA<HarnessError>()));
+    Future<void> refused(Map<String, dynamic> command, {String? reason}) =>
+        expectLater(scope.agent.commandForTest(command), throwsA(
+          reason == null ? isA<HarnessError>() : isA<HarnessError>().having(
+            (HarnessError error) =>
+                (error.detail! as Map<String, Object?>)['readonly_region'],
+            'original region refusal', reason,
+          ),
+        ));
     for (final String key in keys) {
       await show(region(key));
       await expectLater(ordinary.commandForTest(<String, dynamic>{
@@ -625,9 +630,18 @@ void main() {
           _ => SizedBox.shrink(child: region(key)),
         };
         await show(content);
-        await refused(<String, dynamic>{'cmd': 'assert', 'key': key});
+        final String? reason = switch (fault) {
+          'duplicate' => 'duplicate',
+          'offstage' || 'hidden' => 'absent',
+          'zero' => 'boundsRefused',
+          'clipped' => 'paintClipCheckRefused',
+          _ => null,
+        };
+        await refused(<String, dynamic>{'cmd': 'assert', 'key': key},
+          reason: reason,
+        );
         await refused(<String, dynamic>{'cmd': 'wait', 'key': key,
-          'timeoutMs': 0, 'ready': true});
+          'timeoutMs': 0, 'ready': true}, reason: reason);
         expect(tester.takeException(), isNull);
       }
     }

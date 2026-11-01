@@ -110,6 +110,22 @@ class DetailsCatalogTests(unittest.TestCase):
         valid = dict(base, last_entered_step='scriptLine',
             screen='receive-qr', theme='dark', line=5)
         self.assertIs(details.failure_diagnostic(valid), valid)
+        for reply in details.FAILURE_REPLIES:
+            observed = dict(valid, schema=2, reply=reply)
+            self.assertIs(details.failure_diagnostic(observed), observed)
+            self.assertIs(legacy.entry_failure(dict(stage='details_catalog',
+                code=None, diagnostic=observed))['diagnostic'], observed)
+        for delta in (
+            dict(schema=1, reply='unknown'), dict(schema=2),
+            dict(schema=2, reply=True), dict(schema=2, reply=23),
+            dict(schema=2, reply='Synthetic private path'),
+            dict(schema=2, reply='scroll --dy 250'),
+            dict(schema=2, reply='targetCovered',
+                raw='Synthetic private input'),
+            dict(schema=3, reply='unknown'),
+        ):
+            with self.subTest(delta=delta), self.assertRaises(details.Refused):
+                details.failure_diagnostic(dict(valid, **delta))
         self.assertIs(legacy.entry_failure(dict(stage='details_catalog',
             code=None, diagnostic=valid))['diagnostic'], valid)
         for delta in (

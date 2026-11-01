@@ -1539,6 +1539,16 @@ void main() {
       const ScreenCaptureObservation(ScreenCaptureStep.scriptLine,
         screen: 'set-node', theme: 'dark', line: 5),
     ), isNull);
+    for (final ScreenCaptureReplyCode reply in ScreenCaptureReplyCode.values) {
+      expect(readonlyDetailsFailureDiagnostic(
+        const ScreenCaptureObservation(ScreenCaptureStep.scriptLine,
+          screen: 'set-licences', theme: 'dark', line: 9), reply: reply,
+      ), <String, Object>{
+        'schema': 2, 'kind': 'readonly_details_capture_failure',
+        'last_entered_step': 'scriptLine', 'screen': 'set-licences',
+        'theme': 'dark', 'line': 9, 'reply': reply.name,
+      });
+    }
     for (final String fault in <String>[
       'unbound', 'none', 'first', 'shot', 'return', 'late', 'png', 'close',
     ]) {
@@ -1793,6 +1803,16 @@ void main() {
       'last_entered_step': 'scriptLine', 'screen': 'set-node',
       'theme': 'dark', 'line': 5,
     });
+    for (final ScreenCaptureReplyCode reply in ScreenCaptureReplyCode.values) {
+      expect(readonlySettingsFailureDiagnostic(
+        const ScreenCaptureObservation(ScreenCaptureStep.scriptLine,
+          screen: 'set-node', theme: 'light', line: 10), reply: reply,
+      ), <String, Object>{
+        'schema': 2, 'kind': 'readonly_settings_capture_failure',
+        'last_entered_step': 'scriptLine', 'screen': 'set-node',
+        'theme': 'light', 'line': 10, 'reply': reply.name,
+      });
+    }
     for (final ScreenCaptureObservation invalid in <ScreenCaptureObservation>[
       const ScreenCaptureObservation(ScreenCaptureStep.homePreparation,
         screen: 'Synthetic private path', theme: 'dark'),

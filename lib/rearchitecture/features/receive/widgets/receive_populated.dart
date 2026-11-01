@@ -423,6 +423,7 @@ class _ReceivePopulatedState extends State<ReceivePopulated>
             key: const Key('receive_qr_toggle'),
             style: OutlinedButton.styleFrom(
               foregroundColor: tokens.foreground,
+              iconColor: tokens.foreground,
               backgroundColor: tokens.card2,
               side: BorderSide(color: tokens.line),
               shape: const StadiumBorder(),

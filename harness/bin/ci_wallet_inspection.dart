@@ -285,11 +285,15 @@ Future<void> main() async {
           ? walletRecipePublicDiagnostic(error.diagnostic)
           : error is cli.WalletTourFailure ? error.diagnostic : null;
       if (stage == 'details_catalog') {
-        diagnostic = readonlyDetailsFailureDiagnostic(lastCatalogStep);
+        diagnostic = readonlyDetailsFailureDiagnostic(lastCatalogStep,
+          reply: screenCaptureReplyOf(error),
+        );
       } else if (stage == 'navigation_catalog') {
         diagnostic = readonlyNavigationFailureDiagnostic(lastCatalogStep);
       } else if (stage == 'settings_catalog') {
-        diagnostic = readonlySettingsFailureDiagnostic(lastCatalogStep);
+        diagnostic = readonlySettingsFailureDiagnostic(lastCatalogStep,
+          reply: screenCaptureReplyOf(error),
+        );
       }
       final ReadonlyViewportStep? observed = lastViewportStep;
       if (stage == 'viewport' && observed != null) {

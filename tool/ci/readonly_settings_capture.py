@@ -58,11 +58,37 @@ def decode(raw):
 FAILURE_STEPS = ('preflight', 'outputPreflight', 'themeSnapshot', 'windowSnapshot', 'windowShow', 'railSnapshot', 'clientResize', 'homePreparation', 'themeSelection', 'scriptLine', 'shotRequest', 'shotValidation', 'outputRetention', 'afterCaptureLine', 'railRestoration', 'themeRestoration', 'windowRestoration', 'complete')
 
 
+FAILURE_REPLIES = (
+    'targetMissing',
+    'targetDisabled',
+    'targetCovered',
+    'errorWidget',
+    'viewAmbiguous',
+    'regionRootMissing',
+    'regionMissing',
+    'regionDuplicate',
+    'regionSearchLimit',
+    'regionUnmounted',
+    'regionBoundsUnavailable',
+    'regionBoundsRefused',
+    'regionRenderUnavailable',
+    'regionPaintClipCheckRefused',
+    'unknown',
+)
+
+
 def failure_diagnostic(value):
     required = {'schema', 'kind', 'last_entered_step'}
     optional = {'screen', 'theme', 'line'}
-    need(type(value) is dict and required <= set(value) <= required | optional)
-    need(type(value['schema']) is int and value['schema'] == 1
+    need(type(value) is dict and type(value.get('schema')) is int)
+    if value['schema'] == 2:
+        required = required | {'reply'}
+        need(type(value.get('reply')) is str
+             and value['reply'] in FAILURE_REPLIES)
+    else:
+        need(value['schema'] == 1)
+    need(required <= set(value) <= required | optional)
+    need(type(value['schema']) is int and value['schema'] in (1, 2)
          and value['kind'] == 'readonly_settings_capture_failure'
          and type(value['last_entered_step']) is str
          and value['last_entered_step'] in FAILURE_STEPS)

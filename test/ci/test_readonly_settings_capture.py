@@ -109,6 +109,22 @@ class SettingsCatalogTests(unittest.TestCase):
         valid = dict(base, last_entered_step='scriptLine',
             screen='set-node', theme='dark', line=5)
         self.assertIs(settings.failure_diagnostic(valid), valid)
+        for reply in settings.FAILURE_REPLIES:
+            observed = dict(valid, schema=2, reply=reply)
+            self.assertIs(settings.failure_diagnostic(observed), observed)
+            self.assertIs(legacy.entry_failure(dict(stage='settings_catalog',
+                code=None, diagnostic=observed))['diagnostic'], observed)
+        for delta in (
+            dict(schema=1, reply='unknown'), dict(schema=2),
+            dict(schema=2, reply=True), dict(schema=2, reply=23),
+            dict(schema=2, reply='Synthetic private path'),
+            dict(schema=2, reply='scroll --dy 250'),
+            dict(schema=2, reply='targetCovered',
+                raw='Synthetic private input'),
+            dict(schema=3, reply='unknown'),
+        ):
+            with self.subTest(delta=delta), self.assertRaises(settings.Refused):
+                settings.failure_diagnostic(dict(valid, **delta))
         self.assertIs(legacy.entry_failure(dict(stage='settings_catalog',
             code=None, diagnostic=valid))['diagnostic'], valid)
         for delta in (

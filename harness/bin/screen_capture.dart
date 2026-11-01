@@ -2,10 +2,67 @@ import 'dart:convert';
 import 'dart:io';
 import 'dart:typed_data';
 
-class ScreenCaptureError implements Exception {
-  const ScreenCaptureError(this.message);
+/// A finite category from an original rejected command, never response text.
+enum ScreenCaptureReplyCode {
+  targetMissing, targetDisabled, targetCovered, errorWidget, viewAmbiguous,
+  regionRootMissing, regionMissing, regionDuplicate, regionSearchLimit,
+  regionUnmounted, regionBoundsUnavailable, regionBoundsRefused,
+  regionRenderUnavailable, regionPaintClipCheckRefused, unknown,
+}
+
+abstract interface class ScreenCaptureReplyFailure {
+  ScreenCaptureReplyCode? get captureReply;
+}
+
+ScreenCaptureReplyCode? screenCaptureReplyOf(Object? error) =>
+    error is ScreenCaptureReplyFailure ? error.captureReply : null;
+
+/// Inspect only closed reply fields; unrecognized values remain unknown.
+ScreenCaptureReplyCode classifyScreenCaptureReply(
+  Object? value, Object? detail,
+) {
+  if (value is! String) return ScreenCaptureReplyCode.unknown;
+  if ((value == 'readonly region is not uniquely visible' ||
+          value == 'not there after 0 ms' || value == 'not ready after 0 ms') &&
+      detail is Map<Object?, Object?> &&
+      detail.containsKey('readonly_region')) {
+    return switch (detail['readonly_region']) {
+      'rootMissing' => ScreenCaptureReplyCode.regionRootMissing,
+      'absent' => ScreenCaptureReplyCode.regionMissing,
+      'duplicate' => ScreenCaptureReplyCode.regionDuplicate,
+      'searchLimit' => ScreenCaptureReplyCode.regionSearchLimit,
+      'unmounted' => ScreenCaptureReplyCode.regionUnmounted,
+      'boundsUnavailable' => ScreenCaptureReplyCode.regionBoundsUnavailable,
+      'boundsRefused' => ScreenCaptureReplyCode.regionBoundsRefused,
+      'renderUnavailable' => ScreenCaptureReplyCode.regionRenderUnavailable,
+      'paintClipCheckRefused' =>
+          ScreenCaptureReplyCode.regionPaintClipCheckRefused,
+      _ => ScreenCaptureReplyCode.unknown,
+    };
+  }
+  return switch (value) {
+    'nothing matches' || 'not there after 0 ms' =>
+        ScreenCaptureReplyCode.targetMissing,
+    'disabled' => ScreenCaptureReplyCode.targetDisabled,
+    'covered by something else' => ScreenCaptureReplyCode.targetCovered,
+    'assert target is covered' => detail is Map<Object?, Object?> &&
+        detail['enabled'] == false ? ScreenCaptureReplyCode.targetDisabled
+        : ScreenCaptureReplyCode.targetCovered,
+    'error widget on screen' => ScreenCaptureReplyCode.errorWidget,
+    'expected one owned Flutter view' => ScreenCaptureReplyCode.viewAmbiguous,
+    _ => ScreenCaptureReplyCode.unknown,
+  };
+}
+
+class ScreenCaptureError implements Exception, ScreenCaptureReplyFailure {
+  const ScreenCaptureError(this.message, {ScreenCaptureReplyCode? reply})
+      : _captureReply = reply;
 
   final String message;
+  final ScreenCaptureReplyCode? _captureReply;
+
+  @override
+  ScreenCaptureReplyCode? get captureReply => _captureReply;
 
   @override
   String toString() => message;
@@ -479,6 +536,7 @@ class ScreenCapture {
             } on Object catch (e) {
               throw ScreenCaptureError(
                 '${script.screen.id}:${line.number}: $e',
+                reply: screenCaptureReplyOf(e),
               );
             }
           }
@@ -525,6 +583,7 @@ class ScreenCapture {
             } on Object catch (e) {
               throw ScreenCaptureError(
                 '${script.screen.id}:${line.number}: $e',
+                reply: screenCaptureReplyOf(e),
               );
             }
           }
@@ -571,6 +630,7 @@ class ScreenCapture {
           if (captured.isNotEmpty)
             '${captured.length} earlier captures retained',
         ].join('; '),
+        reply: screenCaptureReplyOf(failure),
       );
     }
     enter(ScreenCaptureStep.complete);

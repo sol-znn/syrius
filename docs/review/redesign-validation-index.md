@@ -68,3 +68,5 @@ A prior successful run remains bound to its original source and scope.
 - 2026-11-01 19:08 UTC: [Source301 original analysis refusal](source301-original-analysis-failure.md) preserves one info and zero executed Flutter cases. [Source302 condition braces](source302-passive-clip-braces.md) retains every guard and counterexample. [Exact PR body 245](pr-body-245.md) preserves preceding submitted text and URLs.
 
 - 2026-11-01 19:43 UTC: [Source302 original widget failures](source302-original-widget-failures.md) preserves both failures without inferred causes. [Source303 widget scroll correspondence](source303-widget-scroll-correspondence.md) retains runtime guards and all original assertions.
+
+- 2026-11-01 21:12 UTC: [Source303 Windows and catalog results](source303-windows-and-catalog-results.md) retains eleven terminal outcomes and closed actual views. [Source304 closed reply diagnostics and QR contrast](source304-closed-reply-and-qr-contrast.md) preserves original controls and limits.

@@ -23,10 +23,15 @@ import 'wallet_recipe.dart';
 final String repo = File.fromUri(Platform.script).parent.parent.parent.path;
 final String stateRoot = '$repo${Platform.pathSeparator}.harness';
 
-class Fail implements Exception {
-  Fail(this.message, {this._homeTapReply});
+class Fail implements Exception, ScreenCaptureReplyFailure {
+  Fail(this.message, {
+    HomeTapReply? homeTapReply, ScreenCaptureReplyCode? captureReply,
+  }) : _homeTapReply = homeTapReply, _captureReply = captureReply;
   final String message;
   final HomeTapReply? _homeTapReply;
+  final ScreenCaptureReplyCode? _captureReply;
+  @override
+  ScreenCaptureReplyCode? get captureReply => _captureReply;
   @override
   String toString() => message;
 }
@@ -499,6 +504,7 @@ Future<Map<String, dynamic>> call(
       '${detail == null ? '' : ' ${jsonEncode(detail)}'}'
       '${r['stack'] == null ? '' : '\n${r['stack']}'}',
       homeTapReply: classifyHomeTapReply(r['error']),
+      captureReply: classifyScreenCaptureReply(r['error'], detail),
     );
   }
   return r;
@@ -1294,12 +1300,17 @@ Future<void> restoreScreenRail(Instance inst, {required bool expanded}) async {
   await setScreenRail(inst, expanded: expanded);
 }
 
-Future<bool> present(Instance inst, Map<String, Object?> sel) async {
+Future<bool> present(Instance inst, Map<String, Object?> sel, {
+  void Function(ScreenCaptureReplyCode reply)? onRejected,
+}) async {
   final Map<String, dynamic> r = await inst.send(<String, Object?>{
     'cmd': 'wait',
     ...sel,
     'timeoutMs': 0,
   });
+  if (r['ok'] != true) {
+    onRejected?.call(classifyScreenCaptureReply(r['error'], r['detail']));
+  }
   return r['ok'] == true;
 }
 
@@ -1311,11 +1322,18 @@ Future<void> reveal(
   int step = 250,
   int max = 20,
 }) async {
+  ScreenCaptureReplyCode? lastReply;
   for (int i = 0; i <= max; i++) {
-    if (await present(inst, sel)) return;
+    if (await present(inst, sel,
+      onRejected: (ScreenCaptureReplyCode reply) => lastReply = reply,
+    )) {
+      return;
+    }
     await call(inst, <String, Object?>{'cmd': 'scroll', 'dy': step});
   }
-  throw Fail('reveal: not found after ${max * step} px ${jsonEncode(sel)}');
+  throw Fail('reveal: not found after ${max * step} px ${jsonEncode(sel)}',
+    captureReply: lastReply,
+  );
 }
 
 Future<void> until(

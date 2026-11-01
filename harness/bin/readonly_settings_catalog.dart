@@ -24,10 +24,11 @@ class _SettingsInstance extends cli.Instance {
       ? const Duration(seconds: 30) : timeout);
 }
 
-/// Exports only a fixed catalog step. It does not reconstruct a missing cause.
+/// Exports the original step and an optional closed original-reply category.
 Map<String, Object>? readonlySettingsFailureDiagnostic(
-  ScreenCaptureObservation? observation,
-) {
+  ScreenCaptureObservation? observation, {
+  ScreenCaptureReplyCode? reply,
+}) {
   if (observation == null) return null;
   final String? screen = observation.screen;
   final String? theme = observation.theme;
@@ -46,9 +47,11 @@ Map<String, Object>? readonlySettingsFailureDiagnostic(
     return null;
   }
   return <String, Object>{
-    'schema': 1, 'kind': 'readonly_settings_capture_failure',
+    'schema': reply == null ? 1 : 2,
+    'kind': 'readonly_settings_capture_failure',
     'last_entered_step': observation.step.name,
     'screen': ?screen, 'theme': ?theme, 'line': ?line,
+    'reply': ?reply?.name,
   };
 }
 

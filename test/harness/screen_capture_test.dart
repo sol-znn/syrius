@@ -20,6 +20,25 @@ String _pngHeader({int width = 1280, int height = 780}) {
   return base64Encode(bytes);
 }
 
+class _OpaqueReply {
+  @override
+  String toString() => throw StateError('reply text must not be inspected');
+}
+
+class _Replies extends cli.Instance {
+  _Replies(this._reply) : super('synthetic-capture-replies');
+  final Map<String, dynamic> Function(Map<String, Object?> command) _reply;
+  final List<Map<String, Object?>> commands = <Map<String, Object?>>[];
+
+  @override
+  Future<Map<String, dynamic>> send(Map<String, Object?> command, {
+    Duration timeout = const Duration(seconds: 30),
+  }) async {
+    commands.add(command);
+    return _reply(command);
+  }
+}
+
 class _Agent {
   final List<Map<String, Object?>> commands = <Map<String, Object?>>[];
   final List<List<String>> lines = <List<String>>[];
@@ -37,6 +56,7 @@ class _Agent {
   bool corruptPng = false;
   bool wrongPngHeader = false;
   bool failSecondShot = false;
+  ScreenCaptureReplyCode? failureReply;
 
   Future<void> prepareHome() async {
     homePreparations++;
@@ -49,6 +69,9 @@ class _Agent {
     if (failCommand == name &&
         command['restore'] == null &&
         command['restoreState'] == null) {
+      if (failureReply != null) {
+        throw cli.Fail('$name refused', captureReply: failureReply);
+      }
       throw StateError('$name refused');
     }
     if (name == 'theme') {
@@ -86,6 +109,9 @@ class _Agent {
     if (name == 'shot') {
       shots++;
       if (failSecondShot && shots == 2) {
+        if (failureReply != null) {
+          throw cli.Fail('second capture refused', captureReply: failureReply);
+        }
         throw StateError('second capture refused');
       }
       return <String, dynamic>{
@@ -683,9 +709,59 @@ void main() {
     'failure retains earlier captures and reports restore failures honestly',
     () async {
       writeScript('home-rest');
+      final Object opaque = _OpaqueReply();
+      expect(classifyScreenCaptureReply(opaque, opaque),
+        ScreenCaptureReplyCode.unknown);
+      expect(screenCaptureReplyOf(opaque), isNull);
+      expect(classifyScreenCaptureReply('assert target is covered',
+        <String, Object?>{'enabled': false, 'label': opaque}),
+        ScreenCaptureReplyCode.targetDisabled);
+      expect(classifyScreenCaptureReply('assert target is covered',
+        <String, Object?>{'enabled': true, 'label': opaque}),
+        ScreenCaptureReplyCode.targetCovered);
+      for (final MapEntry<String, ScreenCaptureReplyCode> entry in
+          <String, ScreenCaptureReplyCode>{
+        'rootMissing': ScreenCaptureReplyCode.regionRootMissing,
+        'absent': ScreenCaptureReplyCode.regionMissing,
+        'duplicate': ScreenCaptureReplyCode.regionDuplicate,
+        'searchLimit': ScreenCaptureReplyCode.regionSearchLimit,
+        'unmounted': ScreenCaptureReplyCode.regionUnmounted,
+        'boundsUnavailable': ScreenCaptureReplyCode.regionBoundsUnavailable,
+        'boundsRefused': ScreenCaptureReplyCode.regionBoundsRefused,
+        'renderUnavailable': ScreenCaptureReplyCode.regionRenderUnavailable,
+        'paintClipCheckRefused':
+            ScreenCaptureReplyCode.regionPaintClipCheckRefused,
+        'Synthetic private path': ScreenCaptureReplyCode.unknown,
+      }.entries) {
+        expect(classifyScreenCaptureReply('not there after 0 ms',
+          <String, Object?>{'readonly_region': entry.key, 'selector': opaque}),
+          entry.value);
+      }
+      final _Replies replies = _Replies((Map<String, Object?> command) =>
+        command['cmd'] == 'wait' ? <String, dynamic>{
+          'ok': false, 'error': 'not there after 0 ms',
+          'detail': <String, Object?>{
+            'readonly_region': 'paintClipCheckRefused',
+          },
+        } : <String, dynamic>{'ok': true},
+      );
+      await expectLater(cli.reveal(replies,
+        <String, Object?>{'key': 'about_licences_end'}),
+        throwsA(isA<cli.Fail>().having(screenCaptureReplyOf,
+          'last original reply',
+          ScreenCaptureReplyCode.regionPaintClipCheckRefused)),
+      );
+      expect(replies.commands, <Map<String, Object?>>[
+        for (int i = 0; i <= 20; i++) ...<Map<String, Object?>>[
+          <String, Object?>{'cmd': 'wait', 'key': 'about_licences_end',
+            'timeoutMs': 0},
+          <String, Object?>{'cmd': 'scroll', 'dy': 250},
+        ],
+      ]);
       agent
         ..failSecondShot = true
-        ..failRestore = true;
+        ..failRestore = true
+        ..failureReply = ScreenCaptureReplyCode.targetCovered;
       await expectLater(
         capture.capture('home-rest'),
         throwsA(
@@ -699,7 +775,9 @@ void main() {
                 (ScreenCaptureError e) => e.message,
                 'earlier evidence',
                 contains('1 earlier captures retained'),
-              ),
+              )
+              .having(screenCaptureReplyOf, 'original reply',
+                ScreenCaptureReplyCode.targetCovered),
         ),
       );
       expect(
@@ -737,10 +815,13 @@ void main() {
         restored = expanded;
       },
     );
-    agent.failCommand = 'assert';
+    agent
+      ..failCommand = 'assert'
+      ..failureReply = ScreenCaptureReplyCode.targetDisabled;
     await expectLater(
       capture.capture('home-rest'),
-      throwsA(isA<ScreenCaptureError>()),
+      throwsA(isA<ScreenCaptureError>().having(screenCaptureReplyOf,
+        'original script reply', ScreenCaptureReplyCode.targetDisabled)),
     );
     expect(restored, isTrue);
     expect(railExpanded, isTrue);

@@ -115,11 +115,21 @@ void main() {
       expect(address.textDirection, TextDirection.ltr);
       expect(find.text('Copy address'), findsOneWidget);
       expect(find.text('Show QR'), findsOneWidget);
+      expect(
+        IconTheme.of(tester.element(find.byIcon(Icons.qr_code_rounded))).color,
+        AppTokens.of(tester.element(find.byIcon(Icons.qr_code_rounded)))
+            .foreground,
+      );
       expect(find.byType(ReceiveQrImage), findsNothing);
       expect(find.byKey(const Key('receive_amount_field')), findsNothing);
       expect(find.byKey(const Key('receive_share_image')), findsNothing);
       await _showQr(tester);
       expect(find.text('Hide QR'), findsOneWidget);
+      expect(
+        IconTheme.of(tester.element(find.byIcon(Icons.qr_code_rounded))).color,
+        AppTokens.of(tester.element(find.byIcon(Icons.qr_code_rounded)))
+            .foreground,
+      );
       expect(
         _payload(tester),
         'znn:$_first?zts=${kZnnCoin.tokenStandard}&amount=0',

@@ -3741,7 +3741,9 @@ class HarnessAgent {
 
   // Passive regions are absent when text is folded into a button. Only
   // the readonly lane observes these fixed keys; input/ref matching stays.
-  List<_Node>? _readonlyPositiveKeyNodes(Map<String, dynamic> command) {
+  List<_Node>? _readonlyPositiveKeyNodes(Map<String, dynamic> command, {
+    void Function(String reason)? onRejected,
+  }) {
     final Object? key = command['key'];
     if (_readonlyNative == null || key is! String ||
         !const <String>{
@@ -3794,7 +3796,10 @@ class HarnessAgent {
       throw HarnessError('readonly region needs a positive key selector');
     }
     final Element? root = WidgetsBinding.instance.rootElement;
-    if (root == null) return <_Node>[];
+    if (root == null) {
+      onRejected?.call('rootMissing');
+      return <_Node>[];
+    }
     final List<Element> matches = <Element>[];
     int visited = 0;
     bool overflow = false;
@@ -3812,15 +3817,29 @@ class HarnessAgent {
     }
     visit(root);
     if (overflow || matches.length != 1 || !matches.single.mounted) {
+      onRejected?.call(overflow ? 'searchLimit' : matches.isEmpty ? 'absent'
+          : matches.length > 1 ? 'duplicate' : 'unmounted');
       return <_Node>[];
     }
     final Rect? rect = _rectOf(matches.single);
     final RenderObject? region = matches.single.renderObject;
-    if (rect == null || rect.width <= 0 || rect.height <= 0 ||
+    if (rect == null) {
+      onRejected?.call('boundsUnavailable');
+      return <_Node>[];
+    }
+    if (rect.width <= 0 || rect.height <= 0 ||
         <double>[rect.left, rect.top, rect.right, rect.bottom].any(
           (double value) => !value.isFinite || value.abs() > 32768,
-        ) || rect.intersect(Offset.zero & _viewSize()) != rect ||
-        region == null || !_readonlyRegionInsidePaintClips(region, rect)) {
+        ) || rect.intersect(Offset.zero & _viewSize()) != rect) {
+      onRejected?.call('boundsRefused');
+      return <_Node>[];
+    }
+    if (region == null) {
+      onRejected?.call('renderUnavailable');
+      return <_Node>[];
+    }
+    if (!_readonlyRegionInsidePaintClips(region, rect)) {
+      onRejected?.call('paintClipCheckRefused');
       return <_Node>[];
     }
     // No durable control ref is cached or added to the original snapshot.
@@ -3864,7 +3883,10 @@ class HarnessAgent {
     }
     final Stopwatch sw = Stopwatch()..start();
     while (true) {
-      final List<_Node> hits = _readonlyPositiveKeyNodes(c) ?? _matches(
+      String? regionRejection;
+      final List<_Node> hits = _readonlyPositiveKeyNodes(c,
+        onRejected: (String reason) => regionRejection = reason,
+      ) ?? _matches(
         c,
         kinds: const <String>[
           'button',
@@ -3895,7 +3917,9 @@ class HarnessAgent {
               : ready
                   ? 'not ready after $timeout ms'
                   : 'not there after $timeout ms',
-          _describe(c),
+          <String, Object?>{
+            ..._describe(c), 'readonly_region': ?regionRejection,
+          },
         );
       }
       await Future<void>.delayed(const Duration(milliseconds: 150));
@@ -3964,9 +3988,14 @@ class HarnessAgent {
     if (errors.isNotEmpty) {
       throw HarnessError('error widget on screen', errors.first.toJson());
     }
-    final List<_Node>? regions = _readonlyPositiveKeyNodes(c);
+    String? regionRejection;
+    final List<_Node>? regions = _readonlyPositiveKeyNodes(c,
+      onRejected: (String reason) => regionRejection = reason,
+    );
     if (regions != null && regions.length != 1) {
-      throw HarnessError('readonly region is not uniquely visible');
+      throw HarnessError('readonly region is not uniquely visible',
+        <String, Object?>{'readonly_region': ?regionRejection},
+      );
     }
     final _Node node = regions == null
         ? _find(<String, dynamic>{...c, 'exact': true})
