@@ -392,8 +392,8 @@ macOS; Windows provision and acceptance remain pending. See
 
 ### Now
 
-- Updated: 2026-11-01T03:29Z
-- Current work: Source275 has three successful exact-source runs and a closed eight-Home review. Source276 fixes the observed Go To trailing-hint layout; fresh 777-case hosted admission, full baseline and native/reader qualification are pending
+- Updated: 2026-11-01T03:46Z
+- Current work: Source276 original harness attempt 41269747877 completed with 776 Dart passes and one LAYOUT failure in the new Go To geometry test; selected analysis has zero findings. Source277 adds bounded diagnostic projection only; the inner cause remains NOT_ESTABLISHED. See [the preserved failure record](docs/review/source276-goto-layout-failure.md)
 - Main ledger: 72 of 80 rows done, 90 percent by rows. P03, P09, F06, V01-V03 and V05-V06 remain open; original V04 viewing is complete on its recorded scope
 - Source275 evidence: harness 41266079174, native 41266634177 and reader 41267953384 qualify 752 Dart passes, 918 Python controls with three skips, zero selected findings, reader 95, 33 source files and 36 PNGs
 - Visual scope: eight actual Home images and eight references viewed; zero of 94 matches, nineteen preparations and 82 missing literal outputs. The hidden eye row and fiat omission fixes are observed. Remaining X411/X414 differences and new X417 are separate
@@ -1742,3 +1742,8 @@ reader. The UI change also requires a fresh full baseline; expected root counts
 are 4849 passes and one original skip, derived before execution. All bounds,
 original financial/profile/password/seed/reopen inputs and SDK policy remain.
 The prepared Settings catalog is deferred until this correction is qualified.
+
+
+### Source277 bounded Go To layout diagnostics
+
+Source276 remains a failed original attempt. Only fixed theme, direction and scale labels and bounded overflow geometry are added to the new synthetic test report. Product UI, all original inputs and assertions, 777/779 expected cases, time and byte caps are unchanged. No native execution is admitted before a successful focused gate. Fresh full and native qualification remain pending for the Source276 UI change.

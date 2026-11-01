@@ -114,6 +114,10 @@ void main() {
     for (final bool dark in <bool>[true, false]) {
       for (final TextDirection direction in TextDirection.values) {
         for (final double scale in <double>[1, 2]) {
+          // Only fixed fixture labels and the two declared scales are printed.
+          // ignore: avoid_print
+          print('CI_GOTO_GEOMETRY_CASE:'
+              '${dark ? 'dark' : 'light'}:${direction.name}:${scale.toInt()}');
           await tester.pumpWidget(MaterialApp(
             theme: dark ? AppTheme.darkTheme : AppTheme.lightTheme,
             locale: const Locale('en'),

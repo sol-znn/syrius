@@ -7,3 +7,5 @@ Small versioned records extend the preserved original validation history.
 - [Source275 Home qualification](source275-home-goto-qualification.md): original hosted runs, actual eight-image review and remaining acceptance scope.
 
 A prior successful run remains bound to its original source and scope.
+
+- [Source276 Go To layout failure](source276-goto-layout-failure.md): original 776-pass, one-failure result and the limited next diagnostic scope.

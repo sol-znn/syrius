@@ -527,6 +527,29 @@ def location(text, *, tests_only=False):
     return min(found) if found else None
 
 
+def goto_geometry_diagnostic(text):
+    """Keep a fixed palette fixture and bounded overflow geometry only."""
+    markers = re.findall(
+        r'(?m)^CI_GOTO_GEOMETRY_CASE:(dark|light):(ltr|rtl):(1|2)\r?$', text)
+    if not markers:
+        return None
+    theme, direction, scale = markers[-1]
+    value = dict(theme=theme, direction=direction, scale=int(scale))
+    overflow = re.search(r'A RenderFlex overflowed by '
+        r'([0-9]{1,4}(?:[.][0-9]{1,3})?) pixels on the '
+        r'(left|right|top|bottom)[.]', text)
+    if overflow:
+        value['overflow'] = dict(kind='RENDER_FLEX_OVERFLOW',
+            pixels=float(overflow[1]), edge=overflow[2])
+    origin = re.search(r'(?<![A-Za-z0-9_.-])go_to_palette[.]dart'
+        r'(?::|\s+)([1-9][0-9]{0,5})(?![0-9])'
+        r':([1-9][0-9]{0,5})(?![0-9])', text)
+    if origin:
+        value['widget_source'] = dict(file='go_to_palette.dart',
+            line=int(origin[1]), column=int(origin[2]))
+    return value
+
+
 def project(raw):
     refused = dict(status='REFUSED', total=0, items=[])
     if type(raw) is not bytes or len(raw) > 4 * 1024**2:
@@ -606,6 +629,10 @@ def project(raw):
             suite = tests.get(identity) if type(identity) is int else None
             if suite is not None:
                 item['suite_file'] = suite
+            if suite == 'go_to_palette_test.dart':
+                geometry = goto_geometry_diagnostic(details)
+                if geometry is not None:
+                    item['goto_geometry'] = geometry
             for label, text in (('STACK', stack), ('ERROR', error), ('PRINT', context)):
                 caller = location(text, tests_only=True)
                 if caller is not None:

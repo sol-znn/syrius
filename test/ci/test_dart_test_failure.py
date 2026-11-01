@@ -129,6 +129,57 @@ class DartFailureTests(unittest.TestCase):
         self.assertNotIn('private', json.dumps(value))
         self.assertNotIn('Actual', json.dumps(value))
 
+        prefix = [dict(type='suite', suite=dict(id=2,
+            path='/fixture/private/go_to_palette_test.dart')),
+            dict(type='testStart', test=dict(id=7, suiteID=2))]
+        for theme in ('dark', 'light'):
+            for direction in ('ltr', 'rtl'):
+                for scale in (1, 2):
+                    marker = 'CI_GOTO_GEOMETRY_CASE:%s:%s:%s' % (
+                        theme, direction, scale)
+                    message = (marker + '\nA RenderFlex overflowed by 12.25 '
+                        'pixels on the bottom. private value\n'
+                        '/fixture/private/go_to_palette.dart:440:12')
+                    rows = prefix + [dict(type='print', testID=7,
+                        message=message), dict(type='error', testID=7,
+                        isFailure=False, error='Test failed.', stackTrace='')]
+                    result = failure.project(encode(rows))['items'][0]
+                    self.assertEqual(result['goto_geometry'], dict(
+                        theme=theme, direction=direction, scale=scale,
+                        overflow=dict(kind='RENDER_FLEX_OVERFLOW',
+                            pixels=12.25, edge='bottom'),
+                        widget_source=dict(file='go_to_palette.dart',
+                            line=440, column=12)))
+                    self.assertNotIn('private', json.dumps(result))
+                    self.assertNotIn('/fixture', json.dumps(result))
+                    rows[-2]['testID'] = 99
+                    self.assertNotIn('goto_geometry',
+                        failure.project(encode(rows))['items'][0])
+                    rows[-2]['testID'] = 7
+                    rows[0]['suite']['path'] = 'unknown_test.dart'
+                    self.assertNotIn('goto_geometry',
+                        failure.project(encode(rows))['items'][0])
+                    rows[0]['suite']['path'] = 'go_to_palette_test.dart'
+        for marker in ('CI_GOTO_GEOMETRY_CASE:private:ltr:1',
+                       'CI_GOTO_GEOMETRY_CASE:dark:ltr:3',
+                       'CI_GOTO_GEOMETRY_CASE:dark:ltr:1 private',
+                       'CI_GOTO_GEOMETRY_CASE:dark:ltr:1\nprivate'):
+            projected = failure.goto_geometry_diagnostic(marker)
+            self.assertIsNone(projected) if '1\n' not in marker else self.assertEqual(
+                projected, dict(theme='dark', direction='ltr', scale=1))
+        for origin in ('private_go_to_palette.dart:440:12',
+                       'go_to_palette.dart:0:12',
+                       'go_to_palette.dart:440:0',
+                       'go_to_palette.dart:1234567:12'):
+            result = failure.goto_geometry_diagnostic(
+                'CI_GOTO_GEOMETRY_CASE:dark:ltr:1\n' + origin)
+            self.assertNotIn('widget_source', result)
+        for overflow in ('10000', '12.1234', '-1', 'NaN', 'Infinity'):
+            result = failure.goto_geometry_diagnostic(
+                'CI_GOTO_GEOMETRY_CASE:dark:ltr:1\n'
+                'A RenderFlex overflowed by ' + overflow + ' pixels on the right.')
+            self.assertNotIn('overflow', result)
+
     def test_foreign_prints_cannot_supply_a_location_and_loading_errors_use_known_text(self):
         rows = [dict(type='print', testID=99, message='MissingPluginException private agent.dart:444:1'),
             dict(type='error', testID=7, isFailure=False, stackTrace='',
