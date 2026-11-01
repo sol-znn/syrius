@@ -17,3 +17,6 @@ A prior successful run remains bound to its original source and scope.
 
 - [Source279 strict Settings analysis failure](source279-settings-analysis-failure.md): four original infos, skipped Dart/native scope and the bounded Source280 test-only correction.
 - [Frozen PR body219](pr-body-219.md): exact 4343 bytes, SHA-256 e47806203b52fad665320555e1203c48233a15a2c07d253dad203089c9139351; all ten links retained with historical scopes.
+
+- [Source280 remaining entry import finding](source280-settings-entry-import-failure.md): one original strict info, skipped Dart/native scope and the Source281 directive-only correction; narrows the earlier source association.
+- [Frozen PR body220](pr-body-220.md): exact 4428 bytes, SHA-256 b668500cd6df98b99e669491720582702051d316cd2b73bf2f4cb82c8777ae7c; all seven previous links retained.

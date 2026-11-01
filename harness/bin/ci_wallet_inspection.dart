@@ -5,8 +5,8 @@ import 'dart:io';
 
 import '../wallet_recipe_failure.dart' show walletRecipePublicDiagnostic;
 import 'harness.dart' as cli;
-import 'readonly_settings_catalog.dart';
 import 'readonly_inspection_session.dart';
+import 'readonly_settings_catalog.dart';
 import 'readonly_viewport_probe.dart';
 import 'wallet_recipe.dart';
 

@@ -28,3 +28,8 @@ The qualified Source278 regular application UI and full 4849-pass/one-skip basel
 Main progress remains 72/80 rows, zero accepted matches out of 94, nineteen preparations and 82 missing literal outputs. All original acceptance gates and FAILURE/HOLD/UNKNOWNs remain. Native101 Send and Native103 Token confirmation/effect stay UNKNOWN; Native104 is not admitted. No original financial, profile, password, seed or reopen flow is replayed. The PR remains Draft.
 
 [Exact frozen body219](pr-body-219.md) retains all ten links and the pending statements from its publication time. Earlier body218 and original validation history remain unchanged.
+
+
+## Source association clarification (2026-11-01T05:11Z)
+
+The earlier association of all four finite findings with the test was too broad. Source280 fixes its test import order and nullable local reads but retains one DIRECTIVES_ORDERING info at line 9. The inspection entry still has the Settings/InspectionSession imports in the wrong order; Source281 exchanges only those directives. The remaining finding is associated with that entry source. Original paths are not exported or retrieved, so this remains a source association. Both original failed attempts and the earlier inference are preserved. See [the Source280 record](source280-settings-entry-import-failure.md).
