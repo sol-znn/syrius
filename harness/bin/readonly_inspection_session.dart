@@ -1,18 +1,24 @@
 import 'dart:convert';
 
 import '../app/readonly_native_mode.dart';
+import 'screen_capture.dart';
 import 'wallet_recipe.dart' show WalletRecipeSend;
 
 /// A fixed refusal label never carries private input or response diagnostics.
 enum ReadonlyInspectionReason { process, retired, command, reply, binding }
 
 /// No uncertain command can be replayed through this inspection session.
-class ReadonlyInspectionRefused implements Exception {
+class ReadonlyInspectionRefused
+    implements Exception, ScreenCaptureReplyFailure {
   /// The reason is source-defined rather than copied from an original error.
-  const ReadonlyInspectionRefused(this.reason);
+  const ReadonlyInspectionRefused(this.reason, {this._captureReply});
 
   /// The missing admission, without a profile, address, token or error text.
   final ReadonlyInspectionReason reason;
+  final ScreenCaptureReplyCode? _captureReply;
+
+  @override
+  ScreenCaptureReplyCode? get captureReply => _captureReply;
 }
 
 /// Checks every original reply without rewriting the actual harness mode.
@@ -45,6 +51,7 @@ class ReadonlyInspectionSession {
   bool _binding = false;
   bool _bindingReserved = false;
   bool _walletBound = false;
+  ScreenCaptureReplyCode? _heldReply;
 
   /// The wallet scope begins only after the actual bind command completes.
   bool get walletBound => _walletBound;
@@ -75,6 +82,9 @@ class ReadonlyInspectionSession {
       final Map<String, dynamic> reply = await _original(retained, timeout);
       if (reply['ok'] != true) {
         _held = true;
+        _heldReply = classifyScreenCaptureReply(
+          reply['error'], reply['detail'],
+        );
         return reply;
       }
       if (_held || !harnessReadonlyNativeLaunchMatches(reply, processId) ||
@@ -187,6 +197,6 @@ class ReadonlyInspectionSession {
 
   Never _refuse(ReadonlyInspectionReason reason) {
     _held = true;
-    throw ReadonlyInspectionRefused(reason);
+    throw ReadonlyInspectionRefused(reason, captureReply: _heldReply);
   }
 }

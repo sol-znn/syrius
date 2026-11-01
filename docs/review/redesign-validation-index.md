@@ -70,3 +70,5 @@ A prior successful run remains bound to its original source and scope.
 - 2026-11-01 19:43 UTC: [Source302 original widget failures](source302-original-widget-failures.md) preserves both failures without inferred causes. [Source303 widget scroll correspondence](source303-widget-scroll-correspondence.md) retains runtime guards and all original assertions.
 
 - 2026-11-01 21:12 UTC: [Source303 Windows and catalog results](source303-windows-and-catalog-results.md) retains eleven terminal outcomes and closed actual views. [Source304 closed reply diagnostics and QR contrast](source304-closed-reply-and-qr-contrast.md) preserves original controls and limits.
+
+- 2026-11-01 21:27 UTC: [Source304 original analysis refusal](source304-original-analysis-refusal.md) preserves both findings and the skipped Dart stage. [Source305 retired-session reply](source305-retired-session-reply.md) retains the closed category and every original command barrier.

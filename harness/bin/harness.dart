@@ -24,9 +24,7 @@ final String repo = File.fromUri(Platform.script).parent.parent.parent.path;
 final String stateRoot = '$repo${Platform.pathSeparator}.harness';
 
 class Fail implements Exception, ScreenCaptureReplyFailure {
-  Fail(this.message, {
-    HomeTapReply? homeTapReply, ScreenCaptureReplyCode? captureReply,
-  }) : _homeTapReply = homeTapReply, _captureReply = captureReply;
+  Fail(this.message, {this._homeTapReply, this._captureReply});
   final String message;
   final HomeTapReply? _homeTapReply;
   final ScreenCaptureReplyCode? _captureReply;

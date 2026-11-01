@@ -1970,22 +1970,51 @@ void main() {
 
   test('an original negative reply is returned unchanged and retires the lane',
       () async {
-    final Map<String, dynamic> refused = <String, dynamic>{
-      'ok': false, 'error': 'synthetic private diagnostic',
-    };
-    int calls = 0;
-    final ReadonlyInspectionSession session = ReadonlyInspectionSession(
-      processId: 44,
-      original: (Map<String, Object?> command, Duration timeout) async {
-        calls++;
-        return refused;
-      },
-    );
-    expect(await session.send(<String, Object?>{'cmd': 'readonly-entry'},
-        const Duration(seconds: 1)), same(refused));
-    await expectLater(session.bindWallet(),
-        throwsA(isA<ReadonlyInspectionRefused>()));
-    expect(calls, 1);
+    for (final MapEntry<String, ScreenCaptureReplyCode> entry in
+        <String, ScreenCaptureReplyCode>{
+      'synthetic private diagnostic': ScreenCaptureReplyCode.unknown,
+      'not there after 0 ms':
+          ScreenCaptureReplyCode.regionPaintClipCheckRefused,
+      'assert target is covered': ScreenCaptureReplyCode.targetDisabled,
+    }.entries) {
+      final Map<String, dynamic> refused = <String, dynamic>{
+        'ok': false, 'error': entry.key,
+        'detail': <String, Object?>{
+          if (entry.key == 'not there after 0 ms')
+            'readonly_region': 'paintClipCheckRefused',
+          if (entry.key == 'assert target is covered') 'enabled': false,
+          'label': 'Synthetic private text',
+        },
+      };
+      int calls = 0;
+      final ReadonlyInspectionSession session = ReadonlyInspectionSession(
+        processId: 44,
+        original: (Map<String, Object?> command, Duration timeout) async {
+          calls++;
+          return refused;
+        },
+      );
+      expect(await session.send(<String, Object?>{'cmd': 'readonly-entry'},
+          const Duration(seconds: 1)), same(refused));
+      // A caller changing its own reply must not change the retained category.
+      refused['error'] = 'Synthetic later caller text';
+      await expectLater(session.bindWallet(), throwsA(
+        isA<ReadonlyInspectionRefused>()
+            .having((ReadonlyInspectionRefused error) => error.reason,
+              'binding remains refused', ReadonlyInspectionReason.binding)
+            .having(screenCaptureReplyOf, 'original closed reply', entry.value),
+      ));
+      await expectLater(session.send(
+        <String, Object?>{'cmd': 'scroll', 'dy': 250},
+        const Duration(seconds: 1)), throwsA(
+          isA<ReadonlyInspectionRefused>()
+              .having((ReadonlyInspectionRefused error) => error.reason,
+                'lane remains retired', ReadonlyInspectionReason.retired)
+              .having(screenCaptureReplyOf, 'same closed reply', entry.value),
+        ),
+      );
+      expect(calls, 1);
+    }
   });
 
   test('caught transport reentry also refuses the outer positive reply',
