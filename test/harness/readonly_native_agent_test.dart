@@ -3,15 +3,24 @@ import 'dart:convert';
 import 'dart:io';
 import 'dart:typed_data';
 
+import 'package:flutter/foundation.dart';
 import 'package:flutter/widgets.dart';
 
 import 'package:flutter_test/flutter_test.dart';
+import 'package:zenon_syrius_wallet_flutter/seams/seam.dart';
 import 'package:zenon_syrius_wallet_flutter/utils/original_publications.dart';
+import 'package:zenon_syrius_wallet_flutter/widgets/modular_widgets/help_widgets/about_card.dart';
+import 'package:zenon_syrius_wallet_flutter/widgets/modular_widgets/help_widgets/about_information.dart';
+import 'package:zenon_syrius_wallet_flutter/widgets/modular_widgets/settings_widgets/node_settings_presenter.dart';
+import 'package:zenon_syrius_wallet_flutter/widgets/modular_widgets/settings_widgets/node_settings_view.dart';
 
 import '../../harness/app/agent.dart';
 import '../../harness/app/presentation_host.dart';
 import '../../harness/app/readonly_native_commands.dart';
 import '../../harness/app/readonly_sdk_admission.dart';
+
+import '../settings_about_redesign/support.dart' as about_fixture;
+import '../settings_node_redesign/support.dart' as node_fixture;
 
 class _Scope {
   final Object sdk = Object();
@@ -105,7 +114,153 @@ class _Request extends Stream<Uint8List> implements HttpRequest {
       throw UnimplementedError('Unexpected synthetic request member');
 }
 
+Future<T> _driveCatalogCommand<T>(
+  WidgetTester tester,
+  Future<T> command,
+) async {
+  bool done = false;
+  T? result;
+  Object? failure;
+  StackTrace? trace;
+  unawaited(command.then((T value) {
+    result = value;
+    done = true;
+  }, onError: (Object error, StackTrace stack) {
+    failure = error;
+    trace = stack;
+    done = true;
+  }));
+  for (int frame = 0; frame < 80 && !done; frame++) {
+    await tester.pump(const Duration(milliseconds: 40));
+  }
+  expect(done, isTrue, reason: 'The original About command must finish');
+  if (failure != null) Error.throwWithStackTrace(failure!, trace!);
+  return result as T;
+}
+
 void main() {
+  testWidgets('readonly observes the actual disabled Sporks card', (
+    WidgetTester tester,
+  ) async {
+    about_fixture.prepareAboutViewport(tester);
+    for (final bool light in <bool>[false, true]) {
+      final node_fixture.FakeNodeSettingsSession source =
+          node_fixture.FakeNodeSettingsSession();
+      final NodeSettingsPresenter presenter =
+          node_fixture.nodePresenter(source);
+      final _Scope scope = _Scope();
+      await scope.open();
+      final HarnessAgent agent = scope.agent;
+      await tester.pumpWidget(about_fixture.aboutHost(
+        NodeSettingsView(
+          presenter: presenter,
+          isCurrent: () => true,
+          embeddedNode: const SizedBox(height: 80),
+        ),
+        light: light, width: 992, height: 674,
+      ));
+      for (int frame = 0;
+          frame < 100 && presenter.currentNetwork == null; frame++) {
+        await tester.pump(const Duration(milliseconds: 10));
+      }
+      expect(presenter.currentNetwork, isNotNull);
+      await tester.pump();
+      final Finder gate = find.byKey(
+        const Key('node_settings_sporks_gate'),
+      );
+      await tester.ensureVisible(gate);
+      await tester.pump();
+      expect(tester.widget<SeamGate>(gate).seam, Seam.sporks);
+      final List<String> callsBefore = List<String>.of(source.calls);
+      for (final String command in <String>['assert', 'wait']) {
+        final Map<String, Object?> result =
+            await agent.commandForTest(<String, dynamic>{
+          'cmd': command, 'key': 'node_settings_sporks_gate',
+          if (command == 'wait') 'timeoutMs': 0,
+          if (command == 'wait') 'ready': true,
+        });
+        final Map<String, Object?> target =
+            result['target']! as Map<String, Object?>;
+        expect(target['key'], 'node_settings_sporks_gate');
+        expect(target['kind'], 'region');
+        expect(target['ref'], 0);
+      }
+      await expectLater(agent.commandForTest(<String, dynamic>{
+        'cmd': 'tap', 'key': 'node_settings_sporks_gate',
+      }), throwsA(isA<HarnessError>()));
+      expect(source.calls, callsBefore);
+      expect(scope.disabled, isTrue);
+      expect(find.byKey(const Key('node_settings_sporks_body'))
+        .hitTestable(), findsNothing);
+      expect(tester.takeException(), isNull);
+      await tester.pumpWidget(const SizedBox.shrink());
+      await tester.pump();
+      await presenter.close();
+    }
+  });
+
+  testWidgets(
+    'actual licences list becomes visible after header-targeted scrolling',
+    (WidgetTester tester) async {
+      about_fixture.prepareAboutViewport(tester);
+      for (final bool light in <bool>[false, true]) {
+        final _Scope scope = _Scope();
+        await scope.open();
+        final HarnessAgent agent = scope.agent;
+        await tester.pumpWidget(about_fixture.aboutHost(
+          AboutCard(
+            loadInformation: () async => AboutInformation(version: 'fixture'),
+            loadLicences: () => Stream<LicenseEntry>.value(
+              about_fixture.FixtureLicence(<String>['fixture-package'],
+                const <LicenseParagraph>[
+                  LicenseParagraph('Complete fixture licence.', 0),
+                ]),
+            ),
+            afterLicences: const SizedBox(height: 56),
+          ),
+          light: light, width: 1000, height: 674,
+        ));
+        await tester.pump();
+        await _driveCatalogCommand(tester, agent.commandForTest(
+          <String, dynamic>{'cmd': 'tap', 'key': 'about_licences_toggle'},
+        ));
+        final Finder list = find.byKey(const Key('about_licences_list'));
+        expect(list, findsOneWidget);
+        final Rect before = tester.getRect(list);
+        expect(before.bottom, greaterThan(780));
+        await expectLater(agent.commandForTest(<String, dynamic>{
+          'cmd': 'wait', 'key': 'about_licences_list', 'timeoutMs': 0,
+        }), throwsA(isA<HarnessError>()));
+        await _driveCatalogCommand(tester, agent.commandForTest(
+          <String, dynamic>{
+            'cmd': 'scroll', 'key': 'about_licences_toggle', 'dy': 300,
+          },
+        ));
+        final Rect section = tester.getRect(
+          find.byKey(const Key('about_page')),
+        );
+        final Rect after = tester.getRect(list);
+        expect(section.contains(after.topLeft), isTrue);
+        expect(section.contains(after.bottomRight - const Offset(1, 1)),
+          isTrue);
+        final Map<String, Object?> result =
+            await agent.commandForTest(<String, dynamic>{
+          'cmd': 'wait', 'key': 'about_licences_list', 'timeoutMs': 0,
+        });
+        final Map<String, Object?> target =
+            result['target']! as Map<String, Object?>;
+        expect(target['kind'], 'region');
+        expect(target['key'], 'about_licences_list');
+        expect(find.text('fixture-package'), findsOneWidget);
+        expect(scope.disabled, isTrue);
+        expect(tester.takeException(), isNull);
+        await tester.pumpWidget(const SizedBox.shrink());
+        await tester.pump();
+      }
+    },
+  );
+
+
   testWidgets('readonly regions retain actual widget keys', (
     WidgetTester tester,
   ) async {
@@ -248,6 +403,7 @@ void main() {
       'node_settings_page',
       'node_settings_nodes',
       'node_settings_count',
+      'node_settings_sporks_gate',
       'security_settings_page',
       'security_settings_policies',
       'display_page',

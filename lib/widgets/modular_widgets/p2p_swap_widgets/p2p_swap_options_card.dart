@@ -65,7 +65,7 @@ class P2pSwapOptionsCard extends StatelessWidget {
           onPressed: onJoin == null || binding?.ownsResources() != true
               ? null
               : () => _invoke(context, onJoin!),
-          style: quietButtonStyle(context),
+          style: secondaryButtonStyle(context),
           icon: Icon(Icons.link, size: tokens.railIconSize),
           label: Text(context.l10n.swapListJoin),
         ),

@@ -3769,6 +3769,7 @@ class HarnessAgent {
           'node_settings_page',
           'node_settings_nodes',
           'node_settings_count',
+          'node_settings_sporks_gate',
           'security_settings_page',
           'security_settings_policies',
           'display_page',
