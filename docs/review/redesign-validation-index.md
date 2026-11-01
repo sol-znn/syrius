@@ -26,3 +26,6 @@ A prior successful run remains bound to its original source and scope.
 
 - [Source282 original native Settings failure](source282-settings-native-failure.md): actual 778-case success, unchanged original native failure, independent 97-case failure inspection and finite Source283 progress preparation.
 - [Frozen PR body224](pr-body-224.md): exact 5617 bytes, SHA-256 0aa845c24e55a8c4cc6d08447822012c0aab1b1747cc76c791ab3b061a623608; all nine inline URLs retained.
+
+- [Source283 original pre-input lab failure](source283-lab-revalidation-failure.md): actual 779-case success, unchanged PRODUCTION_UNPROVEN, independent 98-case failure qualification and fixed seven-state Navigation preparation.
+- [Frozen PR body225](pr-body-225.md): exact 4403 bytes, SHA-256 b092698c116f54a58923c07690a828290b38d22266e54febc977157f3e1d9093; all seven inline URLs retained.

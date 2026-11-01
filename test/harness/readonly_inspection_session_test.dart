@@ -7,6 +7,7 @@ import 'package:flutter_test/flutter_test.dart';
 
 import '../../harness/bin/readonly_home_catalog.dart';
 import '../../harness/bin/readonly_inspection_session.dart';
+import '../../harness/bin/readonly_navigation_catalog.dart';
 import '../../harness/bin/readonly_settings_catalog.dart';
 import '../../harness/bin/screen_capture.dart';
 
@@ -1198,6 +1199,257 @@ void main() {
       expect(commands.every((Map<String, Object?> value) => <String>{
         'readonly-wallet-bind', 'state', 'tree', 'tap', 'theme', 'window',
         'wait', 'assert', 'shot',
+      }.contains(value['cmd'])), isTrue);
+      expect(output.lines.every((Object? line) => line is String &&
+          line.startsWith('ok')), isTrue);
+    }
+  });
+
+  test('bound Navigation captures return home after retained positive output',
+      () async {
+    const List<String> screens = <String>[
+      'send-rest',
+      'receive',
+      'pillars',
+      'plasma',
+      'tokens',
+      'swap-list',
+      'az',
+    ];
+    const List<String> routes = <String>[
+      'transfer',
+      'transfer',
+      'pillars',
+      'plasma',
+      'tokens',
+      'p2pSwap',
+      'accelerator',
+    ];
+    final Map<String, String> scripts = <String, String>{
+      for (final String screen in screens)
+        screen: File('harness/screens/$screen.txt').readAsStringSync(),
+    };
+    const List<String> files = <String>[
+      '07-send-rest-dark.png',
+      '07-send-rest-light.png',
+      '09-receive-dark.png',
+      '09-receive-light.png',
+      '16-pillars-dark.png',
+      '16-pillars-light.png',
+      '21-plasma-dark.png',
+      '21-plasma-light.png',
+      '23-tokens-dark.png',
+      '23-tokens-light.png',
+      '26-swap-list-dark.png',
+      '26-swap-list-light.png',
+      '28-az-dark.png',
+      '28-az-light.png',
+    ];
+    // Header-only transport data is not an actual rendered image.
+    final Uint8List header = Uint8List(33)
+      ..setAll(0, <int>[137, 80, 78, 71, 13, 10, 26, 10])
+      ..setAll(12, ascii.encode('IHDR'));
+    ByteData.sublistView(header)
+      ..setUint32(8, 13)
+      ..setUint32(16, 1280)
+      ..setUint32(20, 780);
+    expect(readonlyNavigationFailureDiagnostic(
+      const ScreenCaptureObservation(ScreenCaptureStep.scriptLine,
+        screen: 'set-node', theme: 'dark', line: 5),
+    ), isNull);
+    for (final String fault in <String>[
+      'unbound', 'none', 'first', 'shot', 'return', 'late', 'png',
+    ]) {
+      final _CatalogStdout output = _CatalogStdout();
+      final Directory repository = Directory.systemTemp.createTempSync(
+        'syrius-readonly-navigation-',
+      );
+      addTearDown(() => repository.deleteSync(recursive: true));
+      for (final MapEntry<String, String> script in scripts.entries) {
+        File('${repository.path}/harness/screens/${script.key}.txt')
+          ..parent.createSync(recursive: true)
+          ..writeAsStringSync(script.value);
+      }
+      String tab = 'dashboard';
+      String mode = 'light';
+      String selected = '';
+      bool expanded = true;
+      bool restoredWindow = false;
+      int shots = 0;
+      int returned = 0;
+      final List<Map<String, Object?>> commands = <Map<String, Object?>>[];
+      final List<ScreenCaptureObservation> progress =
+          <ScreenCaptureObservation>[];
+      final Map<String, dynamic> negative = <String, dynamic>{
+        'ok': false, 'error': 'Synthetic capture refusal',
+      };
+      final ReadonlyInspectionSession session = ReadonlyInspectionSession(
+        processId: 44,
+        original: (Map<String, Object?> command, Duration timeout) async {
+          expect(timeout, lessThanOrEqualTo(const Duration(seconds: 30)));
+          commands.add(command);
+          final Object? name = command['cmd'];
+          final Object? targetKey = command['key'];
+          final Object? targetTab = command['tab'];
+          if (name == 'tap' && command['key'] == 'rail_toggle') {
+            expect(tab, 'dashboard');
+            expanded = !expanded;
+          }
+          if (name == 'tap' && targetKey != null &&
+              command['key'] != 'rail_toggle') {
+            expect(tab, routes[shots ~/ 2]);
+            if (fault == 'first') return negative;
+          }
+          if (name == 'tap' && targetTab != null) {
+            expect(<String>['dashboard', ...routes], contains(command['tab']));
+            if (targetTab != 'dashboard') {
+              expect(targetTab, routes[shots ~/ 2]);
+              selected = screens[shots ~/ 2];
+            }
+            if (command['tab'] == 'dashboard') {
+              expect(shots, returned + 1);
+              final File retained = File('${repository.path}/'
+                '$readonlyNavigationCatalogDirectory/${files[shots - 1]}');
+              expect(retained.readAsBytesSync(), header);
+              if (fault == 'return') return negative;
+              returned++;
+            }
+            tab = targetTab as String;
+          }
+          if (name == 'shot') {
+            expect(tab, routes[shots ~/ 2]);
+            expect(selected, screens[shots ~/ 2]);
+            if (fault == 'shot' || fault == 'late' && shots == 5) {
+              return negative;
+            }
+            shots++;
+          }
+          if (name == 'type') {
+            expect(tab, 'pillars');
+            expect(command['key'], 'pillars_search');
+            expect(command['value'], 'dev1');
+            expect(command['submit'], isNull);
+          }
+          if (name == 'key') expect(command['key'], 'escape');
+          if (name == 'theme') {
+            if (command['mode'] case final String requested) mode = requested;
+            if (command['restore'] case final Map<String, dynamic> original) {
+              mode = original['mode'] as String;
+            }
+          }
+          if (name == 'window' && command['restoreState'] != null) {
+            restoredWindow = true;
+          }
+          return <String, dynamic>{
+            ..._reply(wallet: true),
+            if (name == 'state') ...<String, dynamic>{
+              'walletUnlocked': true, 'walletInitCompleted': true,
+              'tab': tab, 'tabs': <String>[
+                'dashboard', 'transfer', 'pillars', 'plasma', 'tokens',
+                'p2pSwap', 'accelerator',
+              ],
+              'locale': 'en', 'direction': 'ltr',
+            },
+            if (name == 'tree') 'nodes': <Object?>[
+              <String, dynamic>{'key': 'rail_toggle', 'kind': 'button',
+                'rect': <int>[8, 36, if (expanded) 184 else 40, 32]},
+            ],
+            if (name == 'theme') ...<String, dynamic>{
+              'mode': mode, 'savedMode': 'ThemeMode.$mode', 'brightness': mode,
+            },
+            if (name == 'window') ...<String, dynamic>{
+              'window': <int>[80, 90, 1200, 700],
+              'client': <int>[
+                if (command['width'] != null) 1280 else 1200,
+                if (command['height'] != null) 780 else 700,
+              ],
+              'minimized': false, 'maximized': true, 'clientMatched': true,
+              if (command['restoreState'] != null) 'restored': true,
+            },
+            if (name == 'wait' || name == 'assert') ...<String, dynamic>{
+              'ms': 0, 'asserted': true,
+              'target': <String, dynamic>{'ref': 0, 'kind': 'region',
+                'key': command['key'], 'rect': <int>[0, 0, 200, 100]},
+            },
+            if (name == 'type') 'value': command['value'],
+            if (name == 'key') 'handled': true,
+            if (name == 'shot') ...<String, dynamic>{
+              'client': <int>[1280, 780], 'width': 1280, 'height': 780,
+              'scale': 1, 'theme': mode, 'asserted': true,
+              'png': base64Encode(fault == 'png' ? Uint8List(33) : header),
+            },
+          };
+        },
+      );
+      Future<Map<String, Object>> capture() =>
+          IOOverrides.runZoned<Future<Map<String, Object>>>(
+        () => captureReadonlyNavigationDefaults(
+          repository: repository, session: session, onStep: progress.add,
+        ),
+        stdout: () => output,
+      );
+      if (fault == 'unbound') {
+        await expectLater(capture(),
+            throwsA(isA<ReadonlyInspectionRefused>()));
+        expect(commands, isEmpty);
+        expect(progress, isEmpty);
+        expect(output.lines, isEmpty);
+        continue;
+      }
+      await session.bindWallet();
+      if (fault == 'none') {
+        final Map<String, Object> receipt = await capture();
+        expect(receipt, <String, Object>{
+          'schema': 1, 'scope': 'readonly_native_navigation_catalog_capture',
+          'screens': screens, 'themes': <String>['dark', 'light'],
+          'files': files, 'width': 1280, 'height': 780, 'scale': 1,
+          'capture_returned': true,
+        });
+        expect(shots, 14);
+        expect(returned, 14);
+        expect(tab, 'dashboard');
+        expect(expanded, isTrue);
+        expect(mode, 'light');
+        expect(restoredWindow, isTrue);
+        expect(progress.last.step, ScreenCaptureStep.complete);
+      } else {
+        await expectLater(capture(), throwsA(isA<ScreenCaptureError>()));
+        expect(shots, fault == 'return' || fault == 'png' ? 1 :
+            fault == 'late' ? 5 : 0);
+        expect(returned, fault == 'late' ? 5 : 0);
+        expect(restoredWindow, isFalse);
+        final ScreenCaptureObservation last = progress.last;
+        expect(last.step, switch (fault) {
+          'first' => ScreenCaptureStep.scriptLine,
+          'return' => ScreenCaptureStep.afterCaptureLine,
+          'png' => ScreenCaptureStep.shotValidation,
+          _ => ScreenCaptureStep.shotRequest,
+        });
+        expect(last.screen, fault == 'late' ? 'pillars' : 'send-rest');
+        expect(last.theme, fault == 'late' ? 'light' : 'dark');
+        expect(readonlyNavigationFailureDiagnostic(last), isNotNull);
+        // Original binding stays recorded; the held lane refuses later input.
+        expect(session.walletBound, isTrue);
+        final int originalCalls = commands.length;
+        await expectLater(session.send(
+            <String, Object?>{'cmd': 'state'}, const Duration(seconds: 5)),
+            throwsA(isA<ReadonlyInspectionRefused>()));
+        expect(commands.length, originalCalls);
+        expect(negative, <String, dynamic>{
+          'ok': false, 'error': 'Synthetic capture refusal',
+        });
+      }
+      final Directory images = Directory(
+        '${repository.path}/$readonlyNavigationCatalogDirectory',
+      );
+      final int retained = fault == 'png' ? 0 : shots;
+      expect(images.existsSync() ? images.listSync().length : 0, retained);
+      for (int i = 0; i < retained; i++) {
+        expect(File('${images.path}/${files[i]}').readAsBytesSync(), header);
+      }
+      expect(commands.every((Map<String, Object?> value) => <String>{
+        'readonly-wallet-bind', 'state', 'tree', 'tap', 'theme', 'window',
+        'wait', 'assert', 'shot', 'type', 'key',
       }.contains(value['cmd'])), isTrue);
       expect(output.lines.every((Object? line) => line is String &&
           line.startsWith('ok')), isTrue);

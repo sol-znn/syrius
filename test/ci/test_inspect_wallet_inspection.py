@@ -554,7 +554,7 @@ class ReaderTests(unittest.TestCase):
                     'expected', 'a' * 40, 1)
 
     def run_main(self, *, positive=True, parent_failed=False, mutate_after=False,
-                 child_missing=False, auxiliary_forced=False, home_schema=1, settings_catalog=False):
+                 child_missing=False, auxiliary_forced=False, home_schema=1, settings_catalog=False, navigation_catalog=False):
         child, lab, files = pair(positive=positive)
         if auxiliary_forced:
             child['forced_cleanup'] = child['auxiliary_cleanup']['forced'] = True
@@ -575,14 +575,21 @@ class ReaderTests(unittest.TestCase):
         source = b'synthetic source'
         home_pixels = wallet_fixtures.png()
         home = wallet_fixtures.home_manifest(home_pixels, source, schema=home_schema)
+        self.assertFalse(settings_catalog and navigation_catalog)
         if settings_catalog:
             home = wallet_fixtures.settings_manifest(home_pixels, source)
+        elif navigation_catalog:
+            home = wallet_fixtures.navigation_manifest(home_pixels, source)
         home_manifest = encode(home)
         viewport_manifest, viewport_images = viewport_fixtures.fixture()
         viewport_manifest['probe_sha256'] = hashlib.sha256(source).hexdigest()
         viewport_manifest_raw = encode(viewport_manifest)
         if not child_missing:
-            if settings_catalog:
+            if navigation_catalog:
+                child.update(schema=3, home_catalog=None, settings_catalog=None,
+                    navigation_catalog=(wallet_fixtures.navigation_reference(
+                        reader.archive.sha(home_manifest)) if positive else None))
+            elif settings_catalog:
                 child.update(schema=2, home_catalog=None,
                     settings_catalog=(wallet_fixtures.settings_reference(
                         reader.archive.sha(home_manifest)) if positive else None))
@@ -603,7 +610,7 @@ class ReaderTests(unittest.TestCase):
         blobs = {1: root_raw, 2: wallet_raw, 3: home_raw, 4: viewport_raw}
         artifact_ids = (1,) if child_missing else (1, 2, 3, 4) if positive else (1, 2)
         listing = dict(total_count=len(artifact_ids), artifacts=[dict(id=i,
-            name={1: 'chain321-native-', 2: 'wallet-inspection-', 3: 'settings-catalog-' if settings_catalog else 'home-catalog-', 4: 'viewport-observation-'}[i] + 'a' * 40 + '-1-1',
+            name={1: 'chain321-native-', 2: 'wallet-inspection-', 3: 'navigation-catalog-' if navigation_catalog else 'settings-catalog-' if settings_catalog else 'home-catalog-', 4: 'viewport-observation-'}[i] + 'a' * 40 + '-1-1',
             expired=False, size_in_bytes=len(blobs[i]), digest='sha256:' + reader.archive.sha(blobs[i]),
             workflow_run=dict(id=1, head_sha='a' * 40)) for i in artifact_ids])
         blob = hashlib.sha1(b'blob ' + str(len(source)).encode() + b'\0' + source).hexdigest()
@@ -715,13 +722,29 @@ class ReaderTests(unittest.TestCase):
         value, calls, text = self.run_main(settings_catalog=True)
         self.assertTrue(value['native_inspection_qualified'])
         self.assertEqual(value['verified_catalog_png_count'], 14)
-        self.assertEqual(value['producer_source_files_verified'], 42)
+        self.assertEqual(value['producer_source_files_verified'], 51)
         self.assertEqual(len(calls), 16)
         messages = [line.split('::', 2)[-1] for line in text.splitlines()
             if line.startswith('::notice title=Retained readonly Settings catalog::')]
         self.assertEqual(len(messages), 1)
         observed = json.loads(messages[0])
         self.assertEqual(observed['filenames'], list(reader.producer.settings.FILES))
+        self.assertEqual(observed['verified_png_count'], 14)
+        self.assertTrue(observed['all_original_png_digests_verified'])
+        self.assertTrue(observed['parent_closure_qualified'])
+        self.assertFalse(observed['atomic_frame_qualified'])
+        self.assertFalse(observed['wallet_qualified'])
+        self.assertEqual(observed['visual_matches'], 0)
+        value, calls, text = self.run_main(navigation_catalog=True)
+        self.assertTrue(value['native_inspection_qualified'])
+        self.assertEqual(value['verified_catalog_png_count'], 14)
+        self.assertEqual(value['producer_source_files_verified'], 51)
+        self.assertEqual(len(calls), 16)
+        messages = [line.split('::', 2)[-1] for line in text.splitlines()
+            if line.startswith('::notice title=Retained readonly Navigation catalog::')]
+        self.assertEqual(len(messages), 1)
+        observed = json.loads(messages[0])
+        self.assertEqual(observed['filenames'], list(reader.producer.navigation.FILES))
         self.assertEqual(observed['verified_png_count'], 14)
         self.assertTrue(observed['all_original_png_digests_verified'])
         self.assertTrue(observed['parent_closure_qualified'])

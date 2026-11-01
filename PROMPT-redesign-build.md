@@ -392,13 +392,13 @@ macOS; Windows provision and acceptance remain pending. See
 
 ### Now
 
-- Updated: 2026-11-01T06:08Z
-- Current work: Source282 passes all 778 focused and native-preflight Dart cases with zero skips/failures/errors and clean selected analysis. Its native producer fails at Settings capture; the independent 97-case reader preserves both original failure manifests and admits zero PNGs. See [the original native result](docs/review/source282-settings-native-failure.md)
+- Updated: 2026-11-01T06:43Z
+- Current work: Source283 passes all 779 focused and native-preflight Dart cases with zero skips/failures/errors and clean selected analysis. Its original native producer fails at lab_revalidation before profile input, with PRODUCTION_UNPROVEN. The independent 98-case reader preserves both failure manifests and zero PNGs. See [the original result](docs/review/source283-lab-revalidation-failure.md)
 - Main ledger: 72 of 80 rows done, 90 percent by rows. P03, P09, F06, V01-V03 and V05-V06 remain open; original V04 viewing is complete on its recorded scope
 - Source278 evidence: five successful runs, the 4849-pass/one-skip application baseline and actual eight-Home review retain their source scopes. No newer full-root result is inferred
-- Visual scope: zero of 94 accepted matches, nineteen preparations and 82 missing literal outputs. The four fixture failures X419 are corrected on their narrow scope; the actual Settings failure is separate X420. X411 and Arabic fallback X414 remain
-- Next gates: Source283 adds only finite capture-step diagnostics. Fresh 779/781 ordinary/startup Dart, 921/456/98 Python/memory/reader and 42 producer pins are expected before native admission. Fourteen Settings/42 total PNGs remain unqualified
-- Preserved scope: the original native inner cause stays NOT_ESTABLISHED. Native101 Send and Native103 Token confirmation/effect stay UNKNOWN; Native104 is not admitted. All earlier failures remain. Attribution uses edgepillar, GitHub no-reply and UTC; the PR stays Draft
+- Visual scope: zero of 94 accepted matches, nineteen preparations and 82 missing literal outputs. X419's four fixture failures remain corrected. Source282 Settings capture remains X420; the separate pre-input lab failure is X421. X411 and Arabic fallback X414 remain
+- Next gates: Source284 prepares seven exact Navigation states and retains Source283 progress. Fresh 780/782 ordinary/startup Dart, 924/459/101 Python/memory/reader and 51 producer pins are expected before native admission. Fourteen Navigation/42 total PNGs remain unqualified
+- Preserved scope: the original lab cause and Source282 Settings inner cause stay NOT_ESTABLISHED. Native101 Send and Native103 Token confirmation/effect stay UNKNOWN; Native104 is not admitted. All earlier failures remain. Attribution uses edgepillar, GitHub no-reply and UTC; the PR stays Draft
 
 ### Rows
 
@@ -478,12 +478,12 @@ macOS; Windows provision and acceptance remain pending. See
 | N05 | done | 2026-10-23T15:54Z | e13abb387577 adds the original globe crop and three captured entry routes, preserving owned callbacks and Welcome motion; strict and full local checks pass; native comparison pending |
 | N06 | done | 2026-10-23T15:54Z | e13abb387577 adds pure Import and the bounded three-word quiz with original decrypt, access release and shared-axis routes; strict and full local checks pass; native authentication and comparison remain unqualified |
 | N07 | done | 2026-10-23T15:54Z | e13abb387577 adds the original map and Ready glass card, captured first address and once-only opening bound to original creation and local initialization; connection mismatch and uncertainty remain distinct from readiness; strict and full local checks pass; native acceptance pending |
-| V01 | review | 2026-11-01T06:08Z | Source282 original native Settings capture fails after 24 visits; its 97-case reader qualifies failure manifests and zero PNGs. Source278 actual eight-Home review and four earlier entry outputs retain their scopes. Zero of 94 matches, nineteen preparations and 82 missing literal outputs remain. Source283 prepares finite step-only diagnostics; no generic or viewport alias is accepted |
+| V01 | review | 2026-11-01T06:43Z | Source283 original native fails at pre-input lab revalidation; its 98-case reader qualifies failure manifests and zero PNGs. Source278 actual eight-Home review and four earlier entry outputs retain their scopes. Zero of 94 matches, nineteen preparations and 82 missing literal outputs remain. Source284 prepares seven exact Navigation states; Settings remains unqualified |
 | V02 | blocked | 2026-10-23T12:26Z | Finite widget timing coverage is separate from the running-build motion, shader and frame-time pass; native execution and its baseline remain pending |
 | V03 | blocked | 2026-10-23T12:26Z | Seam registry and injected control checks are prepared; trying every control, shortcut and Go to entry in a running native wallet remains pending |
 | V04 | done | 2026-10-31T23:34Z | All four independently qualified Source265 minimum-window/Arabic originals were actually viewed in both themes. The owned review closes SUCCESS with actual controller exit zero; required original native closure stays source-bound. Minimum controls fit and RTL layout mirrors. English fallback/missing Arabic copy is retained as X414; exact saved locale preference and Arabic glyph quality remain separate unqualified observations |
 | V05 | blocked | 2026-10-28T12:48Z | The four source133 images and their exact references are now opened, with corrected Import family/counter placement and residual selector, Welcome frame/drop and draft-decoration differences. Font hinting and the selected brand colors remain allowed exceptions. No input buffer receives a decorative continuation mark. Complete independent review of all 94 pairs and the browser-rendered compare page remains pending; zero matches are accepted |
-| V06 | review | 2026-11-01T06:08Z | Main progress remains 72/80. Source282 passes all 778 focused and native-preflight cases with zero selected findings, then retains original Settings capture failure and forced-wallet closure. Independent reader passes all 97 controls and qualifies failure evidence, not pixels. Source283 prepares finite progress with fresh 779/781 and 921/456/98 gates pending. Source278 full baseline and all original acceptance boundaries remain |
+| V06 | review | 2026-11-01T06:43Z | Main progress stays 72/80. Source283 passes all 779 focused and native-preflight cases with zero selected findings, then fails before profile input with PRODUCTION_UNPROVEN. Its independent 98-case reader preserves both failure manifests. Source284 adds a fixed seven-state Navigation catalog with expected 780/782 and 924/459/101 gates pending; all original acceptance boundaries remain |
 | X01 | done | 2026-10-21T23:26Z | e13abb387577 restores loading-list sweep ink in lib/rearchitecture/utils/widgets/motion/skeleton.dart; all 19 existing Skeleton tests pass unchanged |
 | X02 | done | 2026-10-21T23:57Z | e13abb387577 keeps the status-strip dot visible at narrow widths and fixes asynchronous visibility tests |
 | X03 | done | 2026-10-21T23:57Z | e13abb387577 parses the bridge test's HTTP head before binary frames; compression refusal assertions retained |
@@ -1789,4 +1789,15 @@ The new progress observation reports only the original entered step and closed s
 
 | Row | Status | Updated | Note |
 | --- | --- | --- | --- |
-| X420 | review | 2026-11-01T06:08Z | Source282 native capture fails at settings_catalog with no inner code/diagnostic and forced required-wallet closure. Its reader preserves both failure manifests, all 42 sources and zero admitted PNGs. Source283 adds finite step observations before original operations; the exact original inner cause remains NOT_ESTABLISHED pending a new source-bound result |
+| X420 | review | 2026-11-01T06:43Z | Source282 original capture fails at settings_catalog without an inner code or diagnostic and with forced required-wallet closure. Its 97-case reader preserves both failure manifests and zero PNGs. Source283 passes all 779 controls, but its native producer fails earlier at pre-input lab revalidation; no Settings entered step is observed or backfilled |
+
+
+### Source284 readonly Navigation catalog
+
+The [Source283 original failure](docs/review/source283-lab-revalidation-failure.md) preserves positive 779-case controls, clean analysis, pre-input PRODUCTION_UNPROVEN, required-wallet closure failure and the independent 98-case result. Source282's missing Settings diagnostic remains NOT_ESTABLISHED.
+
+A fixed seven-state catalog retains original scripts and inputs, exact reference names and positive-shot-only Home return. It adds a closed Navigation schema and independent source/archive controls while retaining legacy Home/Settings behavior. All 459 private memory controls pass; fresh 780/782 and 924/459/101 hosted gates remain pending. Current-HEAD root/native proof and all fourteen new literal images remain unqualified.
+
+| Row | Status | Updated | Note |
+| --- | --- | --- | --- |
+| X421 | review | 2026-11-01T06:43Z | Source283 native fails in the first lab revalidation before profile input with PRODUCTION_UNPROVEN. The independent reader preserves both original failure manifests, all 42 sources, forced required-wallet cleanup and zero admitted PNGs. Initial height one-to-two progress does not establish later production; the exact cause is NOT_ESTABLISHED |

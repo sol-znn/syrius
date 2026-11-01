@@ -18,6 +18,7 @@ from tool.ci import hosted_chain321 as lab
 from tool.ci import windows_wallet_inspection as inspection
 import test_readonly_viewport_capture as viewport_fixtures
 import test_readonly_settings_capture as settings_fixtures
+import test_readonly_navigation_capture as navigation_fixtures
 
 
 def settings_manifest(pixels, script):
@@ -34,6 +35,22 @@ def settings_manifest(pixels, script):
 def settings_reference(digest):
     return dict(schema=1, scope='readonly_native_settings_catalog_reference',
         screens=list(inspection.settings.SCREENS), captured=14, manifest_sha256=digest)
+
+
+def navigation_manifest(pixels, script):
+    value, _ = navigation_fixtures.fixture()
+    value.update(source_sha='a' * 40, source_tree='b' * 40,
+        run_id='1', script_sha256_by_screen={
+            name: hashlib.sha256(script).hexdigest()
+            for name in inspection.navigation.SCREENS})
+    for row in value['captures']:
+        row.update(bytes=len(pixels), sha256=hashlib.sha256(pixels).hexdigest())
+    return value
+
+
+def navigation_reference(digest):
+    return dict(schema=1, scope='readonly_native_navigation_catalog_reference',
+        screens=list(inspection.navigation.SCREENS), captured=14, manifest_sha256=digest)
 
 
 def sdk():
@@ -387,6 +404,32 @@ class InspectionTests(unittest.TestCase):
         self.assertFalse(manifest['parent_closure_qualified'])
         self.assertEqual(manifest['visual_matches'], 0)
         opened.assert_called_once_with('xb')
+        written = RetainedBytes()
+        scripts = {name + '.txt': ('original ' + name).encode('ascii')
+            for name in inspection.navigation.SCREENS}
+        def read_navigation(path, cap):
+            if path.suffix == '.png':
+                self.assertEqual(cap, inspection.navigation.MAX_CAPTURE_TOTAL)
+                return pixels
+            self.assertEqual(cap, 65536)
+            return scripts[path.name]
+        reads = mock.Mock(side_effect=read_navigation)
+        with mock.patch.object(inspection.navigation, 'output_bytes', return_value=0), \
+                mock.patch.object(Path, 'open', return_value=written) as opened:
+            reference = inspection.navigation.collect(Path('/fixture'),
+                navigation_fixtures.receipt(), 'a' * 40, 'b' * 40,
+                dict(GITHUB_RUN_ID='1', GITHUB_RUN_ATTEMPT='1'), read_original=reads)
+        manifest = json.loads(written.getvalue())
+        self.assertEqual(reference['manifest_sha256'], hashlib.sha256(written.getvalue()).hexdigest())
+        self.assertEqual(reference['captured'], 14)
+        self.assertEqual(reads.call_count, 21)
+        self.assertEqual(manifest['script_sha256_by_screen'],
+            {name: hashlib.sha256(scripts[name + '.txt']).hexdigest()
+             for name in inspection.navigation.SCREENS})
+        self.assertEqual([row['file'] for row in manifest['captures']], list(inspection.navigation.FILES))
+        self.assertFalse(manifest['parent_closure_qualified'])
+        self.assertEqual(manifest['visual_matches'], 0)
+        opened.assert_called_once_with('xb')
         with mock.patch.object(inspection, 'home_output_bytes', return_value=0), \
                 mock.patch.object(inspection, 'read_original', return_value=b'bad pixels'), \
                 mock.patch.object(Path, 'open') as opened:
@@ -398,6 +441,29 @@ class InspectionTests(unittest.TestCase):
             opened.assert_not_called()
 
     def test_complete_finite_controls_do_not_grant_financial_or_catalog_acceptance(self):
+        for schema, field, reference in (
+            (2, 'settings_catalog', settings_reference('e' * 64)),
+            (3, 'navigation_catalog', navigation_reference('e' * 64)),
+        ):
+            selected = dict(report(), schema=schema, home_catalog=None,
+                settings_catalog=reference if schema == 2 else None)
+            if schema == 3:
+                selected['navigation_catalog'] = reference
+            self.assertTrue(inspection.completed(selected))
+            self.assertIs(inspection.public_manifest(selected), selected)
+            missing = dict(selected, **{field: None})
+            self.assertFalse(inspection.completed(missing))
+            with self.assertRaises(inspection.Refused):
+                inspection.public_manifest(missing)
+            wrong = dict(selected, home_catalog=home_reference())
+            self.assertFalse(inspection.completed(wrong))
+            with self.assertRaises(inspection.Refused):
+                inspection.public_manifest(wrong)
+            if schema == 3:
+                mixed = dict(selected, settings_catalog=settings_reference('e' * 64))
+                self.assertFalse(inspection.completed(mixed))
+                with self.assertRaises(inspection.Refused):
+                    inspection.public_manifest(mixed)
         value = report()
         self.assertTrue(inspection.completed(value))
         self.assertIs(inspection.public_manifest(value), value)
@@ -633,7 +699,7 @@ class InspectionTests(unittest.TestCase):
                     with self.assertRaises(inspection.Refused):
                         inspection.read_original(path, 16)
 
-    def artifact_case(self, value, *, pixels=None, home_schema=1, settings_catalog=False):
+    def artifact_case(self, value, *, pixels=None, home_schema=1, settings_catalog=False, navigation_catalog=False):
         parent = dict(GITHUB_WORKSPACE='/fixture', GITHUB_RUN_ID='1', GITHUB_RUN_ATTEMPT='1',
                       GITHUB_OUTPUT='/fixture-output')
         value = copy.deepcopy(value)
@@ -642,11 +708,17 @@ class InspectionTests(unittest.TestCase):
         home_raw = json.dumps(home).encode('ascii')
         settings_value = settings_manifest(pixels or b'x', script)
         settings_raw = json.dumps(settings_value).encode('ascii')
+        navigation_value = navigation_manifest(pixels or b'x', script)
+        navigation_raw = json.dumps(navigation_value).encode('ascii')
+        self.assertFalse(settings_catalog and navigation_catalog)
         viewport_manifest, viewport_images = viewport_fixtures.fixture()
         viewport_manifest['probe_sha256'] = hashlib.sha256(script).hexdigest()
         viewport_raw = json.dumps(viewport_manifest).encode('ascii')
         if value['success']:
-            if settings_catalog:
+            if navigation_catalog:
+                value.update(schema=3, home_catalog=None, settings_catalog=None,
+                    navigation_catalog=navigation_reference(hashlib.sha256(navigation_raw).hexdigest()))
+            elif settings_catalog:
                 value.update(schema=2, home_catalog=None,
                     settings_catalog=settings_reference(hashlib.sha256(settings_raw).hexdigest()))
             else:
@@ -665,6 +737,15 @@ class InspectionTests(unittest.TestCase):
                         Path('/fixture') / inspection.viewport.PROBE):
                 self.assertEqual(cap, 65536)
                 return script
+            if (path.parent == Path('/fixture/harness/screens')
+                    and path.stem in inspection.navigation.SCREENS):
+                self.assertEqual(cap, 65536)
+                return script
+            if path.parent == Path('/fixture') / inspection.navigation.OUTPUT:
+                self.assertIn(path.name, ('manifest.json', *inspection.navigation.FILES))
+                self.assertEqual(cap, inspection.navigation.MAX_MANIFEST
+                    if path.name == 'manifest.json' else inspection.navigation.MAX_CAPTURE_TOTAL)
+                return navigation_raw if path.name == 'manifest.json' else pixels
             if (path.parent == Path('/fixture/harness/screens')
                     and path.stem in inspection.settings.SCREENS):
                 self.assertEqual(cap, 65536)
@@ -765,6 +846,14 @@ class InspectionTests(unittest.TestCase):
         self.assertNotIn('ci-home-catalog/', output)
         for filename in inspection.settings.FILES:
             self.assertIn('ci-settings-catalog/' + filename, output)
+        self.assertNotIn('private', output)
+        paths, reads, output = self.artifact_case(value, pixels=pixels, navigation_catalog=True)
+        self.assertEqual(len(paths), 25)
+        self.assertEqual(len(reads), 53)
+        self.assertIn('catalog_family=navigation-catalog', output)
+        self.assertNotIn('ci-home-catalog/', output)
+        for filename in inspection.navigation.FILES:
+            self.assertIn('ci-navigation-catalog/' + filename, output)
         self.assertNotIn('private', output)
 
     def test_artifacts_cannot_borrow_another_source_run_or_private_manifest(self):

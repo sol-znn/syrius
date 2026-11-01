@@ -56,6 +56,15 @@ SOURCE_FILES = (
     'harness/screens/set-apps.txt',
     'harness/screens/set-addresses.txt',
     'harness/screens/set-about.txt',
+    'tool/ci/readonly_navigation_capture.py',
+    'harness/bin/readonly_navigation_catalog.dart',
+    'harness/screens/send-rest.txt',
+    'harness/screens/receive.txt',
+    'harness/screens/pillars.txt',
+    'harness/screens/plasma.txt',
+    'harness/screens/tokens.txt',
+    'harness/screens/swap-list.txt',
+    'harness/screens/az.txt',
 )
 PHASE = 'environment'
 
@@ -250,6 +259,8 @@ def unpack(raw, expected_sha, expected_size, head, tree, run_id, lab, lab_summar
             summary['_home_catalog_reference'] = report['home_catalog']
             if report['schema'] == 2:
                 summary['_settings_catalog_reference'] = report['settings_catalog']
+            elif report['schema'] == 3:
+                summary['_navigation_catalog_reference'] = report['navigation_catalog']
             summary['_viewport_reference'] = report['viewport']
         else:
             need(names == ['manifest.json'])
@@ -483,10 +494,20 @@ def main(parent=None):
     catalog = viewport_observation = None
     reference = summary.pop('_home_catalog_reference', None)
     settings_reference = summary.pop('_settings_catalog_reference', None)
+    navigation_reference = summary.pop('_navigation_catalog_reference', None)
     viewport_reference = summary.pop('_viewport_reference', None)
     if summary['native_inspection_qualified']:
-        need((reference is None) != (settings_reference is None))
-        if settings_reference is not None:
+        need(sum(value is not None for value in
+            (reference, settings_reference, navigation_reference)) == 1)
+        if navigation_reference is not None:
+            PHASE = 'navigation_catalog_artifact'
+            item = artifact(listing, 'navigation-catalog-' + head + '-' + text + '-1', head, run_id)
+            pins = {name: source_digests['harness/screens/' + name + '.txt']
+                for name in producer.navigation.SCREENS}
+            catalog = producer.navigation.unpack(download(item, producer.navigation.MAX_ARCHIVE),
+                item['digest'][7:], item['size_in_bytes'], head, tree, run_id,
+                navigation_reference, pins)
+        elif settings_reference is not None:
             PHASE = 'settings_catalog_artifact'
             item = artifact(listing, 'settings-catalog-' + head + '-' + text + '-1', head, run_id)
             pins = {name: source_digests['harness/screens/' + name + '.txt']
@@ -533,9 +554,9 @@ def main(parent=None):
             producer_job_id=job['id'], metadata_revalidated=True,
             producer_source_files_verified=len(SOURCE_FILES),
             all_original_png_digests_verified=True)
-        title = ('Retained readonly Settings catalog'
-            if catalog['scope'] == 'retained_readonly_settings_catalog'
-            else 'Retained readonly Home catalog')
+        title = {'retained_readonly_home_catalog': 'Retained readonly Home catalog',
+            'retained_readonly_settings_catalog': 'Retained readonly Settings catalog',
+            'retained_readonly_navigation_catalog': 'Retained readonly Navigation catalog'}[catalog['scope']]
         emit(title, catalog)
     if viewport_observation is not None:
         viewport_observation.update(viewport_observation_qualified=True, parent_closure_qualified=True,

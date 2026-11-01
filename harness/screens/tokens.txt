@@ -7,3 +7,5 @@ wait --key tokens_list --timeout 30
 wait --key tokens_filter_held --timeout 30
 tap --key tokens_filter_held
 assert --key tokens_search_field
+# after-capture: goto dashboard
+# after-capture: wait --key home_hero --timeout 5

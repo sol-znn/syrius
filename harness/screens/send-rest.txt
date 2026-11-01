@@ -8,3 +8,5 @@ assert --key send_address_book
 assert --key send_amount_field
 assert --key send_submit_button
 assert --key send_form_ready
+# after-capture: goto dashboard
+# after-capture: wait --key home_hero --timeout 5

@@ -9,3 +9,5 @@ assert --key p2p_start_swap
 assert --key p2p_join_swap
 # Example row counts and amounts depend on an authorized isolated chain fixture.
 # Missing proof remains Unknown; this script never injects terms or unlock data.
+# after-capture: goto dashboard
+# after-capture: wait --key home_hero --timeout 5

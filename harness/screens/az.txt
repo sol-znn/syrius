@@ -11,3 +11,5 @@ tap --key accelerator_filter_mine
 tap --key accelerator_filter_all
 tap --key accelerator_filter_voting
 assert --key accelerator_filter_voting
+# after-capture: goto dashboard
+# after-capture: wait --key home_hero --timeout 5

@@ -25,7 +25,7 @@ class ReaderControlTests(unittest.TestCase):
             suite, errors = controls.load_suite()
             self.assertIs(sys.modules['test'], foreign)
         self.assertEqual(errors, 0)
-        self.assertEqual(suite.countTestCases(), 98)
+        self.assertEqual(suite.countTestCases(), 101)
 
     def test_original_failures_keep_counts_without_private_messages_or_paths(self):
         def failed():
@@ -38,10 +38,10 @@ class ReaderControlTests(unittest.TestCase):
         value = controls.run_suite(suite)
         self.assertFalse(value['success'])
         self.assertEqual((value['tests'], value['failures'], value['errors']), (2, 1, 1))
-        self.assertEqual(value['expected'], 98)
+        self.assertEqual(value['expected'], 101)
         self.assertNotIn('private', json.dumps(value))
         self.assertEqual(value['failed_cases'], [dict(file=None, method=None)])
-        for stale in (95, 96, 97, 99):
+        for stale in (95, 96, 97, 98, 99, 100, 102):
             suite = unittest.TestSuite(unittest.FunctionTestCase(lambda: None)
                 for _ in range(stale))
             observed = controls.run_suite(suite)

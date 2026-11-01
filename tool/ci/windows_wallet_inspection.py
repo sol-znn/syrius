@@ -23,6 +23,7 @@ from . import windows_debug_loop as debug
 from . import windows_wallet_tour as shared
 from . import readonly_viewport_capture as viewport
 from . import readonly_settings_capture as settings
+from . import readonly_navigation_capture as navigation
 from .windows_debug_process import IMAGE_NAMES
 from .hosted_chain321 import CODES as LAB_CODES
 
@@ -57,7 +58,7 @@ CODES = shared.CODES | LAB_CODES | frozenset(('BINDING_REFUSED', 'INSPECTION_REF
     'LAB_REVALIDATION_VALUE_ERROR', 'LAB_REVALIDATION_OS_ERROR'))
 STAGES = frozenset(('unused_destinations', 'build', 'start', 'input', 'window',
     'onboarding', 'signing_policy', 'onboarding_logs', 'address_selection',
-    'wallet_binding', 'tour_dark', 'tour_light', 'home_catalog', 'settings_catalog', 'viewport', 'finish'))
+    'wallet_binding', 'tour_dark', 'tour_light', 'home_catalog', 'settings_catalog', 'navigation_catalog', 'viewport', 'finish'))
 
 
 class Refused(Exception):
@@ -465,6 +466,14 @@ def entry_failure(value):
                 settings.failure_diagnostic(value['diagnostic'])
             except settings.Refused:
                 need(False, 'ENTRY_REFUSED')
+        elif value['stage'] == 'navigation_catalog':
+            need(value['code'] is None or value['code'] in {
+                'inspection-' + reason for reason in
+                ('process', 'retired', 'command', 'reply', 'binding')}, 'ENTRY_REFUSED')
+            try:
+                navigation.failure_diagnostic(value['diagnostic'])
+            except navigation.Refused:
+                need(False, 'ENTRY_REFUSED')
         elif value['stage'] == 'viewport':
             need(value['code'] is None or value['code'] in {
                 'inspection-' + reason for reason in
@@ -496,11 +505,15 @@ def capture_records(value, *, complete=True):
 
 
 def inspection_catalog_reference(report):
-    if type(report.get('schema')) is int and report['schema'] == 1:
+    schema = report.get('schema')
+    need(type(schema) is int and schema in (1, 2, 3), 'CAPTURE_REFUSED')
+    if schema == 1:
         return home_catalog_reference(report['home_catalog'])
-    need(type(report.get('schema')) is int and report['schema'] == 2
-         and report['home_catalog'] is None, 'CAPTURE_REFUSED')
-    return settings.catalog_reference(report['settings_catalog'])
+    need(report['home_catalog'] is None, 'CAPTURE_REFUSED')
+    if schema == 2:
+        return settings.catalog_reference(report['settings_catalog'])
+    need(report['settings_catalog'] is None, 'CAPTURE_REFUSED')
+    return navigation.catalog_reference(report['navigation_catalog'])
 
 
 def completed(report):
@@ -528,7 +541,7 @@ def completed(report):
             and report['entry_output']['output_complete'] and not report['entry_output']['overflow']
             and debug.helper_cleanup_complete(report['auxiliary_cleanup'])
             and report['forced_cleanup'] is report['auxiliary_cleanup']['forced'])
-    except (Refused, viewport.Refused, settings.Refused, KeyError, TypeError):
+    except (Refused, viewport.Refused, settings.Refused, navigation.Refused, KeyError, TypeError):
         return False
 
 
@@ -565,11 +578,13 @@ def public_manifest(value):
         'entry_failure', 'application_exit', 'cleanup_application_exit', 'entry_exit',
         'owned_job_images_before_close', 'owned_job_active_at_close', 'entry_output'}
     need(type(value) is dict and type(value.get('schema')) is int
-         and value['schema'] in (1, 2), 'OUTPUT_REFUSED')
-    if value['schema'] == 2:
+         and value['schema'] in (1, 2, 3), 'OUTPUT_REFUSED')
+    if value['schema'] in (2, 3):
         required.add('settings_catalog')
+    if value['schema'] == 3:
+        required.add('navigation_catalog')
     need(required <= set(value) <= required | optional, 'OUTPUT_REFUSED')
-    need(type(value['schema']) is int and value['schema'] in (1, 2)
+    need(type(value['schema']) is int and value['schema'] in (1, 2, 3)
          and value['scope'] == 'owned_chain321_wallet_inspection'
          and all(type(value[k]) is bool for k in flags)
          and all(value[k] is False for k in ('wallet_qualified', 'seed_admitted',
@@ -604,12 +619,19 @@ def public_manifest(value):
         entry_failure(value['entry_failure'])
     if value['home_catalog'] is not None:
         home_catalog_reference(value['home_catalog'])
-    if value['schema'] == 2:
+    if value['schema'] in (2, 3):
         need(value['home_catalog'] is None, 'OUTPUT_REFUSED')
-        if value['settings_catalog'] is not None:
-            settings.catalog_reference(value['settings_catalog'])
-        need(not value['success'] or value['settings_catalog'] is not None,
-             'OUTPUT_REFUSED')
+        if value['schema'] == 2:
+            if value['settings_catalog'] is not None:
+                settings.catalog_reference(value['settings_catalog'])
+            need(not value['success'] or value['settings_catalog'] is not None,
+                 'OUTPUT_REFUSED')
+        else:
+            need(value['settings_catalog'] is None, 'OUTPUT_REFUSED')
+            if value['navigation_catalog'] is not None:
+                navigation.catalog_reference(value['navigation_catalog'])
+            need(not value['success'] or value['navigation_catalog'] is not None,
+                 'OUTPUT_REFUSED')
     else:
         need(not value['success'] or value['home_catalog'] is not None, 'OUTPUT_REFUSED')
     if value['viewport'] is not None:
@@ -682,10 +704,10 @@ def public_manifest(value):
 
 
 def run(repo, parent, runtime, lab_root, observation, revalidate):
-    report = dict(schema=2, scope='owned_chain321_wallet_inspection', success=False,
+    report = dict(schema=3, scope='owned_chain321_wallet_inspection', success=False,
         inspection_qualified=False, wallet_qualified=False, seed_admitted=False, visual_matches=0,
         checks=dict.fromkeys(CHECKS, False), errors=[], phase='admission', captures=[],
-        tours={}, locales={}, stalls={}, home_catalog=None, settings_catalog=None, viewport=None,
+        tours={}, locales={}, stalls={}, home_catalog=None, settings_catalog=None, navigation_catalog=None, viewport=None,
         sdk_admission=None, wallet_admission=None,
         address_selection=None, lab_revalidations=0, forced_cleanup=False,
         required_actor_forced_cleanup=False, auxiliary_cleanup=None,
@@ -720,7 +742,7 @@ def run(repo, parent, runtime, lab_root, observation, revalidate):
         debug.bounded.check_no_existing(repo, parent)
         name = 'ci-inspect-' + secrets.token_hex(12)
         home, app, build = root / name, root / 'app', repo / 'build/windows/x64'
-        need(not any(p.exists() or p.is_symlink() for p in (home, app, build, repo / HOME_OUTPUT, repo / settings.OUTPUT, repo / viewport.OUTPUT)), 'PROFILE_REFUSED')
+        need(not any(p.exists() or p.is_symlink() for p in (home, app, build, repo / HOME_OUTPUT, repo / settings.OUTPUT, repo / navigation.OUTPUT, repo / viewport.OUTPUT)), 'PROFILE_REFUSED')
         report['checks']['unused_destinations'] = True
         profile = debug.entry.new_profile(repo)
         profile_identity = shared.directory_identity(profile.lstat())
@@ -770,6 +792,7 @@ def run(repo, parent, runtime, lab_root, observation, revalidate):
                     logical += output_bytes(output)
                     logical += home_output_bytes(repo / HOME_OUTPUT, schema=4)
                     logical += settings.output_bytes(repo / settings.OUTPUT)
+                    logical += navigation.output_bytes(repo / navigation.OUTPUT)
                     logical += viewport.output_bytes(repo / viewport.OUTPUT)
                     need(logical <= shared.WORK_CAP, 'STORAGE_REFUSED')
                     free = shutil.disk_usage(repo).free
@@ -831,7 +854,7 @@ def run(repo, parent, runtime, lab_root, observation, revalidate):
                     need(marker == b'CI_INSPECT_DONE' and catalog_receipt is None
                          and 'wallet' in used and set(report['stalls']) == set(THEMES),
                          'ENTRY_REFUSED')
-                    catalog_receipt = settings.capture_receipt(json.loads(line.partition(b':')[2]))
+                    catalog_receipt = navigation.capture_receipt(json.loads(line.partition(b':')[2]))
                     need(catalog_receipt['schema'] == 1, 'ENTRY_REFUSED')
                 elif line.startswith(b'SYRIUS_INSPECTION_VIEWPORT:'):
                     need(marker == b'CI_INSPECT_DONE' and viewport_receipt is None
@@ -900,7 +923,7 @@ def run(repo, parent, runtime, lab_root, observation, revalidate):
         capture_records(report['captures'])
         output_bytes(output)
         report['checks']['captures'] = True
-        report['settings_catalog'] = settings.collect(
+        report['navigation_catalog'] = navigation.collect(
             repo, catalog_receipt, source, tree, parent, read_original=read_original)
         report['viewport'] = viewport.collect(repo, viewport_receipt, source, tree, parent,
             read_original=read_original)
@@ -990,10 +1013,12 @@ def run(repo, parent, runtime, lab_root, observation, revalidate):
                 stream.write(text)
         summary = {key: value for key, value in report.items()
                    if key not in ('captures', 'tours', 'locales', 'stalls', 'home_catalog',
-                       'settings_catalog', 'viewport')}
+                       'settings_catalog', 'navigation_catalog', 'viewport')}
         summary.update(viewport_captured=4 if report['viewport'] is not None else 0,
-            catalog_captured=(report['settings_catalog']['captured']
-                if report['settings_catalog'] is not None else 0),
+            catalog_captured=(report['navigation_catalog']['captured']
+                if report['navigation_catalog'] is not None else 0),
+            navigation_catalog_manifest_sha256=(report['navigation_catalog']['manifest_sha256']
+                if report['navigation_catalog'] is not None else None),
             settings_catalog_manifest_sha256=(report['settings_catalog']['manifest_sha256']
                 if report['settings_catalog'] is not None else None),
             home_catalog_manifest_sha256=(report['home_catalog']['manifest_sha256']
@@ -1032,10 +1057,16 @@ def artifact_paths(parent):
                  and hashlib.sha256(raw).hexdigest() == row['sha256'], 'CAPTURE_REFUSED')
             debug.entry.png_bytes(base64.b64encode(raw).decode('ascii'))
             paths.append(str(relative).replace('\\', '/'))
-    catalog_family = 'home-catalog' if value['schema'] == 1 else 'settings-catalog'
-    home_paths = (home_artifact_paths(repo, value) if value['schema'] == 1 else
-        settings.artifact_paths(repo, value, read_original=read_original,
-            parent_completed=completed(value)))
+    catalog_family = {1: 'home-catalog', 2: 'settings-catalog',
+        3: 'navigation-catalog'}[value['schema']]
+    if value['schema'] == 1:
+        home_paths = home_artifact_paths(repo, value)
+    elif value['schema'] == 2:
+        home_paths = settings.artifact_paths(repo, value, read_original=read_original,
+            parent_completed=completed(value))
+    else:
+        home_paths = navigation.artifact_paths(repo, value, read_original=read_original,
+            parent_completed=completed(value))
     viewport_paths = viewport.artifact_paths(repo, value, parent_completed=completed,
         read_original=read_original)
     output = Path(parent['GITHUB_OUTPUT'])
