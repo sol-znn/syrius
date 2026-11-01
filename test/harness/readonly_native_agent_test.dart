@@ -214,14 +214,13 @@ void main() {
           AboutCard(
             loadInformation: () async => AboutInformation(version: 'fixture'),
             loadLicences: () => Stream<LicenseEntry>.value(
-              about_fixture.FixtureLicence(<String>['fixture-package'],
-                <LicenseParagraph>[
-                  LicenseParagraph(
-                    List<String>.filled(400, 'Complete fixture licence.')
-                      .join('\n'),
-                    0,
-                  ),
-                ]),
+              about_fixture.FixtureLicence(<String>[
+                'fixture-package',
+                for (int index = 0; index < 120; index++)
+                  'fixture-registry-$index',
+              ], const <LicenseParagraph>[
+                LicenseParagraph('Complete fixture licence.', 0),
+              ]),
             ),
             afterLicences: const SizedBox(height: 56),
           ),

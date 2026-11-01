@@ -1217,9 +1217,17 @@ void main() {
       for (int i = 0; i < retained; i++) {
         expect(File('${images.path}/${files[i]}').readAsBytesSync(), header);
       }
+      final List<Map<String, Object?>> scrolls = commands.where(
+        (Map<String, Object?> value) => value['cmd'] == 'scroll',
+      ).toList();
+      expect(scrolls, isNotEmpty);
+      expect(scrolls, everyElement(<String, Object?>{
+        'cmd': 'scroll', 'key': 'node_settings_peers_toggle', 'dy': 300,
+      }));
+      if (fault == 'none') expect(scrolls, hasLength(2));
       expect(commands.every((Map<String, Object?> value) => <String>{
         'readonly-wallet-bind', 'state', 'tree', 'tap', 'theme', 'window',
-        'wait', 'assert', 'shot',
+        'wait', 'assert', 'shot', 'scroll',
       }.contains(value['cmd'])), isTrue);
       expect(output.lines.every((Object? line) => line is String &&
           line.startsWith('ok')), isTrue);
