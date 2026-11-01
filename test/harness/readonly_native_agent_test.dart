@@ -216,6 +216,11 @@ void main() {
         ).first,
       ).position;
       if (light) expect(position().pixels, greaterThan(0));
+      // Prepare the original top-of-page Add target before readiness.
+      await _driveCatalogCommand(tester, agent.commandForTest(
+        <String, dynamic>{'cmd': 'scroll', 'dy': -1000000},
+      ));
+      expect(position().pixels, 0);
       active.value = false;
       await tester.pump();
       await expectLater(agent.commandForTest(<String, dynamic>{
