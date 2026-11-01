@@ -1220,11 +1220,15 @@ void main() {
       final List<Map<String, Object?>> scrolls = commands.where(
         (Map<String, Object?> value) => value['cmd'] == 'scroll',
       ).toList();
-      expect(scrolls, isNotEmpty);
+      expect(scrolls, hasLength(switch (fault) {
+        'first' => 0,
+        'none' || 'late' => 2,
+        'shot' || 'return' || 'png' => 1,
+        _ => throw StateError('Unexpected bound capture fault'),
+      }));
       expect(scrolls, everyElement(<String, Object?>{
         'cmd': 'scroll', 'key': 'node_settings_peers_toggle', 'dy': 300,
       }));
-      if (fault == 'none') expect(scrolls, hasLength(2));
       expect(commands.every((Map<String, Object?> value) => <String>{
         'readonly-wallet-bind', 'state', 'tree', 'tap', 'theme', 'window',
         'wait', 'assert', 'shot', 'scroll',

@@ -56,3 +56,5 @@ A prior successful run remains bound to its original source and scope.
 - 2026-11-01 13:37 UTC: [Source295 Windows and Navigation results](source295-windows-and-navigation-results.md) retain all nine terminal runs, qualified 790/4,862 controls, fourteen closed views and both native failures. [Source296 original catalog scrolls](source296-original-catalog-scroll.md) prepare actual physical scrolls while retaining every original assertion and scope.
 
 - 2026-11-01 13:52 UTC: [Source296 original focused failures](source296-original-scroll-test-failures.md) preserve 788 passes/two failures and zero artifacts. [Source297 scroll fixture/correspondence](source297-scroll-fixture-correspondence.md) keeps all owner assertions and prepares exact long-list and physical-command controls without new runtime authority.
+
+- 2026-11-01 14:07 UTC: [Source297 original phase failure](source297-original-scroll-phase-failure.md) preserves 789 passes/one failure, clean analysis and zero artifacts. [Source298 exact phase counts](source298-scroll-phase-counts.md) corrects one existing expectation while preserving original input, stop and fixture scopes.
