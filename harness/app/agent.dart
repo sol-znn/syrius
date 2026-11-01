@@ -3843,7 +3843,9 @@ class HarnessAgent {
           );
           if (<double>[clip.left, clip.top, clip.right, clip.bottom].any(
             (double value) => !value.isFinite,
-          ) || clip.intersect(rect) != rect) return false;
+          ) || clip.intersect(rect) != rect) {
+            return false;
+          }
         }
         child = parent;
       }
