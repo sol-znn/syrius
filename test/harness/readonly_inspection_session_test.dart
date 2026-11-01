@@ -6,8 +6,8 @@ import 'dart:typed_data';
 import 'package:flutter_test/flutter_test.dart';
 
 import '../../harness/bin/readonly_home_catalog.dart';
-import '../../harness/bin/readonly_settings_catalog.dart';
 import '../../harness/bin/readonly_inspection_session.dart';
+import '../../harness/bin/readonly_settings_catalog.dart';
 import '../../harness/bin/screen_capture.dart';
 
 Map<String, dynamic> _reply({bool wallet = false}) => <String, dynamic>{
@@ -1049,18 +1049,20 @@ void main() {
           expect(timeout, lessThanOrEqualTo(const Duration(seconds: 30)));
           commands.add(command);
           final Object? name = command['cmd'];
+          final Object? targetKey = command['key'];
+          final Object? targetTab = command['tab'];
           if (name == 'tap' && command['key'] == 'rail_toggle') {
             expect(tab, 'dashboard');
             expanded = !expanded;
           }
-          if (name == 'tap' && command['key'] != null &&
+          if (name == 'tap' && targetKey != null &&
               command['key'] != 'rail_toggle') {
             expect(tab, 'settings');
             expect(keys, contains(command['key']));
             if (fault == 'first') return negative;
-            selected = screens[keys.indexOf(command['key'] as String)];
+            selected = screens[keys.indexOf(targetKey as String)];
           }
-          if (name == 'tap' && command['tab'] != null) {
+          if (name == 'tap' && targetTab != null) {
             expect(<String>['dashboard', 'settings'], contains(command['tab']));
             if (command['tab'] == 'dashboard') {
               expect(shots, returned + 1);
@@ -1070,7 +1072,7 @@ void main() {
               if (fault == 'return') return negative;
               returned++;
             }
-            tab = command['tab'] as String;
+            tab = targetTab as String;
           }
           if (name == 'shot') {
             expect(tab, 'settings');

@@ -392,13 +392,13 @@ macOS; Windows provision and acceptance remain pending. See
 
 ### Now
 
-- Updated: 2026-11-01T04:53Z
-- Current work: Source278 focused, native, reader and full Windows controls are qualified. All eight Home images and references were viewed in a successfully closed managed review. Source279 prepares fourteen Settings defaults pending fresh hosted qualification. See [the source-bound record](docs/review/source278-goto-qualification-and-settings-catalog.md)
+- Updated: 2026-11-01T05:02Z
+- Current work: Source279 focused attempt 41274928860 retains a strict four-info analysis failure before Dart execution, with 920 Python controls passing and three original skips. Source280 fixes only test import ordering and nullable local reads. See [the original failure and bounded correction](docs/review/source279-settings-analysis-failure.md)
 - Main ledger: 72 of 80 rows done, 90 percent by rows. P03, P09, F06, V01-V03 and V05-V06 remain open; original V04 viewing is complete on its recorded scope
-- Source278 evidence: 777 ordinary Dart passes, 918 Python controls with three original skips, zero selected findings, reader 95, 33 producer pins and 36 PNGs. The full producer/inspector qualify 4849 passes and one original skip on Source278 only
-- Visual scope: eight Home originals and eight exact references viewed; zero of 94 accepted matches, nineteen preparations and 82 missing literal outputs. Go To trailing ink/alignment X417 is corrected; X411 and Arabic fallback X414 retain their scopes
-- Next gates: Source279 expects 778/780 ordinary/startup Dart, 920/455/97 Python/memory/reader, 42 producer pins, fourteen Settings and 42 total PNGs. Applied memory passes; hosted/native/reader remain pending. The 780-case selection is not executed
-- Preserved scope: all original FAILURE/HOLD/UNKNOWNs remain. Native101 Send and Native103 Token confirmation/effect stay UNKNOWN; Native104 is not admitted. Attribution uses edgepillar, GitHub no-reply and UTC; the PR stays Draft
+- Source278 evidence: five successful runs qualify 777 focused passes, 36 PNGs and the full 4849-pass/one-skip baseline. All eight Home images and exact references were viewed with successful owned closure and actual controller exit zero
+- Visual scope: zero of 94 accepted matches, nineteen preparations and 82 missing literal outputs. Go To X417 is corrected on its narrow scope; X411 and Arabic fallback X414 remain
+- Next gates: unchanged 778/780 ordinary/startup Dart, 920/455/97 Python/memory/reader, 42 producer pins and fourteen Settings/42 total PNGs. Fresh Source280 applied and hosted controls are required before native capture; no current Settings image is qualified
+- Preserved scope: original failures are not retried or healed. Native101 Send and Native103 Token confirmation/effect stay UNKNOWN; Native104 is not admitted. Attribution uses edgepillar, GitHub no-reply and UTC; the PR stays Draft
 
 ### Rows
 
@@ -483,7 +483,7 @@ macOS; Windows provision and acceptance remain pending. See
 | V03 | blocked | 2026-10-23T12:26Z | Seam registry and injected control checks are prepared; trying every control, shortcut and Go to entry in a running native wallet remains pending |
 | V04 | done | 2026-10-31T23:34Z | All four independently qualified Source265 minimum-window/Arabic originals were actually viewed in both themes. The owned review closes SUCCESS with actual controller exit zero; required original native closure stays source-bound. Minimum controls fit and RTL layout mirrors. English fallback/missing Arabic copy is retained as X414; exact saved locale preference and Arabic glyph quality remain separate unqualified observations |
 | V05 | blocked | 2026-10-28T12:48Z | The four source133 images and their exact references are now opened, with corrected Import family/counter placement and residual selector, Welcome frame/drop and draft-decoration differences. Font hinting and the selected brand colors remain allowed exceptions. No input buffer receives a decorative continuation mark. Complete independent review of all 94 pairs and the browser-rendered compare page remains pending; zero matches are accepted |
-| V06 | review | 2026-11-01T04:53Z | Main progress remains 72/80. Source278 has five terminal successful runs, 777 selected passes, 36 PNGs and an independently qualified 4849-pass/one-skip full Windows baseline. Source279 adds Settings capture only with unchanged application UI; fresh 778-case/native/reader controls remain pending. Zero of 94 matches and original acceptance gates remain |
+| V06 | review | 2026-11-01T05:02Z | Main progress remains 72/80. Source278 retains five successful runs, actual Home review and the 4849-pass/one-skip full baseline. Source279 fails strict analysis with four infos before Dart/native execution. Source280 changes only test import ordering and nullable local reads; fresh unchanged 778/780 gates are pending. Zero of 94 matches and all original acceptance gates remain |
 | X01 | done | 2026-10-21T23:26Z | e13abb387577 restores loading-list sweep ink in lib/rearchitecture/utils/widgets/motion/skeleton.dart; all 19 existing Skeleton tests pass unchanged |
 | X02 | done | 2026-10-21T23:57Z | e13abb387577 keeps the status-strip dot visible at narrow widths and fixes asynchronous visibility tests |
 | X03 | done | 2026-10-21T23:57Z | e13abb387577 parses the bridge test's HTTP head before binary frames; compression refusal assertions retained |
@@ -1756,3 +1756,12 @@ The Source277 finite diagnostic identifies the outer palette Column overflowing 
 ### Source279 readonly Settings catalog preparation
 
 See [Source278 qualification and Settings preparation](docs/review/source278-goto-qualification-and-settings-catalog.md) for five completed source-bound runs, actual Home findings and the next fourteen-file scope. One header-only bound-session case and two Python cases prepare 778/780, 920/455/97, 42 producer pins and 42 PNGs. Fresh hosted controls are required. Application UI and original financial/profile/password/seed/reopen inputs are unchanged. Progress stays 72/80 and zero whole-image matches are accepted.
+
+
+### Source280 Settings test analysis correction
+
+The [Source279 original failure](docs/review/source279-settings-analysis-failure.md) retains its four finite infos, 920 Python passes/three original skips, skipped Dart step and zero artifacts. Only import order and flow-promoted local reads change. Every original assertion, command, count and limit remains. Fresh qualification is required before the fourteen Settings images can be captured.
+
+| Row | Status | Updated | Note |
+| --- | --- | --- | --- |
+| X418 | review | 2026-11-01T05:02Z | Source279 strict analysis refuses two directive-ordering and two nullable-cast infos. Source280 retains all expectations and fault inputs while sorting imports and promoting the same local values. No Dart/native result or Settings PNG is inferred; fresh controls remain required |

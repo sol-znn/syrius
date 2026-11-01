@@ -14,3 +14,6 @@ A prior successful run remains bound to its original source and scope.
 
 - [Source278 qualification and Settings preparation](source278-goto-qualification-and-settings-catalog.md): five successful runs, actual Home findings and the next fourteen-file scope.
 - [Frozen PR body218](pr-body-218.md): exact 4883 bytes, SHA-256 58b263a72fdca15864dc0646a2094fd0960a41949cd7ffa42f9f050251b1b0cc; all sixteen original URLs and historical statements retained.
+
+- [Source279 strict Settings analysis failure](source279-settings-analysis-failure.md): four original infos, skipped Dart/native scope and the bounded Source280 test-only correction.
+- [Frozen PR body219](pr-body-219.md): exact 4343 bytes, SHA-256 e47806203b52fad665320555e1203c48233a15a2c07d253dad203089c9139351; all ten links retained with historical scopes.
