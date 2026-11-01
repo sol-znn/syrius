@@ -352,14 +352,37 @@ class ScreenCapture {
     return bytes;
   }
 
-  Future<List<String>> capture(String id, {String? directory}) async {
-    final List<ScreenSpec> screens = selectScreens(id);
+  Future<List<String>> capture(String id, {String? directory}) async =>
+      _capture(selectScreens(id), directory: directory);
+
+  /// Preflights one finite selection before the first UI or output effect.
+  /// The caller cannot mutate that selection while original inputs await.
+  Future<List<String>> captureSelection(
+    List<String> ids, {
+    String? directory,
+  }) async {
+    final List<String> retained = List<String>.of(ids);
+    if (retained.isEmpty || retained.length > screenCatalog.length ||
+        retained.toSet().length != retained.length ||
+        retained.contains('all')) {
+      throw const ScreenCaptureError('selection needs unique catalog ids');
+    }
+    final List<ScreenSpec> screens = <ScreenSpec>[
+      for (final String id in retained) selectScreens(id).single,
+    ];
+    return _capture(screens, directory: directory);
+  }
+
+  Future<List<String>> _capture(
+    List<ScreenSpec> screens, {
+    String? directory,
+  }) async {
     if ((readRailState == null) != (restoreRailState == null)) {
       throw const ScreenCaptureError('rail snapshot needs a restore callback');
     }
     // Complete preflight before changing the theme, moving the window or
     // creating outputs. A missing page script must not produce partial proof.
-    final List<ScreenScript> scripts = preflight(id);
+    final List<ScreenScript> scripts = screens.map(_script).toList();
     final List<String> output = _outputParts(directory);
     for (final ScreenSpec screen in screens) {
       for (final String theme in <String>['dark', 'light']) {

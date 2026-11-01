@@ -36,7 +36,7 @@ class _InspectionInstance extends cli.Instance {
 
   Future<Map<String, dynamic>> bindWallet() => _session.bindWallet();
 
-  Future<Map<String, Object>> captureHomeRest() => captureReadonlyHomeRest(
+  Future<Map<String, Object>> captureHomeStates() => captureReadonlyHomeStates(
     repository: Directory(cli.repo), session: _session,
   );
 
@@ -223,7 +223,7 @@ Future<void> main() async {
       })}');
     }
     stage = 'home_catalog';
-    final Map<String, Object> catalog = await instance.captureHomeRest();
+    final Map<String, Object> catalog = await instance.captureHomeStates();
     await marker('SYRIUS_INSPECTION_CATALOG:${jsonEncode(catalog)}');
     stage = 'viewport';
     final Map<String, Object> viewport = await instance.captureViewport(

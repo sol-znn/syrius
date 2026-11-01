@@ -43,28 +43,42 @@ def tour(theme):
             layout=layout()) for p in inspection.PAGES]))
 
 
-def home_receipt():
-    return dict(schema=1, scope='readonly_native_home_catalog_capture',
-        screen='home-rest', number=1, themes=['dark', 'light'],
-        files=['01-home-rest-dark.png', '01-home-rest-light.png'],
+def home_receipt(*, schema=1):
+    value = dict(schema=schema, scope='readonly_native_home_catalog_capture',
+        themes=['dark', 'light'], files=list(inspection.home_catalog_files(schema)),
         width=1280, height=780, scale=1, capture_returned=True)
+    value.update(dict(screen='home-rest', number=1) if schema == 1
+                 else dict(screens=list(inspection.HOME_STATE_SCREENS)))
+    return value
 
 
-def home_reference(digest='e' * 64):
-    return dict(schema=1, scope='readonly_native_home_catalog_reference',
-        screen='home-rest', captured=2, manifest_sha256=digest)
+def home_reference(digest='e' * 64, *, schema=1):
+    value = dict(schema=schema, scope='readonly_native_home_catalog_reference',
+        captured=len(inspection.home_catalog_files(schema)), manifest_sha256=digest)
+    value.update(dict(screen='home-rest') if schema == 1
+                 else dict(screens=list(inspection.HOME_STATE_SCREENS)))
+    return value
 
 
-def home_manifest(pixels, script=b'synthetic public script'):
-    return dict(schema=1, scope='readonly_native_home_catalog_capture_bundle',
+def home_manifest(pixels, script=b'synthetic public script', *, schema=1,
+                  hidden_script=None):
+    value = dict(schema=schema, scope='readonly_native_home_catalog_capture_bundle',
         source_sha='a' * 40, source_tree='b' * 40, run_id='1', run_attempt='1',
-        script_sha256=hashlib.sha256(script).hexdigest(), capture=home_receipt(),
-        captures=[dict(theme=theme, file='01-home-rest-' + theme + '.png',
+        capture=home_receipt(schema=schema),
+        captures=[dict(theme=inspection.THEMES[index % 2], file=name,
             bytes=len(pixels), sha256=hashlib.sha256(pixels).hexdigest(),
-            width=1280, height=780, scale=1) for theme in ('dark', 'light')],
+            width=1280, height=780, scale=1)
+            for index, name in enumerate(inspection.home_catalog_files(schema))],
         inspection_only=True, parent_closure_qualified=False,
         atomic_frame_qualified=False, wallet_qualified=False, seed_admitted=False,
         financial_send_qualified=False, visual_matches=0)
+    first = hashlib.sha256(script).hexdigest()
+    if schema == 1:
+        value['script_sha256'] = first
+    else:
+        value['script_sha256_by_screen'] = dict(zip(inspection.HOME_STATE_SCREENS,
+            (first, hashlib.sha256(script if hidden_script is None else hidden_script).hexdigest())))
+    return value
 
 
 def report():
@@ -198,6 +212,78 @@ class InspectionTests(unittest.TestCase):
                     return_value=SimpleNamespace(st_mode=stat.S_IFDIR)):
             with self.assertRaises(inspection.Refused):
                 inspection.home_output_bytes(output)
+
+        states = home_manifest(pixels, schema=2)
+        self.assertIs(inspection.public_home_catalog(states), states)
+        self.assertEqual(states['capture']['screens'], ['home-rest', 'home-hidden'])
+        self.assertEqual(len(states['captures']), 4)
+        for change in (
+            lambda value: value['capture'].update(screens=['home-rest', 'home-rest']),
+            lambda value: value['capture'].update(schema=1),
+            lambda value: value['captures'].pop(),
+            lambda value: value['captures'][2].update(file='01-home-rest-dark.png'),
+            lambda value: value['captures'][2].update(theme='light'),
+            lambda value: value['script_sha256_by_screen'].pop('home-hidden'),
+            lambda value: value['script_sha256_by_screen'].update(private='synthetic'),
+            lambda value: value.update(script_sha256='e' * 64),
+        ):
+            bad = copy.deepcopy(states)
+            change(bad)
+            with self.subTest(schema=2, change=change), self.assertRaises(inspection.Refused):
+                inspection.public_home_catalog(bad)
+        for schema in (1, 2):
+            for count in (True, 3, 6):
+                reference = home_reference(schema=schema)
+                reference['captured'] = count
+                with self.subTest(schema=schema, captured=count), self.assertRaises(inspection.Refused):
+                    inspection.home_catalog_reference(reference)
+
+        class RetainedBytes(io.BytesIO):
+            def close(self):
+                pass
+
+        for schema in (1, 2):
+            written = RetainedBytes()
+            scripts = {'home-rest.txt': b'first original public script',
+                'home-hidden.txt': b'distinct original hidden script'}
+
+            def read(path, cap):
+                if path.suffix == '.png':
+                    self.assertEqual(cap, inspection.MAX_HOME_CAPTURE_TOTAL)
+                    return pixels
+                self.assertEqual(cap, 65536)
+                return scripts[path.name]
+
+            with mock.patch.object(inspection, 'home_output_bytes', return_value=0), \
+                    mock.patch.object(inspection, 'read_original', side_effect=read) as reads, \
+                    mock.patch.object(Path, 'open', return_value=written) as opened:
+                reference = inspection.collect_home_catalog(Path('/fixture'),
+                    home_receipt(schema=schema), 'a' * 40, 'b' * 40,
+                    dict(GITHUB_RUN_ID='1', GITHUB_RUN_ATTEMPT='1'))
+            manifest = json.loads(written.getvalue())
+            self.assertEqual(reference['manifest_sha256'],
+                hashlib.sha256(written.getvalue()).hexdigest())
+            self.assertEqual(reference['captured'], 2 if schema == 1 else 4)
+            self.assertEqual([row['file'] for row in manifest['captures']],
+                list(inspection.home_catalog_files(schema)))
+            self.assertEqual(reads.call_count, 3 if schema == 1 else 6)
+            self.assertTrue(written.getvalue().endswith(b'\n'))
+            opened.assert_called_once_with('xb')
+            if schema == 2:
+                self.assertEqual(manifest['script_sha256_by_screen'],
+                    {'home-rest': hashlib.sha256(scripts['home-rest.txt']).hexdigest(),
+                     'home-hidden': hashlib.sha256(scripts['home-hidden.txt']).hexdigest()})
+                self.assertFalse(manifest['parent_closure_qualified'])
+                self.assertEqual(manifest['visual_matches'], 0)
+        with mock.patch.object(inspection, 'home_output_bytes', return_value=0), \
+                mock.patch.object(inspection, 'read_original', return_value=b'bad pixels'), \
+                mock.patch.object(Path, 'open') as opened:
+            with self.assertRaises(inspection.debug.entry.Failure) as failure:
+                inspection.collect_home_catalog(Path('/fixture'),
+                    home_receipt(schema=2), 'a' * 40, 'b' * 40,
+                    dict(GITHUB_RUN_ID='1', GITHUB_RUN_ATTEMPT='1'))
+            self.assertEqual(failure.exception.code, 'PNG_INVALID')
+            opened.assert_not_called()
 
     def test_complete_finite_controls_do_not_grant_financial_or_catalog_acceptance(self):
         value = report()
@@ -433,18 +519,18 @@ class InspectionTests(unittest.TestCase):
                     with self.assertRaises(inspection.Refused):
                         inspection.read_original(path, 16)
 
-    def artifact_case(self, value, *, pixels=None):
+    def artifact_case(self, value, *, pixels=None, home_schema=1):
         parent = dict(GITHUB_WORKSPACE='/fixture', GITHUB_RUN_ID='1', GITHUB_RUN_ATTEMPT='1',
                       GITHUB_OUTPUT='/fixture-output')
         value = copy.deepcopy(value)
         script = Path('harness/screens/home-rest.txt').read_bytes()
-        home = home_manifest(pixels or b'x', script)
+        home = home_manifest(pixels or b'x', script, schema=home_schema)
         home_raw = json.dumps(home).encode('ascii')
         viewport_manifest, viewport_images = viewport_fixtures.fixture()
         viewport_manifest['probe_sha256'] = hashlib.sha256(script).hexdigest()
         viewport_raw = json.dumps(viewport_manifest).encode('ascii')
         if value['success']:
-            value['home_catalog'] = home_reference(hashlib.sha256(home_raw).hexdigest())
+            value['home_catalog'] = home_reference(hashlib.sha256(home_raw).hexdigest(), schema=home_schema)
             value['viewport']['manifest_sha256'] = hashlib.sha256(viewport_raw).hexdigest()
         manifest = json.dumps(value).encode()
         output = _Output()
@@ -453,6 +539,7 @@ class InspectionTests(unittest.TestCase):
         def read(path, cap):
             reads.append(path)
             if path in (Path('/fixture') / inspection.HOME_SCRIPT,
+                        Path('/fixture') / inspection.HOME_HIDDEN_SCRIPT,
                         Path('/fixture') / inspection.viewport.PROBE):
                 self.assertEqual(cap, 65536)
                 return script
@@ -463,7 +550,7 @@ class InspectionTests(unittest.TestCase):
                     self.assertEqual(cap, inspection.MAX_HOME_MANIFEST)
                     return home_raw
                 self.assertEqual(cap, inspection.MAX_HOME_CAPTURE_TOTAL)
-                self.assertIn(path.name, inspection.HOME_FILES)
+                self.assertIn(path.name, inspection.home_catalog_files(home_schema))
                 return pixels
             if path.name == 'manifest.json':
                 self.assertEqual(cap, inspection.MAX_MANIFEST)
@@ -514,6 +601,14 @@ class InspectionTests(unittest.TestCase):
         self.assertIn('viewport_paths<<VIEWPORT_PATHS_V1', output)
         for filename in inspection.viewport.FILES:
             self.assertIn('ci-viewport-observations/' + filename, output)
+
+        paths, reads, output = self.artifact_case(value, pixels=pixels, home_schema=2)
+        self.assertEqual(len(paths), 25)
+        self.assertEqual(len(set(paths)), 25)
+        self.assertEqual(len(reads), 38)
+        for filename in inspection.HOME_STATE_FILES:
+            self.assertIn('ci-home-catalog/' + filename, output)
+        self.assertNotIn('private', output)
 
     def test_artifacts_cannot_borrow_another_source_run_or_private_manifest(self):
         for change in ({'source_sha': 'c' * 40}, {'run_attempt': '2'},

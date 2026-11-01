@@ -43,7 +43,8 @@ SOURCE_FILES = (
     'harness/app/readonly_wallet_binding.dart', 'harness/app/native_window_owner.dart',
     'harness/app/logical_capture.dart', 'harness/app/readonly_shot_layout.dart',
     'harness/bin/readonly_home_catalog.dart', 'harness/bin/screen_capture.dart',
-    'harness/screens/home-rest.txt', '.github/workflows/public-contribution-qualification.yml',
+    'harness/screens/home-rest.txt', 'harness/screens/home-hidden.txt',
+    '.github/workflows/public-contribution-qualification.yml',
     'pubspec.yaml', 'pubspec.lock',
 )
 PHASE = 'environment'
@@ -244,18 +245,33 @@ def unpack(raw, expected_sha, expected_size, head, tree, run_id, lab, lab_summar
     return summary
 
 
+def home_script_source_pins(source_digests, schema):
+    producer.home_catalog_files(schema)
+    first = source_digests['harness/screens/home-rest.txt']
+    if schema == 1:
+        return first
+    return {'home-rest': first,
+        'home-hidden': source_digests['harness/screens/home-hidden.txt']}
+
+
 def unpack_home_catalog(raw, expected_sha, expected_size, head, tree, run_id,
                         reference, script_sha):
-    """Verify separate literal pixels; only the caller can bind parent closure."""
+    """Verify each literal state; only the caller can bind parent closure."""
     producer.home_catalog_reference(reference)
+    schema = reference['schema']
+    files = producer.home_catalog_files(schema)
+    script_field = producer._home_script_field(schema)
+    pins = {'home-rest': script_sha} if schema == 1 else script_sha
+    need(type(pins) is dict and set(pins) == set(
+        ('home-rest',) if schema == 1 else producer.HOME_STATE_SCREENS)
+        and all(digest(pin) for pin in pins.values()))
     need(type(raw) is bytes and type(expected_size) is int and digest(expected_sha)
-         and 0 < len(raw) == expected_size <= MAX_HOME_ARCHIVE and archive.sha(raw) == expected_sha
-         and digest(script_sha))
-    allowed = {'manifest.json', *producer.HOME_FILES}
+         and 0 < len(raw) == expected_size <= MAX_HOME_ARCHIVE and archive.sha(raw) == expected_sha)
+    allowed = {'manifest.json', *files}
     with zipfile.ZipFile(io.BytesIO(raw)) as zipped:
         members = zipped.infolist()
         names = [m.filename for m in members]
-        need(len(members) == len(set(names)) == 3 and set(names) == allowed)
+        need(len(members) == len(set(names)) == len(allowed) and set(names) == allowed)
         total = 0
         for member in members:
             cap = producer.MAX_HOME_MANIFEST if member.filename == 'manifest.json' else producer.MAX_HOME_CAPTURE_TOTAL
@@ -276,22 +292,26 @@ def unpack_home_catalog(raw, expected_sha, expected_size, head, tree, run_id,
         manifest = member('manifest.json', producer.MAX_HOME_MANIFEST)
         need(archive.sha(manifest) == reference['manifest_sha256'])
         value = producer.public_home_catalog(decode(manifest))
-        need(value['source_sha'] == head and value['source_tree'] == tree
-             and value['run_id'] == str(run_id) and value['run_attempt'] == '1'
-             and value['script_sha256'] == script_sha)
-        for row in producer.home_capture_records(value['captures']):
+        need(value['schema'] == schema and value['source_sha'] == head
+             and value['source_tree'] == tree and value['run_id'] == str(run_id)
+             and value['run_attempt'] == '1' and value[script_field] == script_sha)
+        for row in producer.home_capture_records(value['captures'], schema=schema):
             pixels = member(row['file'], producer.MAX_HOME_CAPTURE_TOTAL)
             need(len(pixels) == row['bytes'] and archive.sha(pixels) == row['sha256'])
             producer.debug.entry.png_bytes(base64.b64encode(pixels).decode('ascii'))
-    return dict(schema=1, scope='retained_readonly_home_catalog', source_head=head,
-        source_tree=tree, source_run_id=run_id, source_attempt=1, screen='home-rest', number=1,
-        themes=list(producer.THEMES), filenames=list(producer.HOME_FILES),
-        width=1280, height=780, scale=1, verified_png_count=2,
+    result = dict(schema=schema, scope='retained_readonly_home_catalog', source_head=head,
+        source_tree=tree, source_run_id=run_id, source_attempt=1,
+        themes=list(producer.THEMES), filenames=list(files),
+        width=1280, height=780, scale=1, verified_png_count=len(files),
         archive_sha256=archive.sha(raw), manifest_sha256=archive.sha(manifest),
-        script_sha256=script_sha, catalog_capture_qualified=False,
-        parent_closure_qualified=False, atomic_frame_qualified=False,
-        inspection_only=True, runtime_started=False, wallet_qualified=False,
-        seed_admitted=False, financial_send_qualified=False, visual_matches=0)
+        catalog_capture_qualified=False, parent_closure_qualified=False,
+        atomic_frame_qualified=False, inspection_only=True, runtime_started=False,
+        wallet_qualified=False, seed_admitted=False, financial_send_qualified=False,
+        visual_matches=0)
+    result.update(dict(screen='home-rest', number=1) if schema == 1
+                  else dict(screens=list(producer.HOME_STATE_SCREENS)))
+    result[script_field] = script_sha
+    return result
 
 
 def source_files(repo, value, tree, *, read_workflow_blob=None):
@@ -450,7 +470,7 @@ def main(parent=None):
         item = artifact(listing, 'home-catalog-' + head + '-' + text + '-1', head, run_id)
         catalog = unpack_home_catalog(download(item, MAX_HOME_ARCHIVE), item['digest'][7:],
             item['size_in_bytes'], head, tree, run_id, reference,
-            source_digests['harness/screens/home-rest.txt'])
+            home_script_source_pins(source_digests, reference['schema']))
         PHASE = 'viewport_artifact'
         need(viewport_reference is not None)
         item = artifact(listing, 'viewport-observation-' + head + '-' + text + '-1', head, run_id)
@@ -467,7 +487,7 @@ def main(parent=None):
     for component, frame in archive.restored_wallet_run.notice_frames(lab_summary):
         emit('Readonly inspection parent' + (' ' + component if component else ''), frame)
     summary.update(verified_viewport_png_count=4 if viewport_observation is not None else 0,
-        verified_catalog_png_count=2 if catalog is not None else 0,
+        verified_catalog_png_count=catalog['verified_png_count'] if catalog is not None else 0,
         producer_job_id=job['id'], producer_conclusion=job['conclusion'],
         producer_source_files_verified=len(SOURCE_FILES), metadata_revalidated=True)
     emit('Retained readonly wallet inspection', summary)

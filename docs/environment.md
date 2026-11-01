@@ -1,38 +1,38 @@
 # Redesign build environment
 
-## Current qualification status (2026-10-31T23:34Z)
+## Current qualification status (2026-11-01T00:17Z)
 
-Source267 passes 918 Python controls/three original skips, fourteen asset
-phases, selected analysis with zero findings and all 746 ordinary Dart cases
-with zero failures/errors/skips. Its original engine exits zero normally,
-completely and unforced in 209.844 seconds. Native entry then fails at
-home_catalog with a null finite inner code after 24 visited pages; zero PNGs
-are exported and required wallet actor closure is unqualified. Reader
-41251749359 passes 95 controls and independently verifies both negative
-archives/all thirty sources. The exact original inner cause is NOT_ESTABLISHED.
+Source268 has five terminal positive hosted runs. Both focused engine lanes
+pass 746 ordinary cases with zero failures/errors/skips and zero selected
+findings; 918 Python controls/three original skips and fourteen asset phases
+pass. The independent native reader passes 95 controls, verifies thirty
+producer files plus the immutable workflow and all thirty original PNGs.
+Required app/entry/five-node exits are normal, complete, unforced and zero.
+Auxiliary telemetry cleanup remains separate. SDK publication stays paused.
 
-The four actual Source265 V04 images have been viewed in both themes at
-1200x600 minimum and 1280x780 Arabic locale. The owned review closes SUCCESS
-with controller exit zero and its verified archive retained. Main controls
-fit in these static frames and RTL mirrors; English fallback and missing
-Arabic copy remain X414. Full Arabic glyph/localization quality, exact saved
-locale preference and atomic restoration remain separate and unqualified.
-The original V04 viewing gate is complete: main progress is 72/80 by rows.
+The full Source268 non-chain baseline and its independent inspector qualify
+4842 passes/one skip, all twelve checks, unchanged source/generation/l10n and
+Debug/Release. Root analysis is zero errors/warnings with 1296 infos; vendored
+is clean. Library maps remain separate from DLL initialization or release.
 
-Source268 narrows harness extraction for empty semantic container spans with
-children and strengthens the existing real rail pointer case. Production UI,
-assets, scripts, dependencies, SDK authority and original input/hit-test guards
-are unchanged. Fresh applied memory and harness-only qualification are required
-first: 746/748 Dart and 918/453/95 Python/memory/reader, thirty producer pins.
-Native and broad current-source qualification follow only after that gate.
-No local SDK, wallet or node executes.
+Both actual Source268 Home images and their references have been viewed in a
+closed SUCCESS owned review/controller zero. Notifications is visible in both
+themes. Scope/content/hero differences stay X411 and zero matches are accepted.
+The verified 339318-byte archive is retained; only owned disposable extraction
+is removed. The original four-image Source265 V04 viewing remains complete;
+the Arabic locale resource is a declaration only and fallback remains X414.
 
-Source265 retains the latest positive native thirty-PNG observation with
-required normal complete unforced closure and its separate 4838-pass/two-skip
-broad baseline. Root analysis retains zero errors/warnings and 1296 infos;
-vendored is clean. Source260 Home and Source251 generic visual reviews accept
-zero matches. Zero of 94 matches, nineteen preparations and 88 missing catalog
-outputs remain. All original failures/HOLD/UNKNOWNs remain. Native101 send and
+Source269 adds a preflighted finite selection and wires original Home rest and
+hidden scripts into one fresh output. Strict schema two binds four filenames
+and both scripts, while legacy schema one stays strict. Three new Dart cases
+raise expected ordinary/fidelity counts to 749/751; Python/memory/reader stay
+918/453/95 and producer pins become 31. Fresh harness-only and native evidence
+are required. No local SDK, wallet, node or browser executes. Current product
+UI, dependencies, SDK authority, original inputs and global bounds are retained.
+
+Main progress remains 72/80 by rows, zero of 94 matches, nineteen preparations
+and 88 missing outputs. All earlier failures/HOLD/UNKNOWNs remain source-bound.
+Source267/263 original inner causes remain NOT_ESTABLISHED. Native101 send and
 Native103 Token effect stay UNKNOWN; Native104 is not admitted. The PR is Draft.
 
 

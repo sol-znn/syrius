@@ -36,6 +36,9 @@ HOME_FILES = ('01-home-rest-dark.png', '01-home-rest-light.png')
 MAX_HOME_CAPTURE_TOTAL = 4 * 1024**2
 MAX_HOME_MANIFEST = 64 * 1024
 HOME_SCRIPT = Path('harness/screens/home-rest.txt')
+HOME_HIDDEN_SCRIPT = Path('harness/screens/home-hidden.txt')
+HOME_STATE_FILES = HOME_FILES + ('03-home-hidden-dark.png', '03-home-hidden-light.png')
+HOME_STATE_SCREENS = ('home-rest', 'home-hidden')
 CHECKS = ('environment', 'source', 'unused_destinations', 'job_owned',
     'entry_gate', 'entry_ready', 'application_owned', 'lab_revalidated',
     'input_released', 'wallet_bound', 'tours_complete', 'locale_verified',
@@ -104,21 +107,34 @@ def read_original(path, cap):
     return raw
 
 
+def home_catalog_files(schema):
+    """Each version admits a finite literal family, never a generic alias."""
+    need(type(schema) is int and schema in (1, 2), 'CAPTURE_REFUSED')
+    return HOME_FILES if schema == 1 else HOME_STATE_FILES
+
+
 def home_capture_receipt(value):
     """Admit fixed metadata only after the original capture runner returns."""
-    expected = dict(schema=1, scope='readonly_native_home_catalog_capture',
-        screen='home-rest', number=1, themes=list(THEMES), files=list(HOME_FILES),
+    need(type(value) is dict, 'CAPTURE_REFUSED')
+    schema = value.get('schema')
+    files = home_catalog_files(schema)
+    expected = dict(schema=schema, scope='readonly_native_home_catalog_capture',
+        themes=list(THEMES), files=list(files),
         width=1280, height=780, scale=1, capture_returned=True)
-    need(type(value) is dict and set(value) == set(expected)
+    expected.update(dict(screen='home-rest', number=1) if schema == 1
+                    else dict(screens=list(HOME_STATE_SCREENS)))
+    need(set(value) == set(expected)
          and all(type(value[k]) is type(v) and value[k] == v
                  for k, v in expected.items()), 'CAPTURE_REFUSED')
     return value
 
 
-def home_capture_records(value):
-    """The two literal filenames are not aliases for generic tour pages."""
-    need(type(value) is list and len(value) == 2, 'CAPTURE_REFUSED')
-    for row, theme, name in zip(value, THEMES, HOME_FILES):
+def home_capture_records(value, *, schema=1):
+    """The fixed filenames bind each state and theme in their original order."""
+    files = home_catalog_files(schema)
+    need(type(value) is list and len(value) == len(files), 'CAPTURE_REFUSED')
+    for index, (row, name) in enumerate(zip(value, files)):
+        theme = THEMES[index % len(THEMES)]
         need(type(row) is dict and set(row) ==
              {'theme', 'file', 'bytes', 'sha256', 'width', 'height', 'scale'}
              and row['theme'] == theme and row['file'] == name
@@ -132,25 +148,44 @@ def home_capture_records(value):
 
 
 def home_catalog_reference(value):
-    need(type(value) is dict and set(value) ==
-         {'schema', 'scope', 'screen', 'captured', 'manifest_sha256'}
-         and type(value['schema']) is int and value['schema'] == 1
-         and value['scope'] == 'readonly_native_home_catalog_reference'
-         and value['screen'] == 'home-rest'
-         and type(value['captured']) is int and value['captured'] == 2
+    need(type(value) is dict, 'CAPTURE_REFUSED')
+    schema = value.get('schema')
+    files = home_catalog_files(schema)
+    expected = dict(schema=schema, scope='readonly_native_home_catalog_reference',
+        captured=len(files))
+    expected.update(dict(screen='home-rest') if schema == 1
+                    else dict(screens=list(HOME_STATE_SCREENS)))
+    need(set(value) == set(expected) | {'manifest_sha256'}
+         and all(type(value[k]) is type(v) and value[k] == v
+                 for k, v in expected.items())
          and type(value['manifest_sha256']) is str
          and re.fullmatch('[a-f0-9]{64}', value['manifest_sha256']), 'CAPTURE_REFUSED')
     return value
 
 
+def _home_script_field(schema):
+    home_catalog_files(schema)
+    return 'script_sha256' if schema == 1 else 'script_sha256_by_screen'
+
+
+def _home_script_pins(repo, schema):
+    first = hashlib.sha256(read_original(repo / HOME_SCRIPT, 65536)).hexdigest()
+    if schema == 1:
+        return first
+    return dict(zip(HOME_STATE_SCREENS, (first,
+        hashlib.sha256(read_original(repo / HOME_HIDDEN_SCRIPT, 65536)).hexdigest())))
+
+
 def public_home_catalog(value):
-    """This capture bundle cannot qualify its later parent closure or a match."""
+    """This bundle cannot qualify its later parent closure or a match."""
+    need(type(value) is dict, 'OUTPUT_REFUSED')
+    schema = value.get('schema')
+    home_catalog_files(schema)
     flags = {'inspection_only', 'parent_closure_qualified', 'atomic_frame_qualified',
              'wallet_qualified', 'seed_admitted', 'financial_send_qualified'}
     required = flags | {'schema', 'scope', 'source_sha', 'source_tree', 'run_id',
-        'run_attempt', 'script_sha256', 'capture', 'captures', 'visual_matches'}
-    need(type(value) is dict and set(value) == required
-         and type(value['schema']) is int and value['schema'] == 1
+        'run_attempt', _home_script_field(schema), 'capture', 'captures', 'visual_matches'}
+    need(set(value) == required
          and value['scope'] == 'readonly_native_home_catalog_capture_bundle'
          and all(type(value[k]) is bool for k in flags)
          and value['inspection_only'] is True
@@ -160,25 +195,32 @@ def public_home_catalog(value):
     for key in ('source_sha', 'source_tree'):
         need(type(value[key]) is str and re.fullmatch('[a-f0-9]{40}', value[key]), 'OUTPUT_REFUSED')
     need(type(value['run_id']) is str and re.fullmatch('[1-9][0-9]{0,19}', value['run_id'])
-         and type(value['run_attempt']) is str and value['run_attempt'] == '1'
-         and type(value['script_sha256']) is str
-         and re.fullmatch('[a-f0-9]{64}', value['script_sha256']), 'OUTPUT_REFUSED')
+         and type(value['run_attempt']) is str and value['run_attempt'] == '1', 'OUTPUT_REFUSED')
+    pins = value[_home_script_field(schema)]
+    if schema == 1:
+        pins = {'home-rest': pins}
+    need(type(pins) is dict and set(pins) == set(
+        ('home-rest',) if schema == 1 else HOME_STATE_SCREENS)
+        and all(type(pin) is str and re.fullmatch('[a-f0-9]{64}', pin)
+                for pin in pins.values()), 'OUTPUT_REFUSED')
     home_capture_receipt(value['capture'])
-    home_capture_records(value['captures'])
+    need(value['capture']['schema'] == schema, 'OUTPUT_REFUSED')
+    home_capture_records(value['captures'], schema=schema)
     return value
 
 
-def home_output_bytes(output):
-    """Account only this fresh finite family, including incomplete writes."""
+def home_output_bytes(output, *, schema=2):
+    """Account this finite family, including incomplete original writes."""
+    files = home_catalog_files(schema)
     if not output.exists() and not output.is_symlink():
         return 0
     root = debug.bounded.plain(output)
     need(stat.S_ISDIR(root.st_mode), 'STORAGE_REFUSED')
-    allowed = {'manifest.json', *HOME_FILES}
+    allowed = {'manifest.json', *files}
     total = count = 0
     for path in output.iterdir():
         count += 1
-        need(count <= 3 and path.name in allowed, 'STORAGE_REFUSED')
+        need(count <= len(allowed) and path.name in allowed, 'STORAGE_REFUSED')
         info = debug.bounded.plain(path)
         cap = MAX_HOME_MANIFEST if path.name == 'manifest.json' else MAX_HOME_CAPTURE_TOTAL
         need(stat.S_ISREG(info.st_mode) and info.st_nlink == 1
@@ -189,44 +231,47 @@ def home_output_bytes(output):
 
 
 def collect_home_catalog(repo, receipt, source, tree, parent):
-    """Retain original PNG references without creating another archive copy."""
+    """Retain original PNG references without another archive copy."""
     home_capture_receipt(receipt)
+    schema = receipt['schema']
     output = repo / HOME_OUTPUT
-    home_output_bytes(output)
+    home_output_bytes(output, schema=schema)
     records = []
-    for theme, name in zip(THEMES, HOME_FILES):
+    for index, name in enumerate(home_catalog_files(schema)):
         raw = read_original(output / name, MAX_HOME_CAPTURE_TOTAL)
         debug.entry.png_bytes(base64.b64encode(raw).decode('ascii'))
-        records.append(dict(theme=theme, file=name, bytes=len(raw),
+        records.append(dict(theme=THEMES[index % len(THEMES)], file=name, bytes=len(raw),
             sha256=hashlib.sha256(raw).hexdigest(), width=1280, height=780, scale=1))
-    home_capture_records(records)
-    script = read_original(repo / HOME_SCRIPT, 65536)
-    value = dict(schema=1, scope='readonly_native_home_catalog_capture_bundle',
+    home_capture_records(records, schema=schema)
+    value = dict(schema=schema, scope='readonly_native_home_catalog_capture_bundle',
         source_sha=source, source_tree=tree, run_id=parent['GITHUB_RUN_ID'],
-        run_attempt=parent['GITHUB_RUN_ATTEMPT'], script_sha256=hashlib.sha256(script).hexdigest(),
-        capture=receipt, captures=records, inspection_only=True,
-        parent_closure_qualified=False, atomic_frame_qualified=False,
+        run_attempt=parent['GITHUB_RUN_ATTEMPT'], capture=receipt, captures=records,
+        inspection_only=True, parent_closure_qualified=False, atomic_frame_qualified=False,
         wallet_qualified=False, seed_admitted=False, financial_send_qualified=False,
         visual_matches=0)
+    value[_home_script_field(schema)] = _home_script_pins(repo, schema)
     public_home_catalog(value)
     data = (json.dumps(value, sort_keys=True, separators=(',', ':')) + '\n').encode('ascii')
     need(len(data) <= MAX_HOME_MANIFEST, 'OUTPUT_REFUSED')
     with (output / 'manifest.json').open('xb') as stream:
         stream.write(data)
-    home_output_bytes(output)
-    return home_catalog_reference(dict(schema=1,
-        scope='readonly_native_home_catalog_reference', screen='home-rest',
-        captured=2, manifest_sha256=hashlib.sha256(data).hexdigest()))
+    home_output_bytes(output, schema=schema)
+    reference = dict(schema=schema, scope='readonly_native_home_catalog_reference',
+        captured=len(records), manifest_sha256=hashlib.sha256(data).hexdigest())
+    reference.update(dict(screen='home-rest') if schema == 1
+                     else dict(screens=list(HOME_STATE_SCREENS)))
+    return home_catalog_reference(reference)
 
 
 def home_artifact_paths(repo, report):
-    """Only a completed generic parent can export the two catalog originals."""
+    """Only a completed generic parent can export every catalog original."""
     if report.get('success') is not True:
         return []
     need(completed(report), 'CAPTURE_REFUSED')
     reference = home_catalog_reference(report['home_catalog'])
+    schema = reference['schema']
     output = repo / HOME_OUTPUT
-    home_output_bytes(output)
+    home_output_bytes(output, schema=schema)
     raw = read_original(output / 'manifest.json', MAX_HOME_MANIFEST)
     need(hashlib.sha256(raw).hexdigest() == reference['manifest_sha256'], 'CAPTURE_REFUSED')
     def unique(pairs):
@@ -237,12 +282,13 @@ def home_artifact_paths(repo, report):
         return value
 
     value = public_home_catalog(json.loads(raw, object_pairs_hook=unique))
-    need(all(value[k] == report[k] for k in
-             ('source_sha', 'source_tree', 'run_id', 'run_attempt'))
-         and value['script_sha256'] == hashlib.sha256(
-             read_original(repo / HOME_SCRIPT, 65536)).hexdigest(), 'SOURCE_REFUSED')
+    need(value['schema'] == schema
+         and all(value[k] == report[k] for k in
+                 ('source_sha', 'source_tree', 'run_id', 'run_attempt'))
+         and value[_home_script_field(schema)] == _home_script_pins(repo, schema),
+         'SOURCE_REFUSED')
     paths = [str(HOME_OUTPUT / 'manifest.json').replace('\\', '/')]
-    for row in home_capture_records(value['captures']):
+    for row in home_capture_records(value['captures'], schema=schema):
         image = read_original(output / row['file'], MAX_HOME_CAPTURE_TOTAL)
         need(len(image) == row['bytes'] and hashlib.sha256(image).hexdigest() == row['sha256'],
              'CAPTURE_REFUSED')
@@ -732,6 +778,7 @@ def run(repo, parent, runtime, lab_root, observation, revalidate):
                          and 'wallet' in used and set(report['stalls']) == set(THEMES),
                          'ENTRY_REFUSED')
                     catalog_receipt = home_capture_receipt(json.loads(line.partition(b':')[2]))
+                    need(catalog_receipt['schema'] == 2, 'ENTRY_REFUSED')
                 elif line.startswith(b'SYRIUS_INSPECTION_VIEWPORT:'):
                     need(marker == b'CI_INSPECT_DONE' and viewport_receipt is None
                          and catalog_receipt is not None, 'ENTRY_REFUSED')
@@ -890,7 +937,7 @@ def run(repo, parent, runtime, lab_root, observation, revalidate):
         summary = {key: value for key, value in report.items()
                    if key not in ('captures', 'tours', 'locales', 'stalls', 'home_catalog', 'viewport')}
         summary.update(viewport_captured=4 if report['viewport'] is not None else 0,
-            catalog_captured=2 if report['home_catalog'] is not None else 0,
+            catalog_captured=report['home_catalog']['captured'] if report['home_catalog'] is not None else 0,
             home_catalog_manifest_sha256=(report['home_catalog']['manifest_sha256']
                 if report['home_catalog'] is not None else None),
             captured_pages=len(report['captures']),

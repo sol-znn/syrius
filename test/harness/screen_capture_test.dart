@@ -191,6 +191,54 @@ void main() {
     });
   }
 
+  test('finite selection rejects every invalid script before UI effects',
+      () async {
+    writeScript('home-rest');
+    for (final List<String> ids in <List<String>>[
+      <String>[], <String>['home-rest', 'home-rest'],
+      <String>['all'], <String>['unknown'],
+      <String>['home-rest', 'home-hidden'],
+      List<String>.filled(screenCatalog.length + 1, 'home-rest'),
+    ]) {
+      await expectLater(capture.captureSelection(ids,
+        directory: '.harness/selected'),
+        throwsA(isA<ScreenCaptureError>()));
+      expect(agent.commands, isEmpty);
+      expect(agent.lines, isEmpty);
+      expect(Directory(repository.path + '/.harness/selected').existsSync(),
+          isFalse);
+    }
+    writeScript('home-hidden', 'goto dashboard\n');
+    await expectLater(capture.captureSelection(
+      <String>['home-rest', 'home-hidden'],
+      directory: '.harness/selected'),
+      throwsA(isA<ScreenCaptureError>()));
+    expect(agent.commands, isEmpty);
+    expect(agent.lines, isEmpty);
+  });
+
+  test('finite selection snapshots ids and keeps both theme pairs',
+      () async {
+    writeScript('home-rest');
+    writeScript('home-hidden');
+    final List<String> ids = <String>['home-rest', 'home-hidden'];
+    final Future<List<String>> pending = capture.captureSelection(
+      ids, directory: '.harness/selected',
+    );
+    ids.clear();
+    expect(await pending, <String>[
+      '.harness/selected/01-home-rest-dark.png',
+      '.harness/selected/01-home-rest-light.png',
+      '.harness/selected/03-home-hidden-dark.png',
+      '.harness/selected/03-home-hidden-light.png',
+    ]);
+    expect(agent.shots, 4);
+    expect(agent.homePreparations, 4);
+    expect(agent.mode, 'system');
+    expect(agent.savedMode, 'ThemeMode.system');
+    expect(agent.commands.last['restoreState'], isNotNull);
+  });
+
   test('after-capture metadata refuses invalid input before UI effects', () {
     for (final String source in <String>[
       '# after-capture: tap "Show balances"\nassert --key page',
