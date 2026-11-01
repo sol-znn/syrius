@@ -2,6 +2,7 @@ import 'dart:async';
 import 'dart:ui' as ui;
 
 import 'package:bloc_test/bloc_test.dart';
+import 'package:flutter/foundation.dart' as foundation show TargetPlatform;
 import 'package:flutter/rendering.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
@@ -282,8 +283,12 @@ void main() {
     AppLottie.debugClear();
   });
 
-  Widget host({bool light = false, bool reduced = false}) => MaterialApp(
-    theme: light ? AppTheme.lightTheme : AppTheme.darkTheme,
+  Widget host({
+    bool light = false,
+    bool reduced = false,
+    ThemeData? themeOverride,
+  }) => MaterialApp(
+    theme: themeOverride ?? (light ? AppTheme.lightTheme : AppTheme.darkTheme),
     localizationsDelegates: appLocalizationsDelegates,
     supportedLocales: AppLocalizations.supportedLocales,
     builder: (BuildContext context, Widget? child) => MediaQuery(
@@ -315,12 +320,15 @@ void main() {
     WidgetTester tester, {
     bool light = false,
     bool reduced = false,
+    ThemeData? themeOverride,
   }) async {
     tester.view.physicalSize = const Size(1280, 780);
     tester.view.devicePixelRatio = 1;
     addTearDown(tester.view.resetPhysicalSize);
     addTearDown(tester.view.resetDevicePixelRatio);
-    await tester.pumpWidget(host(light: light, reduced: reduced));
+    await tester.pumpWidget(host(
+      light: light, reduced: reduced, themeOverride: themeOverride,
+    ));
     await tester.pump(const Duration(milliseconds: 500));
   }
 
@@ -396,28 +404,49 @@ void main() {
 
   testWidgets('actual Receive popup selects QSR through original agent input',
     (WidgetTester tester) async {
-      await show(tester, reduced: true);
+      await show(tester, reduced: true, themeOverride:
+        AppTheme.darkTheme.copyWith(
+          platform: foundation.TargetPlatform.windows,
+        ));
       await select(tester, TransferMode.receive);
       final HarnessAgent agent = HarnessAgent.forTest()..booted = true;
-      Future<Map<String, Object?>> command(Map<String, dynamic> value) =>
-          _driveReceiveCommand(tester, agent.commandForTest(value));
-      await command(<String, dynamic>{'cmd': 'key', 'key': 'escape'});
-      await command(<String, dynamic>{'cmd': 'key', 'key': 'escape'});
-      await command(<String, dynamic>{
-        'cmd': 'tap', 'key': 'receive_qr_toggle',
-      });
-      await command(<String, dynamic>{
-        'cmd': 'tap', 'key': 'receive_request_toggle',
-      });
-      await command(<String, dynamic>{
-        'cmd': 'type', 'key': 'receive_amount_field', 'value': '100',
-      });
-      await command(<String, dynamic>{
-        'cmd': 'tap', 'key': 'receive_token_picker',
-      });
-      await command(<String, dynamic>{
-        'cmd': 'tap', 'text': 'QSR', 'exact': true,
-      });
+      // Keep direct call sites so the finite failure projection names the step.
+      await _driveReceiveCommand(tester, agent.commandForTest(
+        <String, dynamic>{'cmd': 'key', 'key': 'escape'},
+      ));
+      await _driveReceiveCommand(tester, agent.commandForTest(
+        <String, dynamic>{'cmd': 'key', 'key': 'escape'},
+      ));
+      expect(find.byKey(const Key('receive_qr_toggle')).hitTestable(),
+        findsOneWidget);
+      await _driveReceiveCommand(tester, agent.commandForTest(
+        <String, dynamic>{'cmd': 'tap', 'key': 'receive_qr_toggle'},
+      ));
+      expect(find.text('Hide QR'), findsOneWidget);
+      await _driveReceiveCommand(tester, agent.commandForTest(
+        <String, dynamic>{'cmd': 'tap', 'key': 'receive_request_toggle'},
+      ));
+      expect(find.byKey(const Key('receive_amount_field')).hitTestable(),
+        findsOneWidget);
+      await _driveReceiveCommand(tester, agent.commandForTest(
+        <String, dynamic>{
+          'cmd': 'type', 'key': 'receive_amount_field', 'value': '100',
+        },
+      ));
+      final DropdownMenu<Token> initial = tester.widget<DropdownMenu<Token>>(
+        find.byKey(const Key('receive_token_picker')),
+      );
+      expect(initial.dropdownMenuEntries.map(
+        (DropdownMenuEntry<Token> row) => row.value.tokenStandard,
+      ), contains(kQsrCoin.tokenStandard));
+      await _driveReceiveCommand(tester, agent.commandForTest(
+        <String, dynamic>{'cmd': 'tap', 'key': 'receive_token_picker'},
+      ));
+      expect(find.text('QSR').hitTestable(), findsOneWidget,
+        reason: 'The original picker must expose a reachable QSR menu entry');
+      await _driveReceiveCommand(tester, agent.commandForTest(
+        <String, dynamic>{'cmd': 'tap', 'text': 'QSR', 'exact': true},
+      ));
       final DropdownMenu<Token> picker = tester.widget<DropdownMenu<Token>>(
         find.byKey(const Key('receive_token_picker')),
       );

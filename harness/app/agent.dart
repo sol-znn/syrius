@@ -3751,6 +3751,22 @@ class HarnessAgent {
           'about_licences_list',
           'about_licences_end',
           'originals_card',
+          'node_settings_page',
+          'node_settings_nodes',
+          'node_settings_count',
+          'security_settings_page',
+          'security_settings_policies',
+          'display_page',
+          'wallet_settings_page',
+          'wallet_settings_preferences',
+          'apps_settings_page',
+          'apps_settings_connected',
+          'apps_settings_count',
+          'addresses_settings_page',
+          'about_strip',
+          'about_version',
+          'about_embedded_version',
+          'about_build',
         }
             .contains(key)) {
       return null;

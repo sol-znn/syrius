@@ -40,6 +40,15 @@ on:
         description: Inspect a fresh readonly Windows wallet in both themes against the owned lab
         type: boolean
         default: false
+      readonly_catalog_family:
+        description: Select one original readonly catalog for the owned Windows inspection
+        type: choice
+        default: details
+        options:
+          - home
+          - settings
+          - navigation
+          - details
       chain321_lab:
         description: Qualify isolated chain-321 production on Linux Docker and native Windows
         type: boolean
@@ -607,6 +616,7 @@ jobs:
       SYRIUS_LAB_NODE_SOURCE: ${{ inputs.chain321_node_source }}
       SYRIUS_WINDOWS_WALLET_TOUR: ${{ inputs.windows_wallet_tour }}
       SYRIUS_WINDOWS_WALLET_INSPECTION: ${{ inputs.windows_wallet_inspection }}
+      SYRIUS_READONLY_CATALOG_FAMILY: ${{ inputs.readonly_catalog_family }}
     steps:
       - name: Checkout the dispatched wallet source
         uses: actions/checkout@v6

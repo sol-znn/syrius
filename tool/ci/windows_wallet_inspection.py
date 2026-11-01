@@ -26,7 +26,7 @@ from . import readonly_settings_capture as settings
 from . import readonly_navigation_capture as navigation
 from . import readonly_details_capture as details
 from .windows_debug_process import IMAGE_NAMES
-from .hosted_chain321 import CODES as LAB_CODES
+from .hosted_chain321 import CODES as LAB_CODES, READONLY_CATALOG_SCHEMAS, readonly_catalog_family
 
 
 PAGES = shared.PAGES
@@ -740,6 +740,7 @@ def run(repo, parent, runtime, lab_root, observation, revalidate):
     original = lines = job = output = transport = token = None
     close_attempted = False
     catalog_receipt = viewport_receipt = None
+    family = 'details'
     try:
         parent, source = debug.entry.require_ci(parent, None, platform=os.name)
         need(parent.get('GITHUB_EVENT_NAME') == 'workflow_dispatch'
@@ -748,6 +749,12 @@ def run(repo, parent, runtime, lab_root, observation, revalidate):
              and parent.get('SYRIUS_WINDOWS_WALLET_TOUR', 'false') == 'false'
              and parent.get('SYRIUS_LAB_NODE_SOURCE') == 'lab-fix'
              and parent.get('SYRIUS_NATIVE_STACK_DIAGNOSTIC') == 'true', 'ENVIRONMENT_REFUSED')
+        family = readonly_catalog_family(parent)
+        report['schema'] = READONLY_CATALOG_SCHEMAS[family]
+        for field, since in (('details_catalog', 4), ('navigation_catalog', 3),
+                             ('settings_catalog', 2)):
+            if report['schema'] < since:
+                report.pop(field)
         report['checks']['environment'] = True
         debug.bounded.verify_source(repo, source, parent)
         tree = debug.entry.source_tree(repo, parent)
@@ -769,7 +776,8 @@ def run(repo, parent, runtime, lab_root, observation, revalidate):
         profile_identity = shared.directory_identity(profile.lstat())
         need(profile_identity is not None, 'PROFILE_REFUSED')
         env = debug.profile_environment(parent, profile, 1, secrets.token_hex(16))
-        env.update(SYRIUS_CI_WALLET_INSPECTION='true', SYRIUS_CI_INSPECTION_INSTANCE=name)
+        env.update(SYRIUS_CI_WALLET_INSPECTION='true', SYRIUS_CI_INSPECTION_INSTANCE=name,
+                   SYRIUS_READONLY_CATALOG_FAMILY=family)
         dart, _ = debug.sdk(parent)
         job = debug.WindowsJob()
         original = subprocess.Popen([str(dart), '--disable-dart-dev',
@@ -876,8 +884,14 @@ def run(repo, parent, runtime, lab_root, observation, revalidate):
                     need(marker == b'CI_INSPECT_DONE' and catalog_receipt is None
                          and 'wallet' in used and set(report['stalls']) == set(THEMES),
                          'ENTRY_REFUSED')
-                    catalog_receipt = details.capture_receipt(json.loads(line.partition(b':')[2]))
-                    need(catalog_receipt['schema'] == 1, 'ENTRY_REFUSED')
+                    receipt = json.loads(line.partition(b':')[2])
+                    validators = dict(home=home_capture_receipt,
+                        settings=settings.capture_receipt,
+                        navigation=navigation.capture_receipt,
+                        details=details.capture_receipt)
+                    catalog_receipt = validators[family](receipt)
+                    need(catalog_receipt['schema'] == (4 if family == 'home' else 1),
+                         'ENTRY_REFUSED')
                 elif line.startswith(b'SYRIUS_INSPECTION_VIEWPORT:'):
                     need(marker == b'CI_INSPECT_DONE' and viewport_receipt is None
                          and catalog_receipt is not None, 'ENTRY_REFUSED')
@@ -945,8 +959,13 @@ def run(repo, parent, runtime, lab_root, observation, revalidate):
         capture_records(report['captures'])
         output_bytes(output)
         report['checks']['captures'] = True
-        report['details_catalog'] = details.collect(
-            repo, catalog_receipt, source, tree, parent, read_original=read_original)
+        if family == 'home':
+            report['home_catalog'] = collect_home_catalog(
+                repo, catalog_receipt, source, tree, parent)
+        else:
+            collector = dict(settings=settings, navigation=navigation, details=details)[family]
+            report[family + '_catalog'] = collector.collect(
+                repo, catalog_receipt, source, tree, parent, read_original=read_original)
         report['viewport'] = viewport.collect(repo, viewport_receipt, source, tree, parent,
             read_original=read_original)
         lab_current()
@@ -1037,14 +1056,14 @@ def run(repo, parent, runtime, lab_root, observation, revalidate):
                    if key not in ('captures', 'tours', 'locales', 'stalls', 'home_catalog',
                        'settings_catalog', 'navigation_catalog', 'details_catalog', 'viewport')}
         summary.update(viewport_captured=4 if report['viewport'] is not None else 0,
-            catalog_captured=(report['details_catalog']['captured']
-                if report['details_catalog'] is not None else 0),
+            catalog_captured=(report[family + '_catalog']['captured']
+                if report.get(family + '_catalog') is not None else 0),
             details_catalog_manifest_sha256=(report['details_catalog']['manifest_sha256']
-                if report['details_catalog'] is not None else None),
+                if report.get('details_catalog') is not None else None),
             navigation_catalog_manifest_sha256=(report['navigation_catalog']['manifest_sha256']
-                if report['navigation_catalog'] is not None else None),
+                if report.get('navigation_catalog') is not None else None),
             settings_catalog_manifest_sha256=(report['settings_catalog']['manifest_sha256']
-                if report['settings_catalog'] is not None else None),
+                if report.get('settings_catalog') is not None else None),
             home_catalog_manifest_sha256=(report['home_catalog']['manifest_sha256']
                 if report['home_catalog'] is not None else None),
             captured_pages=len(report['captures']),

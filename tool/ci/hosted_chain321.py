@@ -104,6 +104,17 @@ def wallet_tour_requested(backend, parent):
     return value == 'true'
 
 
+READONLY_CATALOG_SCHEMAS = dict(home=1, settings=2, navigation=3, details=4)
+
+
+def readonly_catalog_family(parent):
+    """Select exactly one existing family before SDK or private input allocation."""
+    value = parent.get('SYRIUS_READONLY_CATALOG_FAMILY', 'details')
+    need(type(value) is str and value in READONLY_CATALOG_SCHEMAS,
+         'ENVIRONMENT_REFUSED')
+    return value
+
+
 def wallet_inspection_requested(backend, parent):
     value = parent.get('SYRIUS_WINDOWS_WALLET_INSPECTION', 'false')
     need(value in ('true', 'false'), 'ENVIRONMENT_REFUSED')
@@ -111,6 +122,7 @@ def wallet_inspection_requested(backend, parent):
         need(backend == 'native' and parent.get('SYRIUS_LAB_NODE_SOURCE') == 'lab-fix'
              and parent.get('SYRIUS_NATIVE_STACK_DIAGNOSTIC') == 'true'
              and parent.get('SYRIUS_WINDOWS_WALLET_TOUR', 'false') == 'false', 'ENVIRONMENT_REFUSED')
+        readonly_catalog_family(parent)
     return value == 'true'
 
 

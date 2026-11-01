@@ -5,6 +5,8 @@ import 'dart:typed_data';
 
 import 'package:flutter_test/flutter_test.dart';
 
+import '../../harness/bin/ci_wallet_inspection.dart'
+    show readonlyInspectionCatalogFamily;
 import '../../harness/bin/readonly_details_catalog.dart';
 import '../../harness/bin/readonly_home_catalog.dart';
 import '../../harness/bin/readonly_inspection_session.dart';
@@ -45,6 +47,24 @@ class _CatalogStdout extends Fake implements Stdout {
 }
 
 void main() {
+  test('catalog choice preserves the original Details default', () {
+    expect(readonlyInspectionCatalogFamily(<String, String>{}), 'details');
+    for (final String family in <String>[
+      'home', 'settings', 'navigation', 'details',
+    ]) {
+      expect(readonlyInspectionCatalogFamily(<String, String>{
+        'SYRIUS_READONLY_CATALOG_FAMILY': family,
+      }), family);
+    }
+    for (final String refused in <String>[
+      '', 'Home', 'home,navigation', 'all', '../home', ' details',
+    ]) {
+      expect(() => readonlyInspectionCatalogFamily(<String, String>{
+        'SYRIUS_READONLY_CATALOG_FAMILY': refused,
+      }), throwsA(isA<ReadonlyInspectionRefused>()));
+    }
+  });
+
   test('the real Home script stays bound across capture and refusal',
       () async {
     final String script = File('harness/screens/home-rest.txt')

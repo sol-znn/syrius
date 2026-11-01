@@ -392,13 +392,13 @@ macOS; Windows provision and acceptance remain pending. See
 
 ### Now
 
-- Updated: 2026-11-01 09:34 UTC
-- Current controls: Source288 passes 783 ordinary Dart cases, zero selected analysis findings and 927 Python controls with three original skips. Its original native run fails at dark Receive QR line 12, `tap QSR --exact`; the independent 104-case reader qualifies both failure manifests and 58 sources, with zero admitted PNGs. [Original failure and next test](docs/review/source288-receive-selection-failure.md)
-- Next diagnostic: Source289 adds one real-widget/original-agent QSR selection case using mocked data. Ten count-gate checks report PASS, with original controller exit UNKNOWN. Fresh hosted 784/786 Dart gates remain pending; product UI, scripts, matching and SDK authority are unchanged
-- Navigation review: [All fourteen Source287 originals and fourteen references were viewed](docs/review/source287-navigation-visual-review.md). The owned task and controller closed successfully; layout, artwork and genuine-state differences remain. Zero matches are accepted
-- Home follow-up: [Earlier Source278 hidden frames](docs/review/source278-home-hidden-spacing-followup.md) retain their measured ink-gap scope. X411 stays open; the separate Home and Send UI proposals are not applied here
-- Acceptance: 72 of 80 rows done, 90 percent by rows; zero of 94 accepted matches, nineteen preparations, 26 available literal outputs and 68 missing. No Settings or Details literal images are qualified. P03, P09, F06, V01-V03 and V05-V06 remain open; original V04 and Arabic fallback X414 keep their recorded scopes
-- Preserved evidence: all earlier FAILURE/HOLD/UNKNOWN records remain, including Source288's required-wallet forced cleanup and NOT_ESTABLISHED selection cause. Source278's prior full/application-UI evidence remains separate. Native101 Send and Native103 Token confirmation/effect stay UNKNOWN; Native104 is not admitted. Attribution uses edgepillar, GitHub no-reply and UTC; the PR stays Draft
+- Updated: 2026-11-01 09:50 UTC
+- Current failure: Source289 reports 783 Dart passes and one failed Receive agent case, zero selected analysis findings and 927 Python controls with three original skips. The complete unforced command exits one. Its finite record names agent.dart:3135 and the command wrapper, leaving the failed command and cause NOT_ESTABLISHED. [Original record](docs/review/source289-receive-agent-diagnostic-failure.md)
+- Next gate: [Source290 preparation](docs/review/source290-readonly-catalog-selection.md) adds one closed catalog choice using existing schemas, sixteen fixed Settings observation keys and direct Receive test call sites with an explicit Windows theme. All 83 selected Python controls pass; fresh 785/787 Dart and 928 Python gates remain pending. Product UI, original commands, input matching and SDK authority are unchanged
+- Preserved native failure: [Source288](docs/review/source288-receive-selection-failure.md) still fails at dark Receive QR line 12 with required-wallet forced cleanup and zero admitted PNGs. Its 104-case independent reader qualifies both failure manifests and 58 source pins; the new component failure does not establish the original native cause
+- Visual scope: [Fourteen Source287 Navigation originals and references](docs/review/source287-navigation-visual-review.md) were viewed in a successfully closed owned review; zero matches accepted. [Source278 Home X411](docs/review/source278-home-hidden-spacing-followup.md), original V04 and Arabic fallback X414 retain their scopes. Separate Home/Send UI proposals remain unapplied
+- Acceptance: 72 of 80 rows done, 90 percent by rows; zero of 94 accepted matches, nineteen preparations, 26 available literal outputs and 68 missing. No Settings or Details literal images are qualified. P03, P09, F06, V01-V03 and V05-V06 remain open
+- Evidence and publication: all earlier FAILURE/HOLD/UNKNOWN records and Source278's prior full/application-UI scope remain protected. Native101 Send and Native103 Token confirmation/effect stay UNKNOWN; Native104 is not admitted. Attribution uses edgepillar, GitHub no-reply and UTC; the PR stays Draft
 
 ### Rows
 
@@ -1842,6 +1842,14 @@ See [the source preparation](docs/review/source288-details-catalog-preparation.m
 | Exception | State | Updated (UTC) | Evidence and remaining gate |
 | --- | --- | --- | --- |
 | X426 | review | 2026-11-01 09:34 UTC | Fourteen original Source287 Navigation images and their exact references were viewed; the managed task and actual controller closed successfully. Genuine data and layout/artwork differences remain; zero matches accepted |
-| X427 | review | 2026-11-01 09:34 UTC | One actual Receive widget/original-agent QSR selection diagnostic is added with mocked data. Product code and original commands are unchanged. Ten count gates report PASS with original controller exit UNKNOWN; fresh hosted 784-case execution is pending and the original native cause remains NOT_ESTABLISHED |
+| X427 | review | 2026-11-01 09:34 UTC | One actual Receive widget/original-agent QSR selection diagnostic is added with mocked data. Product code and original commands are unchanged. Ten count gates report PASS with original controller exit UNKNOWN; fresh hosted 784-case execution is pending and the original native cause remains NOT_ESTABLISHED Source289 subsequently reports 783 passes and one failure at the original selector refusal, with the precise command not exported. Source290 retains the command stream and final assertions while adding direct call sites and a Windows theme; fresh hosted execution remains pending. |
 
 See [the original Source288 failure and diagnostic](docs/review/source288-receive-selection-failure.md), [closed Navigation visual review](docs/review/source287-navigation-visual-review.md) and exact [PR body 229 archive](docs/review/pr-body-229.md). All seven original body URLs and earlier evidence are retained. Main progress remains 72/80 and zero of 94 accepted matches.
+
+### Source290 closed family choice and narrowed Receive diagnostic
+
+| Exception | State | Updated (UTC) | Evidence and remaining gate |
+| --- | --- | --- | --- |
+| X428 | review | 2026-11-01 09:50 UTC | One closed workflow choice preserves four existing family schemas and selects one original capture. Sixteen fixed Settings regions extend positive observations only. Receive retains seven commands and final assertions, with direct failure call sites and a Windows theme. All 83 selected Python controls pass; fresh 785/787 Dart and 928 Python gates remain pending. No new native image or visual match is inferred |
+
+See [the original Source289 failure](docs/review/source289-receive-agent-diagnostic-failure.md), [Source290 preparation](docs/review/source290-readonly-catalog-selection.md) and exact [PR body 230 archive](docs/review/pr-body-230.md). All nine body URLs and prior evidence remain retained. Main progress stays 72/80 with zero of 94 accepted matches.

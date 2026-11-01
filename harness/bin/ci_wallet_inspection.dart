@@ -6,10 +6,24 @@ import 'dart:io';
 import '../wallet_recipe_failure.dart' show walletRecipePublicDiagnostic;
 import 'harness.dart' as cli;
 import 'readonly_details_catalog.dart';
+import 'readonly_home_catalog.dart';
 import 'readonly_inspection_session.dart';
+import 'readonly_navigation_catalog.dart';
+import 'readonly_settings_catalog.dart';
 import 'readonly_viewport_probe.dart';
 import 'screen_capture.dart';
 import 'wallet_recipe.dart';
+
+/// One fixed original capture family, with the previous Details default.
+String readonlyInspectionCatalogFamily(Map<String, String> environment) {
+  final String family =
+      environment['SYRIUS_READONLY_CATALOG_FAMILY'] ?? 'details';
+  if (!const <String>{'home', 'settings', 'navigation', 'details'}
+      .contains(family)) {
+    throw const ReadonlyInspectionRefused(ReadonlyInspectionReason.command);
+  }
+  return family;
+}
 
 class _InspectionInstance extends cli.Instance {
   _InspectionInstance(super.name, this._receipt) {
@@ -37,12 +51,26 @@ class _InspectionInstance extends cli.Instance {
 
   Future<Map<String, dynamic>> bindWallet() => _session.bindWallet();
 
-  Future<Map<String, Object>> captureDetailsDefaults({
+  Future<Map<String, Object>> captureCatalog(
+    String family, {
     void Function(ScreenCaptureObservation step)? onStep,
-  }) =>
-      captureReadonlyDetailsDefaults(
-    repository: Directory(cli.repo), session: _session, onStep: onStep,
-  );
+  }) => switch (family) {
+    'home' => captureReadonlyHomeGotoStates(
+      repository: Directory(cli.repo), session: _session,
+    ),
+    'settings' => captureReadonlySettingsDefaults(
+      repository: Directory(cli.repo), session: _session, onStep: onStep,
+    ),
+    'navigation' => captureReadonlyNavigationDefaults(
+      repository: Directory(cli.repo), session: _session, onStep: onStep,
+    ),
+    'details' => captureReadonlyDetailsDefaults(
+      repository: Directory(cli.repo), session: _session, onStep: onStep,
+    ),
+    _ => throw const ReadonlyInspectionRefused(
+      ReadonlyInspectionReason.command,
+    ),
+  };
 
   Future<Map<String, Object>> captureViewport({
     void Function(ReadonlyViewportStep step)? onStep,
@@ -77,9 +105,10 @@ Future<void> main() async {
   );
   String stage = 'admission';
   ReadonlyViewportStep? lastViewportStep;
-  ScreenCaptureObservation? lastDetailsStep;
+  ScreenCaptureObservation? lastCatalogStep;
   try {
     final Map<String, String> environment = Platform.environment;
+    final String family = readonlyInspectionCatalogFamily(environment);
     final String name = environment['SYRIUS_CI_INSPECTION_INSTANCE'] ?? '';
     if (!Platform.isWindows || environment['GITHUB_ACTIONS'] != 'true' ||
         environment['SYRIUS_CI_WALLET_INSPECTION'] != 'true' ||
@@ -227,10 +256,10 @@ Future<void> main() async {
         'longest_ms': timings['longestMs'] as int,
       })}');
     }
-    stage = 'details_catalog';
-    final Map<String, Object> catalog =
-        await instance.captureDetailsDefaults(
-      onStep: (ScreenCaptureObservation value) => lastDetailsStep = value,
+    stage = '${family}_catalog';
+    final Map<String, Object> catalog = await instance.captureCatalog(
+      family,
+      onStep: (ScreenCaptureObservation value) => lastCatalogStep = value,
     );
     await marker('SYRIUS_INSPECTION_CATALOG:${jsonEncode(catalog)}');
     stage = 'viewport';
@@ -256,7 +285,11 @@ Future<void> main() async {
           ? walletRecipePublicDiagnostic(error.diagnostic)
           : error is cli.WalletTourFailure ? error.diagnostic : null;
       if (stage == 'details_catalog') {
-        diagnostic = readonlyDetailsFailureDiagnostic(lastDetailsStep);
+        diagnostic = readonlyDetailsFailureDiagnostic(lastCatalogStep);
+      } else if (stage == 'navigation_catalog') {
+        diagnostic = readonlyNavigationFailureDiagnostic(lastCatalogStep);
+      } else if (stage == 'settings_catalog') {
+        diagnostic = readonlySettingsFailureDiagnostic(lastCatalogStep);
       }
       final ReadonlyViewportStep? observed = lastViewportStep;
       if (stage == 'viewport' && observed != null) {

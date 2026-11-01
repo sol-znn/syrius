@@ -186,6 +186,29 @@ class _Output(io.StringIO):
 
 
 class InspectionTests(unittest.TestCase):
+    def test_catalog_choice_is_admitted_before_any_runtime_allocation(self):
+        parent = dict(SYRIUS_WINDOWS_WALLET_INSPECTION='true',
+            SYRIUS_WINDOWS_WALLET_TOUR='false', SYRIUS_LAB_NODE_SOURCE='lab-fix',
+            SYRIUS_NATIVE_STACK_DIAGNOSTIC='true')
+        self.assertEqual(lab.readonly_catalog_family(parent), 'details')
+        for family, schema in (('home', 1), ('settings', 2),
+                               ('navigation', 3), ('details', 4)):
+            selected = dict(parent, SYRIUS_READONLY_CATALOG_FAMILY=family)
+            self.assertTrue(lab.wallet_inspection_requested('native', selected))
+            self.assertEqual(lab.READONLY_CATALOG_SCHEMAS[
+                lab.readonly_catalog_family(selected)], schema)
+        for value in (None, True, 1, '', 'Home', 'all', 'home,navigation', '../home'):
+            with self.subTest(value=value), self.assertRaises(lab.Failure):
+                lab.wallet_inspection_requested('native',
+                    dict(parent, SYRIUS_READONLY_CATALOG_FAMILY=value))
+        workflow = Path('.github/workflows/public-contribution-qualification.yml').read_text()
+        choice = workflow.split('      readonly_catalog_family:', 1)[1].split('      chain321_lab:', 1)[0]
+        self.assertIn('type: choice', choice)
+        self.assertIn('default: details', choice)
+        self.assertEqual([line.strip()[2:] for line in choice.splitlines()
+            if line.strip().startswith('- ')], ['home', 'settings', 'navigation', 'details'])
+        self.assertIn('SYRIUS_READONLY_CATALOG_FAMILY: ${{ inputs.readonly_catalog_family }}', workflow)
+
     def test_lab_failure_projection_retains_only_fixed_codes_and_refuses_success(self):
         labels = []
         for code in inspection.LAB_CODES:
