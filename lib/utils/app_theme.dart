@@ -1523,6 +1523,9 @@ class AppTokens extends ThemeExtension<AppTokens> {
   /// The request's QR image size before its quiet border.
   double get receiveQrSize => 150;
 
+  /// The QR well leaves room for the existing image actions on one line.
+  double get receiveQrWellWidth => 210;
+
   /// QR pixels keep a clear border.
   double get receiveQrInset => 12;
 

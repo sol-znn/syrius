@@ -377,7 +377,7 @@ class _ReceivePopulatedState extends State<ReceivePopulated>
             tokens.receiveRequestText.fontSize!,
           ) /
           tokens.receiveRequestText.fontSize!;
-      final double qrWidth = tokens.receiveQrSize + tokens.receiveQrInset * 2;
+      final double qrWidth = tokens.receiveQrWellWidth;
       final Widget qr = _buildQrReveal(tokens);
       final Widget details = _buildDetails(tokens, centered: false);
       if (constraints.maxWidth <
@@ -438,7 +438,7 @@ class _ReceivePopulatedState extends State<ReceivePopulated>
     final int? headerRevision = header?.revision;
     return Container(
       key: payload == null ? null : const Key('receive_qr_screen_marker'),
-      width: tokens.receiveQrSize + tokens.receiveQrInset * 2,
+      width: tokens.receiveQrWellWidth,
       padding: EdgeInsetsDirectional.all(tokens.receiveQrInset),
       decoration: BoxDecoration(
         color: tokens.card2,

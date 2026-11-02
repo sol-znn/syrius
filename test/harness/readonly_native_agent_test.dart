@@ -157,6 +157,140 @@ class _InspectionInstance extends cli.Instance {
 }
 
 void main() {
+  testWidgets('callback-only Node owners refresh and revoke retained Add', (
+    WidgetTester tester,
+  ) async {
+    about_fixture.prepareAboutViewport(tester);
+    final node_fixture.FakeNodeSettingsSession source =
+        node_fixture.FakeNodeSettingsSession();
+    final NodeSettingsPresenter presenter = node_fixture.nodePresenter(source);
+    final ValueNotifier<bool> active = ValueNotifier<bool>(false);
+    Widget nodeContent() => ValueListenableBuilder<bool>(
+      valueListenable: active,
+      builder: (BuildContext context, bool current, Widget? _) =>
+          NodeSettingsView(
+            presenter: presenter,
+            isCurrent: () => current,
+            embeddedNode: const SizedBox(height: 80),
+          ),
+    );
+    TextButton add() => tester.widget<TextButton>(find.descendant(
+      of: find.byKey(const Key('node_settings_add')),
+      matching: find.byType(TextButton),
+    ).first);
+    Future<void> ready() async {
+      for (int frame = 0;
+          frame < 100 && presenter.currentNetwork == null; frame++) {
+        await tester.pump(const Duration(milliseconds: 10));
+      }
+      expect(presenter.currentNetwork, isNotNull);
+      await tester.pump();
+    }
+    try {
+      await tester.pumpWidget(about_fixture.aboutHost(
+        nodeContent(), width: 992, height: 674,
+      ));
+      await tester.pump();
+      final State<StatefulWidget> owner = tester.state(
+        find.byType(NodeSettingsView),
+      );
+      expect(presenter.currentNetwork, isNull);
+      expect(add().onPressed, isNull);
+      active.value = true;
+      await tester.pump();
+      await ready();
+      expect(tester.state(find.byType(NodeSettingsView)), same(owner));
+      final VoidCallback retained = add().onPressed!;
+      final int epoch = presenter.authorityEpoch;
+      active.value = false;
+      await tester.pump();
+      expect(presenter.currentNetwork, isNull);
+      expect(presenter.authorityEpoch, greaterThan(epoch));
+      expect(add().onPressed, isNull);
+      active.value = true;
+      await tester.pump();
+      await ready();
+      expect(tester.state(find.byType(NodeSettingsView)), same(owner));
+      retained();
+      await tester.pump();
+      expect(find.byKey(const Key('node_settings_endpoint')), findsNothing);
+      expect(source.calls.where((String call) =>
+          call.startsWith('connect:')), isEmpty);
+      expect(tester.takeException(), isNull);
+    } finally {
+      await tester.pumpWidget(const SizedBox.shrink());
+      await presenter.close();
+      active.dispose();
+    }
+  });
+
+  testWidgets('an inactive replacement Node owner performs no passive reads', (
+    WidgetTester tester,
+  ) async {
+    about_fixture.prepareAboutViewport(tester);
+    final node_fixture.FakeNodeSettingsSession firstSource =
+        node_fixture.FakeNodeSettingsSession();
+    final node_fixture.FakeNodeSettingsSession nextSource =
+        node_fixture.FakeNodeSettingsSession();
+    final NodeSettingsPresenter first = node_fixture.nodePresenter(firstSource);
+    final NodeSettingsPresenter next = node_fixture.nodePresenter(nextSource);
+    NodeSettingsPresenter presenter = first;
+    final ValueNotifier<int> revision = ValueNotifier<int>(0);
+    bool active = true;
+    Widget nodeContent() => ValueListenableBuilder<int>(
+      valueListenable: revision,
+      builder: (BuildContext context, int epoch, Widget? _) {
+        final bool current = active;
+        return NodeSettingsView(
+          presenter: presenter,
+          isCurrent: () => current,
+          embeddedNode: const SizedBox(height: 80),
+        );
+      },
+    );
+    Future<void> ready() async {
+      for (int frame = 0;
+          frame < 100 && presenter.currentNetwork == null; frame++) {
+        await tester.pump(const Duration(milliseconds: 10));
+      }
+      expect(presenter.currentNetwork, isNotNull);
+      await tester.pump();
+    }
+    try {
+      await tester.pumpWidget(about_fixture.aboutHost(
+        nodeContent(), width: 992, height: 674,
+      ));
+      await ready();
+      final State<StatefulWidget> owner = tester.state(
+        find.byType(NodeSettingsView),
+      );
+      active = false;
+      revision.value++;
+      await tester.pump();
+      expect(first.currentNetwork, isNull);
+      final List<String> originalReads = List<String>.of(nextSource.calls);
+      presenter = next;
+      revision.value++;
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 250));
+      expect(nextSource.calls, originalReads);
+      expect(next.currentNetwork, isNull);
+      expect(tester.state(find.byType(NodeSettingsView)), same(owner));
+      active = true;
+      revision.value++;
+      await tester.pump();
+      await ready();
+      expect(tester.state(find.byType(NodeSettingsView)), same(owner));
+      expect(nextSource.calls.length, greaterThan(originalReads.length));
+      expect(tester.takeException(), isNull);
+    } finally {
+      await tester.pumpWidget(const SizedBox.shrink());
+      await first.close();
+      await next.close();
+      revision.dispose();
+    }
+  });
+
   testWidgets('readonly observes the actual disabled Sporks card', (
     WidgetTester tester,
   ) async {

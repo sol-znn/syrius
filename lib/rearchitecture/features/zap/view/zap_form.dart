@@ -737,6 +737,9 @@ class _ZapFormState extends State<ZapForm> {
     }
     // The translated action keeps its sans face; every figure within it is
     // exact mono text, including grouped large amounts and fractional units.
+    final TextStyle actionStyle = tokens.transferActionText.copyWith(
+      color: tokens.primaryButtonForeground,
+    );
     final List<InlineSpan> spans = <InlineSpan>[];
     int end = 0;
     for (final RegExpMatch match in RegExp(
@@ -748,7 +751,7 @@ class _ZapFormState extends State<ZapForm> {
       spans.add(
         TextSpan(
           text: match.group(0),
-          style: monoStyle(tokens.transferActionText),
+          style: monoStyle(actionStyle),
         ),
       );
       end = match.end;
@@ -757,7 +760,7 @@ class _ZapFormState extends State<ZapForm> {
       spans.add(TextSpan(text: label.substring(end)));
     }
     return Text.rich(
-      TextSpan(style: tokens.transferActionText, children: spans),
+      TextSpan(style: actionStyle, children: spans),
       textDirection: ltrUnlessRtl(label),
       textAlign: TextAlign.center,
     );

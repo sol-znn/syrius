@@ -92,3 +92,5 @@ A prior successful run remains bound to its original source and scope.
 - 2026-11-02: [Source314 selected test progress](source314-selected-test-progress.md) preserves Source313's unretried timeout and unavailable counts, with bounded non-qualifying observations and unchanged SDK arguments/limits. Fresh hosted qualification remains pending.
 
 - 2026-11-02: [Source315 complete serial groups](source315-serial-test-groups.md) preserves Source314's original timeout and cutoff while requiring both bounded commands, exact total coverage and unchanged source. Fresh hosted qualification remains pending.
+
+- 2026-11-02: [Source315 Windows/catalog outcomes](source315-windows-and-catalog-outcomes.md) and [Source316 Node/Details updates](source316-node-visibility-and-details.md) preserve all eleven terminal outcomes and closed actual viewing while leaving the new revision pending fresh qualification.

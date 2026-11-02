@@ -117,6 +117,13 @@ class _NodeSettingsViewState extends State<NodeSettingsView>
             ));
   }
 
+  bool get _sourceVisible =>
+      _windowActive &&
+      (widget.isCurrent?.call() ?? true) &&
+      _focusAllowsInput &&
+      TickerMode.valuesOf(context).enabled &&
+      ((_pageRoute?.isCurrent ?? true) || _ownQuestion);
+
   bool get _current =>
       mounted &&
       _visible &&
@@ -139,38 +146,35 @@ class _NodeSettingsViewState extends State<NodeSettingsView>
     super.didChangeDependencies();
     _parentFocus = Focus.maybeOf(context, scopeOk: true);
     _pageRoute = ModalRoute.of(context);
+    _synchronizeVisibility();
+  }
+
+  void _synchronizeVisibility({bool refresh = false}) {
     final bool wasVisible = _visible;
-    _visible =
-        _windowActive &&
-        (widget.isCurrent?.call() ?? true) &&
-        _focusAllowsInput &&
-        TickerMode.valuesOf(context).enabled &&
-        ((_pageRoute?.isCurrent ?? true) || _ownQuestion);
+    _visible = _sourceVisible;
     _presenter.setVisible(visible: _visible);
-    if (!_visible) {
-      _dismissQuestion();
-    }
-    if (!_attached || (!wasVisible && _visible)) {
+    if (!_visible) _dismissQuestion();
+    if (!_attached || refresh || (!wasVisible && _visible)) {
       _attached = true;
-      unawaited(_presenter.refresh());
+      if (_visible) unawaited(_presenter.refresh());
     }
   }
 
   @override
   void didUpdateWidget(NodeSettingsView oldWidget) {
     super.didUpdateWidget(oldWidget);
-    if (!identical(oldWidget.presenter, widget.presenter)) {
+    final bool replaced = !identical(oldWidget.presenter, widget.presenter);
+    final bool previousCurrent = oldWidget.isCurrent?.call() ?? true;
+    if (replaced) {
       oldWidget.presenter.setVisible(visible: false);
       unawaited(_subscription?.cancel());
       _dismissQuestion();
       _listen();
-      _presenter.setVisible(visible: _visible);
-      unawaited(_presenter.refresh());
-    } else if (!(oldWidget.isCurrent?.call() ?? true)) {
+    } else if (!previousCurrent) {
       _presenter.invalidate();
       _dismissQuestion();
-      unawaited(_presenter.refresh());
     }
+    _synchronizeVisibility(refresh: replaced || !previousCurrent);
   }
 
   @override
@@ -181,12 +185,7 @@ class _NodeSettingsViewState extends State<NodeSettingsView>
       _presenter.setVisible(visible: false);
       _dismissQuestion();
     } else if (mounted) {
-      _visible =
-          _focusAllowsInput &&
-          ((_pageRoute?.isCurrent ?? true) || _ownQuestion) &&
-          TickerMode.valuesOf(context).enabled;
-      _presenter.setVisible(visible: _visible);
-      unawaited(_presenter.refresh());
+      _synchronizeVisibility(refresh: true);
     }
     _changed();
   }

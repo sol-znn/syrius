@@ -8,6 +8,7 @@ import 'package:zenon_syrius_wallet_flutter/rearchitecture/utils/widgets/list_en
 import 'package:zenon_syrius_wallet_flutter/rearchitecture/utils/widgets/ltr.dart';
 import 'package:zenon_syrius_wallet_flutter/rearchitecture/utils/widgets/page/page_widgets.dart';
 import 'package:zenon_syrius_wallet_flutter/utils/app_theme.dart';
+import 'package:zenon_syrius_wallet_flutter/widgets/modular_widgets/settings_widgets/settings_parts.dart';
 import 'package:zenon_syrius_wallet_flutter/widgets/reusable_widgets/app_lottie.dart';
 import 'package:zenon_syrius_wallet_flutter/widgets/reusable_widgets/launch_film.dart';
 import 'package:zenon_syrius_wallet_flutter/widgets/shell/rail.dart';
@@ -344,16 +345,25 @@ class _OriginalsCardState extends State<OriginalsCard>
                             context.l10n.originalsSince,
                             style: tokens.settingsHintText,
                           ),
-                          OutlinedButton.icon(
-                            key: const Key('originals_play_launch'),
-                            onPressed: () => _replay(current),
-                            icon: buildShellSymbol(
-                              context,
-                              'refresh',
-                              size: tokens.settingsIconSize,
-                              color: tokens.dim,
+                          SecondaryAction(
+                            child: OutlinedButton.icon(
+                              key: const Key('originals_play_launch'),
+                              style: OutlinedButton.styleFrom(
+                                minimumSize: Size(0, tokens.smallButtonHeight),
+                                padding: EdgeInsetsDirectional.symmetric(
+                                  horizontal: tokens.receiveMicroGap,
+                                ),
+                                textStyle: tokens.captionText,
+                              ),
+                              onPressed: () => _replay(current),
+                              icon: buildShellSymbol(
+                                context,
+                                'refresh',
+                                size: tokens.settingsIconSize,
+                                color: tokens.dim,
+                              ),
+                              label: Text(context.l10n.originalsPlayLaunch),
                             ),
-                            label: Text(context.l10n.originalsPlayLaunch),
                           ),
                         ],
                       ),
