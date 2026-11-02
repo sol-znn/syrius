@@ -94,3 +94,5 @@ A prior successful run remains bound to its original source and scope.
 - 2026-11-02: [Source315 complete serial groups](source315-serial-test-groups.md) preserves Source314's original timeout and cutoff while requiring both bounded commands, exact total coverage and unchanged source. Fresh hosted qualification remains pending.
 
 - 2026-11-02: [Source315 Windows/catalog outcomes](source315-windows-and-catalog-outcomes.md) and [Source316 Node/Details updates](source316-node-visibility-and-details.md) preserve all eleven terminal outcomes and closed actual viewing while leaving the new revision pending fresh qualification.
+
+- 2026-11-02: [Source317 fixture import](source317-node-fixture-import.md) preserves Source316's exact analysis failure and all earlier qualified scopes; current Dart/full/native execution remains pending.

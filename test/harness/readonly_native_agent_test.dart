@@ -6,6 +6,7 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/widgets.dart';
 
 import 'package:flutter_test/flutter_test.dart';
+import 'package:material_ui/material_ui.dart' show TextButton;
 import 'package:zenon_syrius_wallet_flutter/seams/seam.dart';
 import 'package:zenon_syrius_wallet_flutter/utils/original_publications.dart';
 import 'package:zenon_syrius_wallet_flutter/widgets/modular_widgets/help_widgets/about_card.dart';
