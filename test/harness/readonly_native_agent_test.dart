@@ -362,9 +362,9 @@ void main() {
         final OriginalsController discovery = OriginalsController();
         // Keep fixture source identities stable across gallery insertion.
         int registryReads = 0;
-        final Future<AboutInformation> Function() loadInformation =
-            () async => AboutInformation(version: 'fixture');
-        final Stream<LicenseEntry> Function() loadLicences = () {
+        Future<AboutInformation> readInformation() async =>
+            AboutInformation(version: 'fixture');
+        Stream<LicenseEntry> readLicences() {
           registryReads++;
           return Stream<LicenseEntry>.value(
             about_fixture.FixtureLicence(<String>[
@@ -375,7 +375,10 @@ void main() {
               LicenseParagraph('Complete fixture licence.', 0),
             ]),
           );
-        };
+        }
+        final Future<AboutInformation> Function() loadInformation =
+            readInformation;
+        final Stream<LicenseEntry> Function() loadLicences = readLicences;
         await tester.pumpWidget(about_fixture.aboutHost(
           ListenableBuilder(
             listenable: discovery,

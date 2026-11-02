@@ -80,3 +80,5 @@ A prior successful run remains bound to its original source and scope.
 - 2026-11-01 23:55 UTC: [Source307 Windows and catalog outcomes](source307-windows-and-catalog-outcomes.md) preserve all seven terminal outcomes and both failures. [Source308 CLI readiness and gallery](source308-cli-readiness-and-gallery.md) requires fresh focused/full/all-four-family evidence.
 
 - 2026-11-02 00:20 UTC: [Source308 catalog-command failure](source308-original-catalog-command-widget-failure.md) preserves the sole unretried failure. [Source309 stable gallery sources](source309-gallery-stable-sources.md) keeps source identities and explicit full bounds in the original fixture.
+
+- 2026-11-02 00:32 UTC: [Source309 analysis refusal](source309-original-analysis-failure.md) preserves zero Dart execution. [Source310 gallery function declarations](source310-gallery-function-declarations.md) retains stable aliases and all existing assertions.
