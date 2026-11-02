@@ -219,6 +219,7 @@ def main():
             'test/harness/lab_send_failure_test.dart',
             'test/harness/lab_sender_menu_test.dart',
             'test/harness/transfer_sender_header_test.dart',
+            'test/receive/receive_populated_test.dart',
             'test/harness/selection_context_revision_test.dart',
             'test/harness/wallet_recipe_test.dart',
             *(['test/launch_film/launch_asset_test.dart'] if asset_fidelity else [])], cwd=repo,
@@ -259,7 +260,7 @@ def main():
         counts = test_counts(outcome.output)
         report['counts'] = counts
         debug.need(outcome.success and counts['terminal_success'] is True
-            and counts['passed'] == (792 if asset_fidelity else 790)
+            and counts['passed'] == (819 if asset_fidelity else 817)
             and counts['skipped'] == counts['failed'] == counts['error_events'] == 0,
             'TESTS_FAILED')
         if asset_fidelity:

@@ -1,5 +1,65 @@
 part of 'transfer_page.dart';
 
+class _TransferReceiver extends StatelessWidget {
+  const _TransferReceiver({required this.controller});
+
+  final ReceiveHeaderController controller;
+
+  @override
+  Widget build(BuildContext context) => ListenableBuilder(
+    listenable: controller,
+    builder: (BuildContext context, Widget? child) {
+      final ReceiveHeaderSnapshot? choices = controller.snapshot;
+      if (choices == null) return const SizedBox.shrink();
+      final AppTokens tokens = AppTokens.of(context);
+      return MenuAnchor(
+        menuChildren: <Widget>[
+          for (final MapEntry<String, String> option in choices.labels.entries)
+            MenuItemButton(
+              onPressed: () => controller.select(choices, option.key),
+              child: Text(option.value),
+            ),
+        ],
+        builder: (_, MenuController menu, Widget? child) => TextButton(
+          key: const Key('transfer_receiver'),
+          onPressed: () {
+            if (!identical(controller.snapshot, choices)) return;
+            if (menu.isOpen) {
+              menu.close();
+            } else {
+              menu.open();
+            }
+          },
+          style: TextButton.styleFrom(
+            foregroundColor: tokens.foreground,
+            backgroundColor: tokens.card2,
+            minimumSize: Size(0, tokens.compactButtonHeight),
+            padding: tokens.transferChipPadding,
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(tokens.transferControlRadius),
+              side: BorderSide(color: tokens.line),
+            ),
+            textStyle: tokens.compactText,
+          ),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: <Widget>[
+              Flexible(
+                child: Text(
+                  choices.labels[choices.selected]!,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                ),
+              ),
+              SizedBox(width: tokens.transferRecentGap),
+              Icon(Icons.expand_more, size: tokens.activityIconSize),
+            ],
+          ),
+        ),
+      );
+    },
+  );
+
 class _TransferSender extends StatelessWidget {
   const _TransferSender();
 

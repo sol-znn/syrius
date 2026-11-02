@@ -5,6 +5,7 @@ import 'package:flutter/foundation.dart' as foundation show TargetPlatform;
 import 'package:flutter_test/flutter_test.dart';
 import 'package:material_ui/material_ui.dart';
 import 'package:pretty_qr_code/pretty_qr_code.dart';
+import 'package:zenon_syrius_wallet_flutter/rearchitecture/features/receive/receive_header_controller.dart';
 import 'package:zenon_syrius_wallet_flutter/rearchitecture/features/receive/widgets/receive_populated.dart';
 import 'package:zenon_syrius_wallet_flutter/utils/app_theme.dart';
 import 'package:zenon_syrius_wallet_flutter/utils/zts_utils.dart';
@@ -23,16 +24,21 @@ ReceivePopulated _form({
   Future<void> Function(Uint8List)? share,
   Future<void> Function(Uint8List)? save,
   ReceiveQrEncoder? encode,
+  ReceiveHeaderController? header,
+  bool Function()? isCurrent,
+  List<String>? addresses,
 }) => ReceivePopulated(
   key: const Key('receive_test_form'),
   assets: assets ?? <Token>[kZnnCoin, kQsrCoin],
-  addresses: <String>[_first, _second],
+  addresses: addresses ?? <String>[_first, _second],
   addressLabels: <String, String>{_first: 'Address 1', _second: 'Address 2'},
   initialAddress: _first,
   onCopyAddress: copy ?? (String _) async {},
   onShareImage: share ?? (Uint8List _) async {},
   onSaveImage: save ?? (Uint8List _) async {},
   encodeImage: encode ?? receiveTestEncode,
+  headerController: header,
+  isCurrent: isCurrent,
 );
 
 String _payload(WidgetTester tester) => tester
@@ -103,6 +109,172 @@ void _expectActionGeometry(WidgetTester tester, {required bool compact}) {
 }
 
 void main() {
+  testWidgets('Receive header snapshots revoke old choices synchronously', (
+    WidgetTester tester,
+  ) async {
+    final ReceiveHeaderController header = ReceiveHeaderController();
+    final Object owner = Object();
+    final Object replacement = Object();
+    final Map<String, String> labels = <String, String>{_first: 'Address 1'};
+    final List<String> selections = <String>[];
+    bool current = true;
+    bool isCurrent() => current;
+    bool select(String address) {
+      selections.add(address);
+      return true;
+    }
+    void publish(Object source, int revision) => header.publish(
+      owner: source,
+      expectedRevision: revision,
+      labels: labels,
+      selected: _first,
+      isCurrent: isCurrent,
+      onSelected: select,
+    );
+    publish(owner, header.revision);
+    final ReceiveHeaderSnapshot original = header.snapshot!;
+    labels[_second] = 'Address 2';
+    expect(original.labels, <String, String>{_first: 'Address 1'});
+    expect(() => original.labels[_second] = 'Changed', throwsUnsupportedError);
+    expect(header.select(original, _second), isFalse);
+    expect(header.select(original, _first), isTrue);
+    expect(header.select(original, _first), isFalse);
+    final int revoked = header.revision;
+    publish(owner, revoked - 1);
+    expect(header.snapshot, isNull);
+    publish(replacement, revoked);
+    final ReceiveHeaderSnapshot latest = header.snapshot!;
+    header.detach(owner);
+    expect(header.snapshot, same(latest));
+    expect(header.select(original, _first), isFalse);
+    current = false;
+    expect(header.select(latest, _first), isFalse);
+    header.invalidate();
+    current = true;
+    expect(header.select(latest, _first), isFalse);
+    expect(selections, <String>[_first]);
+    header.dispose();
+    await tester.pump();
+    expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('Receive header coalesces notifications and refuses disposal', (
+    WidgetTester tester,
+  ) async {
+    final ReceiveHeaderController header = ReceiveHeaderController();
+    int notifications = 0;
+    header.addListener(() => notifications += 1);
+    header
+      ..invalidate()
+      ..invalidate();
+    expect(notifications, 0);
+    await tester.pump();
+    expect(notifications, 1);
+    header
+      ..invalidate()
+      ..dispose();
+    header.publish(
+      owner: Object(),
+      expectedRevision: header.revision,
+      labels: <String, String>{_first: 'Address 1'},
+      selected: _first,
+      isCurrent: () => true,
+      onSelected: (_) => true,
+    );
+    await tester.pump();
+    expect(header.snapshot, isNull);
+    expect(notifications, 1);
+    expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('Receive header checks latest membership before selection', (
+    WidgetTester tester,
+  ) async {
+    final ReceiveHeaderController header = ReceiveHeaderController();
+    final List<String> addresses = <String>[_first, _second];
+    await tester.pumpWidget(
+      receiveTestHost(_form(header: header, addresses: addresses)),
+    );
+    await tester.pump();
+    final ReceiveHeaderSnapshot choices = header.snapshot!;
+    expect(find.byKey(const Key('receive_address_picker')), findsNothing);
+    addresses.remove(_second);
+    expect(header.select(choices, _second), isFalse);
+    expect(
+      tester.widget<SelectableText>(find.byKey(const Key('receive_address')))
+          .data,
+      _first,
+    );
+    await receiveTestDispose(tester);
+    expect(header.select(choices, _first), isFalse);
+    header.dispose();
+  });
+
+  for (final String change in <String>[
+    'address', 'mode cycle', 'controller', 'route cycle',
+  ]) {
+    testWidgets('Receive header $change revokes pending QR export', (
+      WidgetTester tester,
+    ) async {
+      final ReceiveHeaderController original = ReceiveHeaderController();
+      final ReceiveHeaderController replacement = ReceiveHeaderController();
+      ReceiveHeaderController header = original;
+      final Completer<Uint8List?> encoding = Completer<Uint8List?>();
+      final List<Uint8List> exports = <Uint8List>[];
+      bool current = true;
+      Widget form() => receiveTestHost(_form(
+        header: header,
+        isCurrent: () => current,
+        encode: (QrImage image, PrettyQrDecoration decoration, int size) =>
+            encoding.future,
+        share: (Uint8List bytes) async => exports.add(bytes),
+      ));
+      await tester.pumpWidget(form());
+      await tester.pump();
+      await _showQr(tester);
+      final ReceiveHeaderSnapshot choices = original.snapshot!;
+      await tester.tap(find.byKey(const Key('receive_share_image')));
+      await tester.pump();
+      switch (change) {
+        case 'address':
+          expect(original.select(choices, _second), isTrue);
+        case 'mode cycle':
+          current = false;
+          original.invalidate();
+          current = true;
+        case 'controller':
+          header = replacement;
+          await tester.pumpWidget(form());
+        case 'route cycle':
+          final NavigatorState navigator = Navigator.of(
+            tester.element(find.byType(ReceivePopulated)),
+          );
+          unawaited(navigator.push<void>(MaterialPageRoute<void>(
+            builder: (_) => const Scaffold(body: Text('Covered')),
+          )));
+          await tester.pump();
+          await tester.pump(const Duration(milliseconds: 300));
+          expect(original.select(choices, _second), isFalse);
+          navigator.pop();
+          await tester.pump();
+          await tester.pump(const Duration(milliseconds: 300));
+      }
+      encoding.complete(Uint8List.fromList(<int>[1]));
+      await tester.pump();
+      await tester.pump();
+      expect(exports, isEmpty);
+      expect(original.select(choices, _second), isFalse);
+      expect(
+        _payload(tester),
+        'znn:${change == 'address' ? _second : _first}'
+        '?zts=${kZnnCoin.tokenStandard}&amount=0',
+      );
+      await receiveTestDispose(tester);
+      original.dispose();
+      replacement.dispose();
+    });
+  }
+
   for (final bool light in <bool>[false, true]) {
     testWidgets('full address at rest with optional controls closed, $light', (
       WidgetTester tester,

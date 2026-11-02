@@ -8,6 +8,7 @@ import 'package:zenon_syrius_wallet_flutter/blocs/auto_receive_tx_worker.dart';
 import 'package:zenon_syrius_wallet_flutter/main.dart';
 import 'package:zenon_syrius_wallet_flutter/rearchitecture/features/card_parts/card_parts.dart';
 import 'package:zenon_syrius_wallet_flutter/rearchitecture/features/features.dart';
+import 'package:zenon_syrius_wallet_flutter/rearchitecture/features/receive/receive_header_controller.dart';
 import 'package:zenon_syrius_wallet_flutter/rearchitecture/features/zap/zap.dart';
 import 'package:zenon_syrius_wallet_flutter/rearchitecture/utils/utils.dart';
 import 'package:zenon_syrius_wallet_flutter/rearchitecture/utils/widgets/eye_toggle.dart';
@@ -84,6 +85,8 @@ class _TransferPageState extends State<TransferPage> {
   late bool _ownsController;
   late ZapDraftCubit _zapDraft;
   late bool _ownsZapDraft;
+  final ReceiveHeaderController _receiveHeader = ReceiveHeaderController();
+  int _receiveEpoch = 0;
 
   @override
   void initState() {
@@ -130,6 +133,8 @@ class _TransferPageState extends State<TransferPage> {
   void didUpdateWidget(TransferPage oldWidget) {
     super.didUpdateWidget(oldWidget);
     if (oldWidget.controller != widget.controller) {
+      _receiveEpoch += 1;
+      _receiveHeader.invalidate();
       final TransferMode previous = _controller.value;
       _detachController();
       _attachController(previous);
@@ -140,7 +145,11 @@ class _TransferPageState extends State<TransferPage> {
     }
   }
 
-  void _modeChanged() => setState(() {});
+  void _modeChanged() {
+    _receiveEpoch += 1;
+    _receiveHeader.invalidate();
+    setState(() {});
+  }
 
   void _refresh() {
     switch (_controller.value) {
@@ -167,6 +176,8 @@ class _TransferPageState extends State<TransferPage> {
 
   @override
   void dispose() {
+    _receiveEpoch += 1;
+    _receiveHeader.dispose();
     _detachController();
     if (_ownsZapDraft) unawaited(_zapDraft.close());
     super.dispose();
@@ -176,6 +187,11 @@ class _TransferPageState extends State<TransferPage> {
   Widget build(BuildContext context) {
     final AppTokens tokens = AppTokens.of(context);
     final TransferMode mode = _controller.value;
+    final TransferController controller = _controller;
+    final int receiveEpoch = _receiveEpoch;
+    bool receiveIsCurrent() => mounted &&
+        identical(_controller, controller) && _receiveEpoch == receiveEpoch &&
+        controller.value == TransferMode.receive;
     return Stack(
       children: <Widget>[
         Align(
@@ -201,6 +217,7 @@ class _TransferPageState extends State<TransferPage> {
                           ),
                           child: _TransferHeader(
                             mode: mode,
+                            receiveHeader: _receiveHeader,
                             onChanged: (TransferMode mode) =>
                                 _controller.value = mode,
                           ),
@@ -229,9 +246,13 @@ class _TransferPageState extends State<TransferPage> {
                                 TransferMode.receive,
                               ),
                               active: mode == TransferMode.receive,
-                              child: const KeyedSubtree(
-                                key: Key('transfer_receive_screen'),
-                                child: ReceiveCard(embedded: true),
+                              child: KeyedSubtree(
+                                key: const Key('transfer_receive_screen'),
+                                child: ReceiveCard(
+                                  embedded: true,
+                                  headerController: _receiveHeader,
+                                  isCurrent: receiveIsCurrent,
+                                ),
                               ),
                             ),
                             _TransferBody(
@@ -272,10 +293,15 @@ class _TransferPageState extends State<TransferPage> {
 }
 
 class _TransferHeader extends StatelessWidget {
-  const _TransferHeader({required this.mode, required this.onChanged});
+  const _TransferHeader({
+    required this.mode,
+    required this.onChanged,
+    required this.receiveHeader,
+  });
 
   final TransferMode mode;
   final ValueChanged<TransferMode> onChanged;
+  final ReceiveHeaderController receiveHeader;
 
   @override
   Widget build(BuildContext context) {
@@ -298,17 +324,22 @@ class _TransferHeader extends StatelessWidget {
         ),
       ],
     );
+    final Widget? picker = switch (mode) {
+      TransferMode.send => const _TransferSender(),
+      TransferMode.receive => _TransferReceiver(controller: receiveHeader),
+      TransferMode.zap => null,
+    };
     return LayoutBuilder(
       builder: (_, BoxConstraints constraints) => constraints.maxWidth < 520
           ? Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: <Widget>[
                 segment,
-                if (mode == TransferMode.send) ...<Widget>[
+                if (picker != null) ...<Widget>[
                   SizedBox(height: AppTokens.of(context).transferFieldGap),
-                  const Align(
+                  Align(
                     alignment: AlignmentDirectional.centerEnd,
-                    child: _TransferSender(),
+                    child: picker,
                   ),
                 ],
               ],
@@ -316,12 +347,12 @@ class _TransferHeader extends StatelessWidget {
           : Row(
               children: <Widget>[
                 Expanded(child: segment),
-                if (mode == TransferMode.send) ...<Widget>[
+                if (picker != null) ...<Widget>[
                   SizedBox(width: AppTokens.of(context).transferFormGap),
-                  const Flexible(
+                  Flexible(
                     child: Align(
                       alignment: AlignmentDirectional.centerEnd,
-                      child: _TransferSender(),
+                      child: picker,
                     ),
                   ),
                 ],

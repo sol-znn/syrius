@@ -2,6 +2,7 @@ import 'dart:async';
 
 import 'package:flutter/services.dart';
 import 'package:material_ui/material_ui.dart';
+import 'package:zenon_syrius_wallet_flutter/rearchitecture/features/receive/receive_header_controller.dart';
 import 'package:zenon_syrius_wallet_flutter/rearchitecture/features/receive/receive_request.dart';
 import 'package:zenon_syrius_wallet_flutter/rearchitecture/utils/extensions/buildcontext_extension.dart';
 import 'package:zenon_syrius_wallet_flutter/rearchitecture/utils/extensions/token_extension.dart';
@@ -33,6 +34,8 @@ class ReceivePopulated extends StatefulWidget {
     this.onShareImage,
     this.onSaveImage,
     this.encodeImage,
+    this.headerController,
+    this.isCurrent,
     super.key,
   });
 
@@ -63,6 +66,12 @@ class ReceivePopulated extends StatefulWidget {
   /// Replaces QR rasterization without changing the encoded request.
   final ReceiveQrEncoder? encodeImage;
 
+  /// Publishes this form's choices to Transfer's optional header picker.
+  final ReceiveHeaderController? headerController;
+
+  /// Revokes header and QR callbacks when the embedding mode changes.
+  final bool Function()? isCurrent;
+
   @override
   State<ReceivePopulated> createState() => _ReceivePopulatedState();
 }
@@ -82,6 +91,9 @@ class _ReceivePopulatedState extends State<ReceivePopulated>
   bool _copyFailed = false;
   int _requestRevision = 0;
   String _observedAmount = '';
+  ModalRoute<dynamic>? _route;
+  bool _tickerEnabled = true;
+  int _headerEpoch = 0;
 
   bool get _qrPresent => _showQr || !_qrMotion.isDismissed;
 
@@ -106,12 +118,83 @@ class _ReceivePopulatedState extends State<ReceivePopulated>
     _selectedToken = _defaultToken();
     _selectAvailableAddress();
     _amountController.addListener(_amountChanged);
+    widget.headerController?.addListener(_headerChanged);
     // The owner requires the full reveal clock regardless of OS settings.
     _qrMotion = AnimationController(
       vsync: this,
       duration: ReceivePopulated.qrRevealDuration,
       animationBehavior: AnimationBehavior.preserve,
     )..addStatusListener(_qrStatusChanged);
+  }
+
+  bool get _headerCurrent => mounted && _tickerEnabled &&
+      (_route?.isCurrent ?? true) && (widget.isCurrent?.call() ?? true);
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    _route = ModalRoute.of(context);
+    _tickerEnabled = TickerMode.of(context);
+    if (!_headerCurrent) {
+      _requestRevision += 1;
+      _headerEpoch += 1;
+      widget.headerController?.detach(this);
+    }
+  }
+
+  void _headerChanged() {
+    if (!mounted) return;
+    _requestRevision += 1;
+    setState(() {});
+  }
+
+  bool _selectHeaderAddress(String address) {
+    final ReceiveHeaderController? header = widget.headerController;
+    if (header == null || !_headerCurrent || !header.ownsCurrent(this) ||
+        !_addresses.contains(address)) {
+      return false;
+    }
+    _selectAddress(address);
+    return true;
+  }
+
+  void _selectAddress(String address) {
+    setState(() {
+      if (_selectedAddress != address) _requestRevision += 1;
+      _selectedAddress = address;
+      _addressController.text = _labels[address] ?? address;
+      _copyFailed = false;
+    });
+  }
+
+  void _scheduleHeader() {
+    final ReceiveHeaderController? header = widget.headerController;
+    if (header == null) return;
+    if (!_headerCurrent || _selectedAddress == null) {
+      header.detach(this);
+      return;
+    }
+    final int epoch = ++_headerEpoch;
+    final int revision = header.revision;
+    WidgetsBinding.instance.addPostFrameCallback((Duration _) {
+      if (!mounted || epoch != _headerEpoch || !_headerCurrent ||
+          !identical(widget.headerController, header)) {
+        return;
+      }
+      final String? selected = _selectedAddress;
+      if (selected == null) return;
+      header.publish(
+        owner: this,
+        expectedRevision: revision,
+        labels: <String, String>{
+          for (final String address in _addresses)
+            address: _labels[address] ?? address,
+        },
+        selected: selected,
+        isCurrent: () => _headerCurrent,
+        onSelected: _selectHeaderAddress,
+      );
+    });
   }
 
   Token _defaultToken() => _tokens.firstWhere(
@@ -135,6 +218,14 @@ class _ReceivePopulatedState extends State<ReceivePopulated>
   @override
   void didUpdateWidget(ReceivePopulated oldWidget) {
     super.didUpdateWidget(oldWidget);
+    if (oldWidget.headerController != widget.headerController) {
+      oldWidget.headerController
+        ?..removeListener(_headerChanged)
+        ..detach(this);
+      widget.headerController?.addListener(_headerChanged);
+      _requestRevision += 1;
+      _headerEpoch += 1;
+    }
     final String? previousPayload = _payload;
     _selectAvailableAddress();
     _selectedToken = _tokens.firstWhere(
@@ -143,6 +234,7 @@ class _ReceivePopulatedState extends State<ReceivePopulated>
     );
     _tokenController.text = _tokenLabel(_selectedToken);
     if (_payload != previousPayload) _requestRevision += 1;
+    if (!_headerCurrent) widget.headerController?.detach(this);
   }
 
   void _amountChanged() {
@@ -175,6 +267,10 @@ class _ReceivePopulatedState extends State<ReceivePopulated>
 
   @override
   void dispose() {
+    _headerEpoch += 1;
+    widget.headerController
+      ?..removeListener(_headerChanged)
+      ..detach(this);
     _amountController
       ..removeListener(_amountChanged)
       ..dispose();
@@ -190,6 +286,7 @@ class _ReceivePopulatedState extends State<ReceivePopulated>
 
   @override
   Widget build(BuildContext context) {
+    _scheduleHeader();
     final AppTokens tokens = AppTokens.of(context);
     return Theme(
       data: Theme.of(context).copyWith(
@@ -205,14 +302,16 @@ class _ReceivePopulatedState extends State<ReceivePopulated>
             mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: <Widget>[
-              Align(
-                alignment: AlignmentDirectional.centerEnd,
-                child: SizedBox(
-                  width: tokens.receiveAddressWidth,
-                  child: _buildAddressPicker(tokens),
+              if (widget.headerController == null) ...<Widget>[
+                Align(
+                  alignment: AlignmentDirectional.centerEnd,
+                  child: SizedBox(
+                    width: tokens.receiveAddressWidth,
+                    child: _buildAddressPicker(tokens),
+                  ),
                 ),
-              ),
-              SizedBox(height: tokens.receiveGap),
+                SizedBox(height: tokens.receiveGap),
+              ],
               if (_qrPresent)
                 _buildExpanded(tokens)
               else
@@ -267,12 +366,7 @@ class _ReceivePopulatedState extends State<ReceivePopulated>
         }).toList(),
     onSelected: (String? address) {
       if (address == null) return;
-      setState(() {
-        if (_selectedAddress != address) _requestRevision += 1;
-        _selectedAddress = address;
-        _addressController.text = _labels[address] ?? address;
-        _copyFailed = false;
-      });
+      _selectAddress(address);
     },
   );
 
@@ -340,6 +434,8 @@ class _ReceivePopulatedState extends State<ReceivePopulated>
   Widget _buildQr(AppTokens tokens) {
     final String? payload = _payload;
     final int revision = _requestRevision;
+    final ReceiveHeaderController? header = widget.headerController;
+    final int? headerRevision = header?.revision;
     return Container(
       key: payload == null ? null : const Key('receive_qr_screen_marker'),
       width: tokens.receiveQrSize + tokens.receiveQrInset * 2,
@@ -363,6 +459,11 @@ class _ReceivePopulatedState extends State<ReceivePopulated>
                   mounted &&
                   _showQr &&
                   revision == _requestRevision &&
+                  (header == null ||
+                      (identical(widget.headerController, header) &&
+                          header.revision == headerRevision &&
+                          header.ownsCurrent(this) &&
+                          _addresses.contains(_selectedAddress))) &&
                   _payload == payload,
               onShareImage: widget.onShareImage,
               onSaveImage: widget.onSaveImage,

@@ -395,14 +395,19 @@ void main() {
   Widget host({
     bool light = false,
     bool reduced = false,
+    TextDirection direction = TextDirection.ltr,
+    double scale = 1,
     MultipleBalanceBloc? balanceSource,
   }) => MaterialApp(
     theme: light ? AppTheme.lightTheme : AppTheme.darkTheme,
     localizationsDelegates: appLocalizationsDelegates,
     supportedLocales: AppLocalizations.supportedLocales,
     builder: (BuildContext context, Widget? child) => MediaQuery(
-      data: MediaQuery.of(context).copyWith(disableAnimations: reduced),
-      child: child!,
+      data: MediaQuery.of(context).copyWith(
+        disableAnimations: reduced,
+        textScaler: TextScaler.linear(scale),
+      ),
+      child: Directionality(textDirection: direction, child: child!),
     ),
     home: MultiBlocProvider(
       providers: <SingleChildWidget>[
@@ -702,6 +707,78 @@ void main() {
   });
 
   for (final bool light in <bool>[false, true]) {
+    testWidgets('Receive header owns its choices across layouts $light',
+        (WidgetTester tester) async {
+      await show(tester, light: light);
+      final String selected = addSecondAddress();
+      await tester.pump();
+      controller.value = TransferMode.receive;
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 500));
+      await tester.pump();
+      final State<StatefulWidget> owner = tester.state(
+        find.byType(ReceivePopulated),
+      );
+      final Finder picker = find.byKey(const Key('transfer_receiver'));
+      expect(picker, findsOneWidget);
+      expect(find.byKey(const Key('receive_address_picker')), findsNothing);
+      final ModalRoute<dynamic> route = ModalRoute.of(tester.element(picker))!;
+      await tester.tap(picker);
+      await tester.pump();
+      expect(route.isCurrent, isTrue);
+      await tester.tap(find.widgetWithText(MenuItemButton, 'Address 2'));
+      await tester.pump();
+      await tester.pump();
+      expect(kSelectedAddress, selected);
+      expect(
+        tester.widget<SelectableText>(find.byKey(const Key('receive_address')))
+            .data,
+        selected,
+      );
+      controller.value = TransferMode.zap;
+      await tester.pump();
+      expect(picker, findsNothing);
+      controller.value = TransferMode.receive;
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 500));
+      await tester.pump();
+      expect(tester.state(find.byType(ReceivePopulated)), same(owner));
+      for (final double width in <double>[1280, 480]) {
+        for (final TextDirection direction in TextDirection.values) {
+          tester.view.physicalSize = Size(width, 900);
+          await tester.pumpWidget(host(
+            light: light,
+            direction: direction,
+            scale: width < 520 ? 1.5 : 1,
+          ));
+          await tester.pump();
+          await tester.pump(const Duration(milliseconds: 500));
+          expect(picker, findsOneWidget);
+          expect(tester.getSize(picker).width, lessThan(width));
+          expect(
+            tester.widget<SelectableText>(
+              find.byKey(const Key('receive_address')),
+            ).data,
+            selected,
+          );
+          expect(tester.state(find.byType(ReceivePopulated)), same(owner));
+          expect(tester.takeException(), isNull);
+        }
+      }
+      await tester.tap(picker);
+      await tester.pump();
+      await tester.tap(find.widgetWithText(MenuItemButton, 'Address 1'));
+      await tester.pump();
+      await tester.pump();
+      expect(kSelectedAddress, selected);
+      expect(
+        tester.widget<SelectableText>(find.byKey(const Key('receive_address')))
+            .data,
+        emptyAddress.toString(),
+      );
+      expect(tester.takeException(), isNull);
+    });
+
     testWidgets('actual Transfer header selects its typed owner $light',
         (WidgetTester tester) async {
       await show(tester, light: light);
