@@ -134,7 +134,7 @@ class _ReceivePopulatedState extends State<ReceivePopulated>
   void didChangeDependencies() {
     super.didChangeDependencies();
     _route = ModalRoute.of(context);
-    _tickerEnabled = TickerMode.of(context);
+    _tickerEnabled = TickerMode.valuesOf(context).enabled;
     if (!_headerCurrent) {
       _requestRevision += 1;
       _headerEpoch += 1;

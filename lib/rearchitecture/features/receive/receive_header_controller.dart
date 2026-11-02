@@ -3,8 +3,11 @@ import 'package:flutter/scheduler.dart';
 
 /// Immutable choices published by one mounted Receive form.
 class ReceiveHeaderSnapshot {
-  ReceiveHeaderSnapshot._(this._owner, Map<String, String> labels, this.selected)
-    : labels = Map<String, String>.unmodifiable(labels);
+  ReceiveHeaderSnapshot._(
+    this._owner,
+    Map<String, String> labels,
+    this.selected,
+  ) : labels = Map<String, String>.unmodifiable(labels);
 
   final Object _owner;
 

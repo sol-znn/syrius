@@ -84,3 +84,5 @@ A prior successful run remains bound to its original source and scope.
 - 2026-11-02 00:32 UTC: [Source309 analysis refusal](source309-original-analysis-failure.md) preserves zero Dart execution. [Source310 gallery function declarations](source310-gallery-function-declarations.md) retains stable aliases and all existing assertions.
 
 - 2026-11-02: [Source310 Windows/catalog outcomes](source310-windows-and-catalog-outcomes.md) and [actual Details review](source310-details-actual-review.md) preserve both failures. [Source311 Receive header](source311-receive-header.md) adds owner-bound selection and QR revocation with fresh hosted qualification pending.
+
+- 2026-11-02: [Source311 original header analysis failure](source311-original-header-analysis-failure.md) retains zero Dart execution. [Source312 header analysis corrections](source312-header-analysis-corrections.md) keeps all guards and nine regressions with fresh hosted qualification pending.

@@ -59,6 +59,7 @@ class _TransferReceiver extends StatelessWidget {
       );
     },
   );
+}
 
 class _TransferSender extends StatelessWidget {
   const _TransferSender();

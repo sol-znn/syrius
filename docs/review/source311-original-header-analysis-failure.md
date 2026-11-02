@@ -1,0 +1,9 @@
+# Source311 original header analysis failure
+
+Source `475150b8ade366220f80dcd39fd60dde40bf5f59`, tree `99c136e9f1943458d57ce176a57a3c836444249e`, has one terminal original [focused run 41376089787](https://github.com/edgepillar/syrius/actions/runs/41376089787), job 125056527134, attempt one. The original is not retried. All 928 Python controls with three existing skips and fourteen asset controls pass. Selected analysis fails with one error, four information findings and zero warnings; its complete 946-byte output has SHA-256 `d5d0d236f2bd3743d35a407ab68efce1b6271d7da80040ae2a5defeb2bcba432` and actual exit three.
+
+The closed diagnostics report CREATION_WITH_NON_TYPE at 328:34, LINES_LONGER_THAN_80_CHARS at 6:81, DEPRECATED_MEMBER_USE at 137:33, CASCADE_INVOCATIONS at 167:5 and UNNECESSARY_UNAWAITED at 252:11. Their exported source alias is `other`; exact raw file binding is not exported and raw analysis is not downloaded. Local source inspection identifies the new header class's missing closing brace and the four corresponding style/API sites; that source correspondence is distinct from the coarse exported diagnostic.
+
+The strict gate skips the Dart stage. Zero Dart cases execute and zero artifacts are produced. No full, native or reader run is dispatched. Therefore the new header's runtime behavior is unqualified. The 817 ordinary/819 startup cases and 4,871 full passes with one existing skip remain expectations, not results at this revision.
+
+[Source310 outcomes](source310-windows-and-catalog-outcomes.md), including its two failed native originals, and [closed actual Details viewing](source310-details-actual-review.md) retain their exact scopes. Acceptance remains 72/80 rows, nineteen preparations, 36 literal outputs, 58 missing and zero accepted matches. Every original 94-image and timing requirement stays intact. Native101/103 remain UNKNOWN; Native104 remains unadmitted. All prior FAILURE/HOLD/UNKNOWN evidence remains immutable.

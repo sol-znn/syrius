@@ -163,8 +163,8 @@ void main() {
   ) async {
     final ReceiveHeaderController header = ReceiveHeaderController();
     int notifications = 0;
-    header.addListener(() => notifications += 1);
     header
+      ..addListener(() => notifications += 1)
       ..invalidate()
       ..invalidate();
     expect(notifications, 0);
@@ -249,9 +249,11 @@ void main() {
           final NavigatorState navigator = Navigator.of(
             tester.element(find.byType(ReceivePopulated)),
           );
-          unawaited(navigator.push<void>(MaterialPageRoute<void>(
-            builder: (_) => const Scaffold(body: Text('Covered')),
-          )));
+          navigator.push<void>(
+            MaterialPageRoute<void>(
+              builder: (_) => const Scaffold(body: Text('Covered')),
+            ),
+          );
           await tester.pump();
           await tester.pump(const Duration(milliseconds: 300));
           expect(original.select(choices, _second), isFalse);
