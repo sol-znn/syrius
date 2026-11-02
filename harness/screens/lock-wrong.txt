@@ -1,0 +1,6 @@
+# prerequisite: pending F06/N02 reversible failed-attempt preparation and isolated profile reset between themes
+# A wrong password consumes the existing global limit; do not automate it on an unprepared profile.
+lock
+type --key wallet_password_field redesign-qualification-wrong-password
+tap --key wallet_unlock_button
+assert --key lock_wrong_marker

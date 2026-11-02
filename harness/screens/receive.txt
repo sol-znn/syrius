@@ -1,0 +1,12 @@
+# prerequisite: unlocked-home
+# Closing retained disclosures does not clear the request or change its address.
+goto transfer
+tap --key transfer_mode_receive
+wait --key receive_form_ready
+key escape
+key escape
+assert "Show QR" --exact
+assert --key receive_address
+assert --key receive_screen_marker
+# after-capture: goto dashboard
+# after-capture: wait --key home_hero --timeout 5

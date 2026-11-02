@@ -40,24 +40,59 @@ abstract class DappBridgeControl {
   Stream<void> get changes;
 }
 
+/// Production actions can retain their original settings and grant receipts.
+abstract interface class DappBridgeOwnedControl {
+  /// The persisted enablement state observed by this control.
+  bool get enabled;
+
+  /// Captures the exact preferences backend and queued effect admission.
+  DappBridgeActions captureActions();
+}
+
+/// Captured settings and grant effects that never discover replacement Boxes.
+class DappBridgeActions {
+  /// Freezes the original backend identity and its fenced mutation closures.
+  const DappBridgeActions({
+    required this.identity,
+    required this.isCurrent,
+    required this.setEnabled,
+    required this.disconnect,
+  });
+
+  /// The original preferences backend shared by this action boundary.
+  final Object identity;
+
+  /// Whether the captured preferences and channel still belong to this owner.
+  final bool Function() isCurrent;
+
+  /// Persists enablement before starting or stopping the original listener.
+  final Future<void> Function({
+    required bool enabled,
+    required bool Function() owns,
+  })
+  setEnabled;
+
+  /// Revokes only the captured requester incarnation while it remains owned.
+  final Future<void> Function(DappBridgeSite, bool Function()) disconnect;
+}
+
 /// The page-to-desktop channel in one piece: the loopback server, the
 /// `syrius://request` path, the service behind both, and the consent and the
 /// on/off choice in a [DappBridgeStore].
 ///
 /// It knows the wallet only as a [DappBridgeWallet], so the whole channel
 /// runs in a test over a real socket with a fake wallet behind it.
-class DappBridgeChannel implements DappBridgeControl {
+class DappBridgeChannel implements DappBridgeControl, DappBridgeOwnedControl {
   /// Creates a channel over [wallet] that keeps its settings in [store].
   /// [open] opens a URL in the browser, for a link's answer.
   DappBridgeChannel({
     required DappBridgeWallet wallet,
     required DappBridgeStore store,
     required Future<void> Function(Uri url) open,
-    List<int> ports = kDappBridgePorts,
+    this._ports = kDappBridgePorts,
     Duration watch = const Duration(seconds: 1),
     DateTime Function() now = DateTime.now,
   }) : _store = store,
-       _ports = ports,
        _watchEvery = watch,
        _consent = DappBridgeConsentStore(store) {
     _service = DappBridgeService(wallet: wallet, consent: _consent, now: now);
@@ -97,10 +132,40 @@ class DappBridgeChannel implements DappBridgeControl {
   Future<void> stop() => _inTurn(_stop);
 
   @override
-  Future<void> setEnabled({required bool enabled}) => _inTurn(() async {
-    await _store.write(kDappBridgeEnabledKey, enabled);
-    await (enabled ? _start() : _stop());
-  });
+  Future<void> setEnabled({required bool enabled}) =>
+      captureActions().setEnabled(enabled: enabled, owns: () => true);
+
+  @override
+  DappBridgeActions captureActions() {
+    final DappBridgeStore store = _store.capture();
+    bool current() => store.isCurrent;
+    return DappBridgeActions(
+      identity: store.identity,
+      isCurrent: current,
+      setEnabled: ({required bool enabled, required bool Function() owns}) =>
+          _inTurn(() async {
+            if (!current() || !owns()) throw StateError('Setting unavailable');
+            await store.write(kDappBridgeEnabledKey, enabled);
+            if (!current() || !owns()) {
+              throw StateError('Setting effect unavailable');
+            }
+            if (enabled) {
+              await _start(isCurrent: () => current() && owns());
+            } else {
+              await _stop();
+            }
+          }),
+      disconnect: (DappBridgeSite site, bool Function() owns) {
+        if (!current() || !owns()) throw StateError('Connection unavailable');
+        final DappBridgeConsentReceipt receipt = _consent.captureSite(site);
+        return _service.revokeReceipt(
+          site.requester,
+          receipt,
+          isCurrent: () => current() && owns(),
+        );
+      },
+    );
+  }
 
   @override
   Future<void> disconnect(String requester) => _service.revoke(requester);
@@ -138,7 +203,8 @@ class DappBridgeChannel implements DappBridgeControl {
     return next.whenComplete(_notify);
   }
 
-  Future<void> _start() async {
+  Future<void> _start({bool Function()? isCurrent}) async {
+    if (!(isCurrent?.call() ?? true)) return;
     if (_server != null || !enabled) {
       return;
     }
@@ -156,6 +222,10 @@ class DappBridgeChannel implements DappBridgeControl {
       onOpen: (_) => walletChanged(),
     );
     final int? bound = await server.start();
+    if (!(isCurrent?.call() ?? true)) {
+      await server.stop();
+      throw StateError('Setting effect unavailable');
+    }
     if (bound == null) {
       _logger.warning('no free port');
       return;

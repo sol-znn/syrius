@@ -8,6 +8,29 @@ import 'package:zenon_syrius_wallet_flutter/rearchitecture/features/dapp_bridge/
 
 const String _origin = 'https://bridge.zenon.foo';
 
+// An upgrade and its binary greeting can share one TCP chunk. Decode only
+// the HTTP head, even when the delimiter itself crosses chunk boundaries.
+Future<String> _responseHead(Stream<List<int>> source) async {
+  final List<int> head = <int>[];
+  await for (final List<int> chunk in source) {
+    for (final int byte in chunk) {
+      head.add(byte);
+      if (head.length > 4096) {
+        throw StateError('HTTP response head exceeds the test limit');
+      }
+      final int n = head.length;
+      if (n >= 4 &&
+          head[n - 4] == 13 &&
+          head[n - 3] == 10 &&
+          head[n - 2] == 13 &&
+          head[n - 1] == 10) {
+        return ascii.decode(head);
+      }
+    }
+  }
+  throw StateError('Incomplete HTTP response head');
+}
+
 void main() {
   late DappBridgeServer server;
   late int port;
@@ -250,7 +273,7 @@ void main() {
       'Sec-WebSocket-Key: dGhlIHNhbXBsZSBub25jZQ==\r\n'
       '\r\n',
     );
-    final String head = await utf8.decoder.bind(raw).first;
+    final String head = await _responseHead(raw);
     expect(head, startsWith('HTTP/1.1 403'));
     await raw.close();
     final (WebSocket socket, _) = await open();
@@ -293,6 +316,7 @@ void main() {
 
   test('accepts no compression, whatever the page offers', () async {
     final Socket raw = await Socket.connect('127.0.0.1', port);
+    addTearDown(raw.destroy);
     raw.write(
       'GET / HTTP/1.1\r\n'
       'Host: 127.0.0.1:$port\r\n'
@@ -304,10 +328,50 @@ void main() {
       'Sec-WebSocket-Extensions: permessage-deflate; client_max_window_bits\r\n'
       '\r\n',
     );
-    final String head = (await utf8.decoder.bind(raw).first).toLowerCase();
+    final String head = (await _responseHead(raw)).toLowerCase();
     expect(head, startsWith('http/1.1 101'));
     expect(head, isNot(contains('sec-websocket-extensions')));
     raw.destroy();
+  });
+
+  test(
+    'reads fragmented upgrade heads without decoding binary frames',
+    () async {
+      const String head =
+          'HTTP/1.1 101 Switching Protocols\r\n'
+          'Upgrade: websocket\r\n\r\n';
+      final List<int> bytes = <int>[
+        ...ascii.encode(head),
+        0x81,
+        0x02,
+        0xC3,
+        0xFF,
+      ];
+      for (final int size in <int>[1, 2, 7, bytes.length]) {
+        final List<List<int>> chunks = <List<int>>[
+          for (int offset = 0; offset < bytes.length; offset += size)
+            bytes.sublist(offset, (offset + size).clamp(0, bytes.length)),
+        ];
+        expect(
+          await _responseHead(Stream<List<int>>.fromIterable(chunks)),
+          head,
+        );
+      }
+    },
+  );
+
+  test('refuses a truncated response head in the test reader', () async {
+    await expectLater(
+      _responseHead(Stream<List<int>>.value(ascii.encode('HTTP/1.1 101\r\n'))),
+      throwsStateError,
+    );
+  });
+
+  test('caps response head bytes in the test reader', () async {
+    await expectLater(
+      _responseHead(Stream<List<int>>.value(List<int>.filled(4097, 65))),
+      throwsStateError,
+    );
   });
 
   test('emits to one origin or to all', () async {

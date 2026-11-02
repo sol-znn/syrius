@@ -1,0 +1,4 @@
+# prerequisite: pending F06/N02 reversible lock preparation and profile unlock between themes
+lock
+type --key wallet_password_field screen-state
+assert --key lock_screen_marker

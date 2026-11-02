@@ -1,20 +1,18 @@
 import 'dart:async';
 
-import 'package:material_ui/material_ui.dart';
 import 'package:hive_ce/hive_ce.dart';
+import 'package:material_ui/material_ui.dart';
 import 'package:zenon_syrius_wallet_flutter/rearchitecture/utils/widgets/ltr.dart';
 import 'package:zenon_syrius_wallet_flutter/utils/app_theme.dart';
 import 'package:zenon_syrius_wallet_flutter/utils/constants.dart'
     show kSharedPrefsBox;
+import 'package:zenon_syrius_wallet_flutter/widgets/shell/page_dismiss.dart';
 
 /// The gap between panels on every page of the refreshed interface.
 ///
 /// The same value as `AppTokens.panelGap`, kept for the places that need a
 /// constant. With a context at hand, read the token.
 const double kPanelGap = 14;
-
-/// The height of a panel's title row, and so of a collapsed panel.
-const double _kPanelHeaderHeight = 48;
 
 /// What a collapsible panel's state is filed under in the shared
 /// preferences: this, then the panel's [Panel.collapseKey].
@@ -25,9 +23,8 @@ const String _kPanelCollapsedKeyPrefix = 'panel_collapsed_';
 
 /// The shared preferences, or null while their box is not open: before the
 /// wallet has opened it, and in a test that pumps a panel on its own.
-Box<dynamic>? _panelPreferences() => Hive.isBoxOpen(kSharedPrefsBox)
-    ? Hive.box<dynamic>(kSharedPrefsBox)
-    : null;
+Box<dynamic>? _panelPreferences() =>
+    Hive.isBoxOpen(kSharedPrefsBox) ? Hive.box<dynamic>(kSharedPrefsBox) : null;
 
 /// Whether the panel filed under [collapseKey] was left collapsed. Null
 /// when nothing says so: it was never toggled, there is no box, or the
@@ -81,6 +78,7 @@ class Panel extends StatelessWidget {
   const Panel({
     required this.child,
     this.title,
+    this.heading,
     this.actions = const <Widget>[],
     this.padding,
     this.shrinkWrap = false,
@@ -105,6 +103,9 @@ class Panel extends StatelessWidget {
 
   /// The heading. Without one the panel is a bare surface.
   final String? title;
+
+  /// Shared Nodes tabs replace the plain title without duplicating a header.
+  final Widget? heading;
 
   /// Small controls at the right of the title row.
   final List<Widget> actions;
@@ -183,34 +184,57 @@ class Panel extends StatelessWidget {
       color: theme.colorScheme.primary,
       borderRadius: BorderRadius.circular(AppTokens.of(context).cardRadius),
       clipBehavior: Clip.antiAlias,
-      child: title == null
+      child: title == null && heading == null
           ? body
           : Column(
               mainAxisSize: shrinkWrap ? MainAxisSize.min : MainAxisSize.max,
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: <Widget>[
-                SizedBox(
-                  height: _kPanelHeaderHeight,
-                  child: Padding(
-                    padding: const EdgeInsets.fromLTRB(16, 0, 8, 0),
-                    child: Row(
-                      children: <Widget>[
-                        Expanded(
-                          child: Text(
-                            title!,
-                            overflow: TextOverflow.ellipsis,
-                            style: panelTitleStyle(context),
-                          ),
-                        ),
-                        ...actions,
-                      ],
-                    ),
-                  ),
-                ),
+                _buildHeader(context),
                 const Divider(),
                 if (shrinkWrap) body else Expanded(child: body),
               ],
             ),
+    );
+  }
+
+  Widget _buildHeader(BuildContext context) {
+    final AppTokens tokens = AppTokens.of(context);
+    final Widget header = Padding(
+      padding: heading == null
+          ? tokens.panelHeaderPadding
+          : tokens.tabHeaderPadding,
+      child: Row(
+        crossAxisAlignment: heading == null
+            ? CrossAxisAlignment.center
+            : CrossAxisAlignment.stretch,
+        children: <Widget>[
+          Expanded(
+            child:
+                heading ??
+                Text(
+                  title!,
+                  overflow: TextOverflow.ellipsis,
+                  style: panelTitleStyle(context),
+                ),
+          ),
+          for (final Widget action in actions)
+            if (heading == null)
+              action
+            else
+              Center(widthFactor: 1, child: action),
+        ],
+      ),
+    );
+    if (heading == null) {
+      return SizedBox(height: tokens.panelHeaderHeight, child: header);
+    }
+    // Headings and actions share the full row height. Asking their actual
+    // intrinsics lets translated or scaled labels grow without moving the
+    // underline away from the card's divider.
+    return ConstrainedBox(
+      constraints: BoxConstraints(minHeight: tokens.panelHeaderHeight),
+      child: IntrinsicHeight(child: header),
     );
   }
 }
@@ -288,6 +312,10 @@ class _FoldingPanelState extends State<_FoldingPanel>
     _follow();
   }
 
+  void _dismiss() {
+    if (widget.panel.collapsible && !_collapsed) _toggle();
+  }
+
   /// Sends the animation to where [_bodyShown] says it belongs.
   void _follow() {
     if (_bodyShown == _controller.status.isForwardOrCompleted) return;
@@ -321,33 +349,37 @@ class _FoldingPanelState extends State<_FoldingPanel>
     // fixed height, it stays at the top of the slot at its own height and
     // leaves the rest clear: a card stretched over a body that is not there
     // would read as an empty panel, the very thing closing it removes.
-    return Align(
-      alignment: AlignmentDirectional.topStart,
-      heightFactor: 1,
-      child: Material(
-        color: Theme.of(context).colorScheme.primary,
-        borderRadius: BorderRadius.circular(AppTokens.of(context).cardRadius),
-        clipBehavior: Clip.antiAlias,
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: <Widget>[
-            _PanelHeader(
-              title: panel.title!,
-              note: panel.isEmpty ? panel.emptyNote : null,
-              actions: panel.actions,
-              reveal: _reveal,
-              open: !_collapsed,
-              onToggle: panel.collapsible && !panel.isEmpty ? _toggle : null,
-            ),
-            // Loosely flexible where the plain panel's body is `Expanded`:
-            // open, the body has all the height that is left, as there; on
-            // the way it has the part of it the animation has reached.
-            if (!closed && panel.shrinkWrap)
-              reveal
-            else if (!closed)
-              Flexible(child: reveal),
-          ],
+    return PageDismissAction(
+      open: panel.collapsible && _bodyShown,
+      onDismiss: _dismiss,
+      child: Align(
+        alignment: AlignmentDirectional.topStart,
+        heightFactor: 1,
+        child: Material(
+          color: Theme.of(context).colorScheme.primary,
+          borderRadius: BorderRadius.circular(AppTokens.of(context).cardRadius),
+          clipBehavior: Clip.antiAlias,
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: <Widget>[
+              _PanelHeader(
+                title: panel.title!,
+                note: panel.isEmpty ? panel.emptyNote : null,
+                actions: panel.actions,
+                reveal: _reveal,
+                open: !_collapsed,
+                onToggle: panel.collapsible && !panel.isEmpty ? _toggle : null,
+              ),
+              // Loosely flexible where the plain panel's body is `Expanded`:
+              // open, the body has all the height that is left, as there; on
+              // the way it has the part of it the animation has reached.
+              if (!closed && panel.shrinkWrap)
+                reveal
+              else if (!closed)
+                Flexible(child: reveal),
+            ],
+          ),
         ),
       ),
     );
@@ -442,7 +474,7 @@ class _PanelHeaderState extends State<_PanelHeader> {
     final AppTokens tokens = AppTokens.of(context);
     final bool toggles = widget.onToggle != null;
     return SizedBox(
-      height: _kPanelHeaderHeight,
+      height: tokens.panelHeaderHeight,
       child: Semantics(
         button: toggles,
         expanded: toggles ? widget.open : null,
@@ -468,7 +500,7 @@ class _PanelHeaderState extends State<_PanelHeader> {
               borderRadius: BorderRadius.circular(tokens.cardRadius),
             ),
             child: Padding(
-              padding: const EdgeInsetsDirectional.fromSTEB(16, 0, 8, 0),
+              padding: tokens.panelHeaderPadding,
               child: Row(
                 children: <Widget>[
                   Expanded(

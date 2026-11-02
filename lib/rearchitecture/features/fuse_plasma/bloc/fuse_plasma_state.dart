@@ -18,25 +18,41 @@ final class FusePlasmaInitial extends FusePlasmaState {
 /// Failure state emitted when fusing fails.
 final class FusePlasmaFailure extends FusePlasmaState {
   /// Creates a [FusePlasmaFailure] state.
-  const FusePlasmaFailure({required this.exception});
+  const FusePlasmaFailure({required this.exception, this.error, this.outcome});
 
   /// The error that caused the fusing operation to fail.
   final SyriusException exception;
 
+  /// Original preparation or SDK error before display mapping.
+  final Object? error;
+
+  /// An admitted original remains held after the form leaves.
+  final PlasmaFuseOutcome? outcome;
+
   @override
-  List<Object> get props => <Object>[exception];
+  List<Object> get props => <Object>[
+    exception,
+    ?error,
+    ?outcome,
+  ];
 }
 
 /// Success state emitted when fusing completes.
 final class FusePlasmaDone extends FusePlasmaState {
   /// Creates a [FusePlasmaDone] state.
-  const FusePlasmaDone({required this.accountBlock});
+  const FusePlasmaDone({required this.accountBlock, this.outcome});
 
   /// Created account block.
   final AccountBlockTemplate accountBlock;
 
+  /// The identical original result, separate from positive confirmation.
+  final PlasmaFuseOutcome? outcome;
+
   @override
-  List<Object> get props => <Object>[accountBlock];
+  List<Object> get props => <Object>[
+    accountBlock,
+    ?outcome,
+  ];
 }
 
 /// Loading state emitted while fusing is in progress.

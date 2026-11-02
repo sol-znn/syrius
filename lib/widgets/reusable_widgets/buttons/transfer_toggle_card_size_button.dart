@@ -1,36 +1,33 @@
 import 'package:material_ui/material_ui.dart';
 import 'package:zenon_syrius_wallet_flutter/blocs/blocs.dart';
 import 'package:zenon_syrius_wallet_flutter/main.dart';
-import 'package:znn_sdk_dart/znn_sdk_dart.dart';
+import 'package:zenon_syrius_wallet_flutter/utils/app_theme.dart';
 
+/// The legacy transfer toggle, held only by the current PoW display owner.
 class TransferToggleCardSizeButton extends StatelessWidget {
-
+  /// Uses the existing transfer layout callback and icon.
   const TransferToggleCardSizeButton({
     required this.onPressed,
     required this.iconData,
     super.key,
   });
+
+  /// Changes transfer layout only while generation is inactive.
   final VoidCallback? onPressed;
+
+  /// The layout affordance supplied by its existing caller.
   final IconData iconData;
 
   @override
   Widget build(BuildContext context) {
-    return StreamBuilder<PowStatus>(
+    return StreamBuilder<PowGenerationState>(
       stream: sl.get<PowGeneratingStatusBloc>().stream,
-      builder: (_, AsyncSnapshot<PowStatus> snapshot) {
-        if (snapshot.hasError) {
-          return _getButton(context, onPressed);
-        } else if (snapshot.hasData) {
-          switch (snapshot.data) {
-            case PowStatus.generating:
-              return _getButton(context, null);
-            case PowStatus.done:
-              return _getButton(context, onPressed);
-            case null:
-              return _getButton(context, onPressed);
-          }
-        }
-        return _getButton(context, onPressed);
+      builder: (_, AsyncSnapshot<PowGenerationState> snapshot) {
+        final bool generating =
+            !snapshot.hasError &&
+            snapshot.connectionState != ConnectionState.done &&
+            (snapshot.data?.isGenerating ?? false);
+        return _getButton(context, generating ? null : onPressed);
       },
     );
   }
@@ -43,8 +40,8 @@ class TransferToggleCardSizeButton extends StatelessWidget {
       onPressed: onButtonPressed,
       icon: Icon(
         iconData,
-        color: onPressed == null
-            ? Colors.grey
+        color: onButtonPressed == null
+            ? AppTokens.of(context).dim
             : Theme.of(context).textTheme.headlineSmall!.color,
       ),
     );

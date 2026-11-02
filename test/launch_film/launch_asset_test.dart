@@ -1,13 +1,14 @@
-// The two launch files the wallet ships, opened by the engine's own codec.
+// The launch files the wallet ships, opened by the engine's own codec.
 //
-// tool/lottie_reencode.py writes their container by hand: every frame after
-// the first is only the box that changed, laid over the canvas without
-// blending or disposal, and the still ending is six frames of one pixel.
+// tool/lottie_reencode.py writes their containers by hand. The full film
+// and the well store changed rectangles without blending or disposal, and
+// their still endings are six frames of one pixel.
 // Pillow reads that back correctly, but Pillow is not what plays it. A
 // decoder that cleared the canvas between frames, or blended, or dropped a
 // one pixel frame, would show black, stale boxes or a film that ends early,
 // and only in the wallet. So each file is decoded here from first frame to
-// last and held against the master's own pictures.
+// last and held against the master's own pictures. Every composited frame
+// also has to equal the original engine codec, at every RGBA pixel.
 //
 // The references are fixtures/launch_NN.rgb, written from the master's JPEGs
 // by fixtures/make_launch_refs.py: 64 by 36, each value the mean of one
@@ -17,10 +18,12 @@
 // one.
 
 import 'dart:io';
-import 'dart:typed_data';
+import 'dart:typed_data' as typed;
 import 'dart:ui' as ui;
 
+import 'package:flutter/foundation.dart' as foundation show listEquals;
 import 'package:flutter_test/flutter_test.dart';
+import 'package:zenon_syrius_wallet_flutter/widgets/reusable_widgets/launch_film_decoder.dart';
 
 const String _fixtures = 'test/launch_film/fixtures';
 
@@ -48,13 +51,13 @@ int _milliseconds(int index) =>
     ((index + 1) * 1000 / _rate).round() - (index * 1000 / _rate).round();
 
 /// The mean of each block of [image], as [_gridWidth] by [_gridHeight] RGB.
-Future<Uint8List> _blockMeans(ui.Image image) async {
-  final ByteData data = (await image.toByteData())!;
+Future<typed.Uint8List> _blockMeans(ui.Image image) async {
+  final typed.ByteData data = (await image.toByteData())!;
   final int block = image.width ~/ _gridWidth;
   expect(block * _gridWidth, image.width);
   expect(block * _gridHeight, image.height);
-  final Uint32List sums = Uint32List(_gridWidth * _gridHeight * 3);
-  final Uint8List bytes = data.buffer.asUint8List();
+  final typed.Uint32List sums = typed.Uint32List(_gridWidth * _gridHeight * 3);
+  final typed.Uint8List bytes = data.buffer.asUint8List();
   int at = 0;
   for (int y = 0; y < image.height; y++) {
     final int row = (y ~/ block) * _gridWidth;
@@ -66,7 +69,7 @@ Future<Uint8List> _blockMeans(ui.Image image) async {
       at += 4;
     }
   }
-  final Uint8List means = Uint8List(sums.length);
+  final typed.Uint8List means = typed.Uint8List(sums.length);
   final int area = block * block;
   for (int i = 0; i < sums.length; i++) {
     means[i] = (sums[i] + area ~/ 2) ~/ area;
@@ -75,7 +78,7 @@ Future<Uint8List> _blockMeans(ui.Image image) async {
 }
 
 /// The worst and the mean distance between two grids.
-({int worst, double mean}) _distance(Uint8List a, Uint8List b) {
+({int worst, double mean}) _distance(typed.Uint8List a, typed.Uint8List b) {
   expect(a.length, b.length);
   int worst = 0;
   int sum = 0;
@@ -92,8 +95,8 @@ Future<Uint8List> _blockMeans(ui.Image image) async {
 /// Decodes all of [path] and checks every frame's size and duration, and
 /// the frames in [_checked] against the master.
 Future<void> _decode(String path, int width, int height) async {
-  final Uint8List bytes = File(path).readAsBytesSync();
-  final Map<int, Uint8List> references = <int, Uint8List>{
+  final typed.Uint8List bytes = File(path).readAsBytesSync();
+  final Map<int, typed.Uint8List> references = <int, typed.Uint8List>{
     for (final int index in _checked)
       index: File(
         '$_fixtures/launch_${index.toString().padLeft(2, '0')}.rgb',
@@ -101,63 +104,128 @@ Future<void> _decode(String path, int width, int height) async {
   };
 
   final ui.Codec codec = await ui.instantiateImageCodec(bytes);
-  expect(codec.frameCount, _frameCount);
-  // The file's loop count is 1, and the engine reports the repeats after
-  // the first run. LaunchFilm stops on the last frame whatever this says;
-  // it is checked so that a change in the container is noticed.
-  expect(codec.repetitionCount, 0);
+  final LaunchFilmDecoder rectangles = await LaunchFilmDecoder.fromBytes(bytes);
+  ui.Image? heldEnding;
+  bool rectanglesClosed = false;
+  try {
+    expect(rectangles.usesFrameRectangles, isTrue);
+    expect(codec.frameCount, _frameCount);
+    // The file's loop count is 1, and the engine reports the repeats after
+    // the first run. LaunchFilm stops on the last frame whatever this says;
+    // it is checked so that a change in the container is noticed.
+    expect(codec.repetitionCount, 0);
 
-  int total = 0;
-  final Stopwatch decoding = Stopwatch();
-  final Map<int, Uint8List> decoded = <int, Uint8List>{};
-  for (int index = 0; index < _frameCount; index++) {
-    decoding.start();
-    final ui.FrameInfo info = await codec.getNextFrame();
-    decoding.stop();
-    final ui.Image image = info.image;
-    // A frame stored as a box, or as one pixel, still comes back as the
-    // whole canvas.
-    expect(image.width, width, reason: 'frame $index');
-    expect(image.height, height, reason: 'frame $index');
-    expect(
-      info.duration.inMilliseconds,
-      _milliseconds(index),
-      reason: 'frame $index',
-    );
-    total += info.duration.inMilliseconds;
-    if (references.containsKey(index)) {
-      decoded[index] = await _blockMeans(image);
+    int total = 0;
+    final Stopwatch decoding = Stopwatch();
+    final Map<int, typed.Uint8List> decoded = <int, typed.Uint8List>{};
+    for (int index = 0; index < _frameCount; index++) {
+      decoding.start();
+      final ui.FrameInfo info = await codec.getNextFrame();
+      decoding.stop();
+      final ui.Image image = info.image;
+      final LaunchFilmFrame rectangle = await rectangles.getNextFrame();
+      try {
+        expect(
+          (rectangle.image.width, rectangle.image.height),
+          (width, height),
+        );
+        expect(
+          rectangle.duration,
+          info.duration,
+          reason: 'frame $index duration',
+        );
+        if (index == _frameCount - 1) heldEnding = rectangle.image.clone();
+        final typed.ByteData original = (await image.toByteData())!;
+        final typed.ByteData composed = (await rectangle.image.toByteData())!;
+        expect(
+          foundation.listEquals(
+            original.buffer.asUint8List(),
+            composed.buffer.asUint8List(),
+          ),
+          isTrue,
+          reason: 'Every pixel of original frame $index must remain unchanged',
+        );
+      } finally {
+        rectangle.image.dispose();
+      }
+      // A frame stored as a box, or as one pixel, still comes back as the
+      // whole canvas.
+      expect(image.width, width, reason: 'frame $index');
+      expect(image.height, height, reason: 'frame $index');
+      expect(
+        info.duration.inMilliseconds,
+        _milliseconds(index),
+        reason: 'frame $index',
+      );
+      total += info.duration.inMilliseconds;
+      if (references.containsKey(index)) {
+        decoded[index] = await _blockMeans(image);
+      }
+      if (path == 'assets/images/launch.webp' && index == _frameCount - 1) {
+        final ui.Codec ending = await ui.instantiateImageCodec(
+          File('assets/images/launch_end.webp').readAsBytesSync(),
+        );
+        try {
+          expect(ending.frameCount, 1);
+          final ui.Image still = (await ending.getNextFrame()).image;
+          try {
+            expect((still.width, still.height), (width, height));
+            final typed.ByteData originalPixels = (await image.toByteData())!;
+            final typed.ByteData endingPixels = (await still.toByteData())!;
+            expect(
+              foundation.listEquals(
+                originalPixels.buffer.asUint8List(),
+                endingPixels.buffer.asUint8List(),
+              ),
+              isTrue,
+              reason: 'Skip must show the original final pixels exactly',
+            );
+          } finally {
+            still.dispose();
+          }
+        } finally {
+          ending.dispose();
+        }
+      }
+      image.dispose();
     }
-    image.dispose();
-  }
-  codec.dispose();
-  expect(total, 1867);
+    expect(total, 1867);
 
-  for (final int index in _checked) {
-    final ({int worst, double mean}) d = _distance(
-      decoded[index]!,
-      references[index]!,
-    );
-    // Shown on every run: these are the numbers the tolerances came from.
+    for (final int index in _checked) {
+      final ({int worst, double mean}) d = _distance(
+        decoded[index]!,
+        references[index]!,
+      );
+      // Shown on every run: these are the numbers the tolerances came from.
+      // ignore: avoid_print
+      print('$path frame $index: worst block ${d.worst}, mean ${d.mean}');
+      expect(d.worst, lessThanOrEqualTo(_worstAllowed), reason: 'frame $index');
+      expect(d.mean, lessThan(_meanAllowed), reason: 'frame $index');
+    }
+    // The comparison has to be able to fail. Frame 1 is frame 0 with a box
+    // laid over it and frame 50 is frame 49 with one: had the decoder left
+    // the frame before on the canvas, these two would be zero.
+    expect(_distance(decoded[1]!, references[0]!).worst, greaterThan(30));
+    expect(_distance(decoded[50]!, references[49]!).worst, greaterThan(30));
+    // The still ending: six frames of one pixel leave the picture alone.
+    expect(_distance(decoded[55]!, decoded[50]!).worst, 0);
+
+    // What a frame costs to decode is why the well has a file of its own.
     // ignore: avoid_print
-    print('$path frame $index: worst block ${d.worst}, mean ${d.mean}');
-    expect(d.worst, lessThanOrEqualTo(_worstAllowed), reason: 'frame $index');
-    expect(d.mean, lessThan(_meanAllowed), reason: 'frame $index');
+    print(
+      '$path: ${decoding.elapsedMilliseconds / _frameCount} ms a frame, '
+      '${decoding.elapsedMilliseconds} ms for all $_frameCount',
+    );
+    rectangles.dispose();
+    rectanglesClosed = true;
+    final ui.Image retainedEnding = heldEnding!;
+    expect((retainedEnding.width, retainedEnding.height), (width, height));
+    expect(await retainedEnding.toByteData(), isNotNull);
+  } finally {
+    if (!rectanglesClosed) rectangles.dispose();
+    heldEnding?.dispose();
+    codec.dispose();
   }
-  // The comparison has to be able to fail. Frame 1 is frame 0 with a box
-  // laid over it and frame 50 is frame 49 with one: had the decoder left
-  // the frame before on the canvas, these two would be zero.
-  expect(_distance(decoded[1]!, references[0]!).worst, greaterThan(30));
-  expect(_distance(decoded[50]!, references[49]!).worst, greaterThan(30));
-  // The still ending: six frames of one pixel leave the picture alone.
-  expect(_distance(decoded[55]!, decoded[50]!).worst, 0);
-
-  // What a frame costs to decode is why the well has a file of its own.
-  // ignore: avoid_print
-  print(
-    '$path: ${decoding.elapsedMilliseconds / _frameCount} ms a frame, '
-    '${decoding.elapsedMilliseconds} ms for all $_frameCount',
-  );
 }
 
 void main() {

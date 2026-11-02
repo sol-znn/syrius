@@ -1,0 +1,2 @@
+# prerequisite: pending F06/W02 reversible synthetic swap preparation without wallet publication or secret disclosure
+assert --key swap_start_screen_marker

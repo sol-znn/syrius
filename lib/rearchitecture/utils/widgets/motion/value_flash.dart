@@ -34,7 +34,7 @@ class ValueFlash extends StatefulWidget {
     required this.value,
     required this.child,
     this.color,
-    this.duration = Durations.extralong2,
+    this.duration = const Duration(milliseconds: 1200),
     super.key,
   });
 
@@ -64,6 +64,9 @@ class _ValueFlashState extends State<ValueFlash>
     vsync: this,
     duration: widget.duration,
     value: 1,
+    // This tint reports a changed value, so it keeps its full duration even
+    // when the platform turns animation effects off.
+    animationBehavior: AnimationBehavior.preserve,
   );
 
   @override

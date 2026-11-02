@@ -1,17 +1,24 @@
 import 'package:material_ui/material_ui.dart';
-import 'package:zenon_syrius_wallet_flutter/screens/onboarding/onboarding_scaffold.dart';
-import 'package:zenon_syrius_wallet_flutter/screens/screens.dart';
-import 'package:zenon_syrius_wallet_flutter/utils/utils.dart';
-import 'package:zenon_syrius_wallet_flutter/widgets/reusable_widgets/modals/modal_chrome.dart';
-import 'package:zenon_syrius_wallet_flutter/widgets/widgets.dart';
+import 'package:zenon_syrius_wallet_flutter/screens/onboarding/create_key_store_screen.dart';
+import 'package:zenon_syrius_wallet_flutter/screens/onboarding/entry_action_boundary.dart';
+import 'package:zenon_syrius_wallet_flutter/screens/onboarding/import_wallet/import_draft.dart';
+import 'package:zenon_syrius_wallet_flutter/screens/onboarding/import_wallet/import_surface.dart';
+import 'package:zenon_syrius_wallet_flutter/screens/onboarding/onboarding_step_route.dart';
+import 'package:zenon_syrius_wallet_flutter/utils/input_validators.dart';
 
+/// Validates a new password for the exact original imported mnemonic.
 class ImportWalletPasswordScreen extends StatefulWidget {
+  /// Retains private mnemonic input until guarded creation is admitted.
   const ImportWalletPasswordScreen(
     this.seed, {
     this.progressBarNumLevels = 5,
     super.key,
   });
+
+  /// Original validated private mnemonic, never replaced after a saved action.
   final String seed;
+
+  /// Existing flow length forwarded to the remaining creation and Ready steps.
   final int progressBarNumLevels;
 
   @override
@@ -21,125 +28,78 @@ class ImportWalletPasswordScreen extends StatefulWidget {
 
 class _ImportWalletPasswordScreenState
     extends State<ImportWalletPasswordScreen> {
-  final TextEditingController _passwordController = TextEditingController();
-  final TextEditingController _confirmPasswordController =
-      TextEditingController();
-
-  final GlobalKey<FormState> _passwordKey = GlobalKey();
-  final GlobalKey<FormState> _confirmPasswordKey = GlobalKey();
+  final TextEditingController _password = TextEditingController();
+  final TextEditingController _confirmation = TextEditingController();
+  Object _source = Object();
 
   @override
-  Widget build(BuildContext context) {
-    return OnboardingScaffold(
-      step: widget.progressBarNumLevels - 2,
-      steps: widget.progressBarNumLevels,
-      title: 'Create a wallet password',
-      subtitle: 'You will need it to unlock the wallet',
-      onBack: () {
-        Navigator.pop(context);
-      },
-      primary: _getContinuePassword(),
-      child: Column(
-        children: <Widget>[
-          Form(
-            key: _passwordKey,
-            autovalidateMode: AutovalidateMode.onUserInteraction,
-            child: PasswordInputField(
-              hintText: 'Password',
-              controller: _passwordController,
-              validator: InputValidators.validatePassword,
-              onChanged: (String value) {
-                setState(() {});
-              },
-              onSubmitted: (String value) {
-                if (_arePasswordsValid()) {
-                  NavigationUtils.push(
-                    context,
-                    CreateKeyStoreScreen(
-                      widget.seed,
-                      _passwordController.text,
-                      progressBarNumLevels: widget.progressBarNumLevels,
-                    ),
-                  );
-                }
-              },
-            ),
-          ),
-          const SizedBox(height: 12),
-          Form(
-            key: _confirmPasswordKey,
-            autovalidateMode: AutovalidateMode.onUserInteraction,
-            child: PasswordInputField(
-              hintText: 'Confirm password',
-              controller: _confirmPasswordController,
-              validator: (String? value) => InputValidators.checkPasswordMatch(
-                _passwordController.text,
-                value,
-              ),
-              onChanged: (String value) {
-                setState(() {});
-              },
-              onSubmitted: (String value) {
-                if (_arePasswordsValid()) {
-                  NavigationUtils.push(
-                    context,
-                    CreateKeyStoreScreen(
-                      widget.seed,
-                      _passwordController.text,
-                      progressBarNumLevels: widget.progressBarNumLevels,
-                    ),
-                  );
-                }
-              },
-            ),
-          ),
-          const SizedBox(height: 20),
-          PasswordProgressBar(
-            password: _passwordController.text,
-            passwordKey: _passwordKey,
-          ),
-          const SizedBox(height: 12),
-          Text(
-            kPasswordRuleHint,
-            textAlign: TextAlign.center,
-            style: TextStyle(fontSize: 12, color: dimColorOf(context)),
-          ),
-        ],
-      ),
-    );
+  void didUpdateWidget(ImportWalletPasswordScreen oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.seed != widget.seed ||
+        oldWidget.progressBarNumLevels != widget.progressBarNumLevels) {
+      _source = Object();
+      _password.clear();
+      _confirmation.clear();
+    }
   }
 
-  bool _arePasswordsValid() {
-    return InputValidators.validatePassword(_passwordController.text) == null &&
+  bool get _valid {
+    final List<String> words = widget.seed.trim().split(RegExp(r'\s+'));
+    return ImportSeedDraft(widget.seed, expectedWords: words.length).valid &&
+        InputValidators.validatePassword(_password.text) == null &&
         InputValidators.checkPasswordMatch(
-              _passwordController.text,
-              _confirmPasswordController.text,
+              _password.text,
+              _confirmation.text,
             ) ==
             null;
   }
 
-  Widget _getContinuePassword() {
-    return OnboardingButton(
-      onPressed: _arePasswordsValid()
-          ? () {
-              NavigationUtils.push(
-                context,
-                CreateKeyStoreScreen(
-                  widget.seed,
-                  _passwordController.text,
-                  progressBarNumLevels: widget.progressBarNumLevels,
-                ),
-              );
-            }
-          : null,
-      text: 'Confirm password',
-    );
-  }
+  @override
+  Widget build(BuildContext context) => EntryActionBoundary(
+    source: _source,
+    builder: (BuildContext context, EntryActionLease lease) {
+      final Object source = _source;
+      final String seed = widget.seed;
+      final String password = _password.text;
+      final int levels = widget.progressBarNumLevels;
+      return ImportPasswordSurface(
+        password: _password,
+        confirmation: _confirmation,
+        onChanged: () {
+          if (lease.isCurrent && identical(source, _source)) {
+            setState(() => _source = Object());
+          }
+        },
+        onBack: lease.guard(() => Navigator.pop(context)),
+        onContinue: _valid
+            ? lease.guard(() {
+                if (!identical(source, _source) ||
+                    widget.seed != seed ||
+                    _password.text != password ||
+                    !_valid) {
+                  return;
+                }
+                Navigator.of(context).push<void>(
+                  OnboardingStepRoute<void>(
+                    builder: (_) => CreateKeyStoreScreen(
+                      seed,
+                      password,
+                      progressBarNumLevels: levels,
+                      importedWallet: true,
+                    ),
+                  ),
+                );
+              })
+            : null,
+      );
+    },
+  );
 
   @override
   void dispose() {
-    _passwordController.dispose();
-    _confirmPasswordController.dispose();
+    _source = Object();
+    _password.dispose();
+    _confirmation.dispose();
     super.dispose();
   }
 }

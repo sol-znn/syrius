@@ -1,6 +1,7 @@
-import 'package:material_ui/material_ui.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:material_ui/material_ui.dart';
 import 'package:zenon_syrius_wallet_flutter/main.dart';
+import 'package:zenon_syrius_wallet_flutter/rearchitecture/features/delegation/view/delegation_actions.dart';
 import 'package:zenon_syrius_wallet_flutter/rearchitecture/features/features.dart';
 import 'package:zenon_syrius_wallet_flutter/rearchitecture/utils/utils.dart';
 
@@ -14,19 +15,22 @@ import 'package:zenon_syrius_wallet_flutter/rearchitecture/utils/utils.dart';
 class PillarsTabChild extends StatelessWidget {
   /// Creates a Pillars tab child.
   const PillarsTabChild({
-    required VoidCallback onStepperNotificationSeeMorePressed,
+    required this._onStepperNotificationSeeMorePressed,
+    this.embedded = false,
     super.key,
-  }) : _onStepperNotificationSeeMorePressed =
-           onStepperNotificationSeeMorePressed;
+  });
 
   final VoidCallback _onStepperNotificationSeeMorePressed;
 
+  /// Draws just the list when the Nodes page supplies its strip and bloc.
+  final bool embedded;
+
   @override
   Widget build(BuildContext context) {
+    if (embedded) return const NodesDelegationList();
     return BlocProvider<PillarsBloc>(
       create: (_) =>
-          PillarsBloc(zenon: zenon!)
-            ..add(const InfiniteListRequested(address: null)),
+          PillarsBloc(zenon: zenon!)..add(const InfiniteListRequested()),
       child: PageGrid(
         rows: <PageRow>[
           PageRow.fixed(300, <PageCell>[

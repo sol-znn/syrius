@@ -37,9 +37,9 @@ class HomeSnapshot extends Equatable {
       tokens: <BalanceInfoListItem>[
         for (final BalanceInfoListItem item
             in account.balanceInfoList ?? <BalanceInfoListItem>[])
-          if (item.token != null &&
-              item.token!.tokenStandard != znnZts &&
-              item.token!.tokenStandard != qsrZts &&
+          if ((item.token == null ||
+                  (item.token!.tokenStandard != znnZts &&
+                      item.token!.tokenStandard != qsrZts)) &&
               (item.balance ?? BigInt.zero) > BigInt.zero)
             item,
       ],
@@ -113,7 +113,11 @@ enum HomeStatus {
 /// The state of the home for one address.
 class HomeState extends Equatable {
   /// Creates a state.
-  const HomeState({this.status = HomeStatus.loading, this.snapshot});
+  const HomeState({
+    this.status = HomeStatus.loading,
+    this.snapshot,
+    this.readRevision = 0,
+  });
 
   /// Where the cubit is.
   final HomeStatus status;
@@ -122,8 +126,11 @@ class HomeState extends Equatable {
   /// blank out when the node drops for a moment.
   final HomeSnapshot? snapshot;
 
+  /// Identifies a completed read even when its values equal the previous read.
+  final int readRevision;
+
   @override
-  List<Object?> get props => <Object?>[status, snapshot];
+  List<Object?> get props => <Object?>[status, snapshot, readRevision];
 }
 
 /// Reads the home's snapshot for one address, then again every [interval].
@@ -134,31 +141,52 @@ class HomeState extends Equatable {
 class HomeCubit extends Cubit<HomeState> {
   /// Creates a cubit that reads through [read].
   HomeCubit({
-    required Future<HomeSnapshot> Function() read,
-    Duration interval = const Duration(seconds: 15),
-  }) : _read = read,
-       _interval = interval,
-       super(const HomeState());
+    required this.read,
+    this.interval = const Duration(seconds: 15),
+  }) : super(const HomeState());
 
-  final Future<HomeSnapshot> Function() _read;
-  final Duration _interval;
+  /// Reads one snapshot for this cubit's captured address and client context.
+  final Future<HomeSnapshot> Function() read;
+
+  /// Delay between completed reads; manual requests join an active read.
+  final Duration interval;
   Timer? _timer;
+  Future<void>? _refreshing;
 
   /// Reads now, and schedules the next read.
-  Future<void> refresh() async {
+  Future<void> refresh() {
+    if (isClosed) return Future<void>.value();
+    return _refreshing ??= _refresh().whenComplete(() {
+      _refreshing = null;
+    });
+  }
+
+  Future<void> _refresh() async {
     _timer?.cancel();
     try {
-      final HomeSnapshot snapshot = await _read();
+      final HomeSnapshot snapshot = await read();
       if (!isClosed) {
-        emit(HomeState(status: HomeStatus.ready, snapshot: snapshot));
+        emit(
+          HomeState(
+            status: HomeStatus.ready,
+            snapshot: snapshot,
+            readRevision: state.readRevision + 1,
+          ),
+        );
       }
     } on Object {
       if (!isClosed) {
-        emit(HomeState(status: HomeStatus.failed, snapshot: state.snapshot));
+        emit(
+          HomeState(
+            status: HomeStatus.failed,
+            snapshot: state.snapshot,
+            readRevision: state.readRevision,
+          ),
+        );
       }
     }
     if (!isClosed) {
-      _timer = Timer(_interval, refresh);
+      _timer = Timer(interval, refresh);
     }
   }
 

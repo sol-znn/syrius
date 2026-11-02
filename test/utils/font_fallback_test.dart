@@ -1,4 +1,5 @@
 import 'dart:io';
+import 'dart:typed_data';
 
 import 'package:flutter_test/flutter_test.dart';
 import 'package:material_ui/material_ui.dart';
@@ -74,8 +75,9 @@ void main() {
         'Source Han Sans SC',
         'WenQuanYi Micro Hei',
       ];
-      expect(kFontFamilyFallback.sublist(2, 2 + han.length), han);
-      expect(kFontFamilyFallback.sublist(2 + han.length), <String>[
+      expect(kFontFamilyFallback[2], kSansCoverageFontFamily);
+      expect(kFontFamilyFallback.sublist(3, 3 + han.length), han);
+      expect(kFontFamilyFallback.sublist(3 + han.length), <String>[
         'Segoe UI',
         'Nirmala UI',
         'Geeza Pro',
@@ -96,6 +98,7 @@ void main() {
         families,
         containsAll(<String>[
           kSansFontFamily,
+          kSansCoverageFontFamily,
           kMonoFontFamily,
           kArabicFontFamily,
           kDevanagariFontFamily,
@@ -120,6 +123,44 @@ void main() {
           anyOf(equals(<int>[0, 1, 0, 0]), equals('OTTO'.codeUnits)),
           reason: path,
         );
+      }
+    });
+
+    test('the semibold is a static 600 face and font licenses are bundled', () {
+      final ByteData font = ByteData.sublistView(
+        File('assets/fonts/SpaceGrotesk-SemiBold.ttf').readAsBytesSync(),
+      );
+      expect(font.getUint32(0), 0x00010000);
+      final int tables = font.getUint16(4);
+      int? weight;
+      final Set<String> tags = <String>{};
+      for (int i = 0; i < tables; i++) {
+        final int entry = 12 + 16 * i;
+        final String tag = String.fromCharCodes(<int>[
+          for (int j = 0; j < 4; j++) font.getUint8(entry + j),
+        ]);
+        tags.add(tag);
+        if (tag == 'OS/2') {
+          weight = font.getUint16(font.getUint32(entry + 8) + 4);
+        }
+      }
+      expect(weight, 600);
+      expect(tags, isNot(contains('fvar')));
+      final String pubspec = File('pubspec.yaml').readAsStringSync();
+      expect(
+        pubspec,
+        contains(
+          'asset: assets/fonts/SpaceGrotesk-SemiBold.ttf\n'
+          '          weight: 600',
+        ),
+      );
+      for (final String name in <String>[
+        'OFL-SpaceGrotesk.txt',
+        'OFL-JetBrainsMono.txt',
+        'OFL-NotoSans.txt',
+      ]) {
+        expect(pubspec, contains('    - assets/fonts/$name\n'));
+        expect(File('assets/fonts/$name').readAsStringSync(), contains('1.1'));
       }
     });
   });
@@ -317,8 +358,8 @@ void main() {
       });
 
       // The two button themes set a `textStyle`, which is the whole label
-      // style: one without a family was drawn in the system's face. Medium,
-      // because Space Grotesk has no 600 and would draw one as Bold.
+      // style: one without a family was drawn in the system's face. Compact
+      // labels use Medium; the main outlined label uses the bundled SemiBold.
       testWidgets('a button label is Space Grotesk with the list', (
         WidgetTester tester,
       ) async {
@@ -342,13 +383,8 @@ void main() {
             reason: label,
           );
         }
-        for (final String label in <String>['text', 'outlined']) {
-          expect(
-            _paintedStyle(tester, label).fontWeight,
-            FontWeight.w500,
-            reason: label,
-          );
-        }
+        expect(_paintedStyle(tester, 'text').fontWeight, FontWeight.w500);
+        expect(_paintedStyle(tester, 'outlined').fontWeight, FontWeight.w600);
         expect(_paintedStyle(tester, 'text').fontSize, 13);
         expect(_paintedStyle(tester, 'outlined').fontSize, 14);
       });

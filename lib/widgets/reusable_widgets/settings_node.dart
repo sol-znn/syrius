@@ -1,8 +1,8 @@
 import 'dart:async';
 
-import 'package:material_ui/material_ui.dart';
 import 'package:flutter_vector_icons/flutter_vector_icons.dart';
 import 'package:hive_ce/hive_ce.dart';
+import 'package:material_ui/material_ui.dart';
 import 'package:zenon_syrius_wallet_flutter/l10n/l10n.dart';
 import 'package:zenon_syrius_wallet_flutter/rearchitecture/utils/extensions/buildcontext_extension.dart';
 import 'package:zenon_syrius_wallet_flutter/utils/app_colors.dart';
@@ -16,7 +16,9 @@ import 'package:zenon_syrius_wallet_flutter/widgets/modular_widgets/settings_wid
 import 'package:zenon_syrius_wallet_flutter/widgets/widgets.dart';
 import 'package:znn_sdk_dart/znn_sdk_dart.dart';
 
+/// Retains the legacy single-node row for callers outside the Settings section.
 class SettingsNode extends StatefulWidget {
+  /// Receives exact node identities and the existing catalog-change callbacks.
   const SettingsNode({
     required this.node,
     required this.onNodePressed,
@@ -25,9 +27,16 @@ class SettingsNode extends StatefulWidget {
     super.key,
   });
 
+  /// The saved endpoint or embedded-node sentinel represented by this row.
   final String node;
+
+  /// Requests selection of this exact row through the caller's connection flow.
   final void Function(String?) onNodePressed;
+
+  /// Reports completion of the existing custom-node catalog mutation.
   final VoidCallback onChangedOrDeletedNode;
+
+  /// The selected node identity used to restrict actual frontier reads.
   final String currentNode;
 
   @override
@@ -42,18 +51,37 @@ class _SettingsNodeState extends State<SettingsNode> {
 
   final GlobalKey<MyOutlinedButtonState> _changeButtonKey = GlobalKey();
 
-  int connectedNodeChainIdentifier = 1;
+  int? connectedNodeChainIdentifier;
 
   @override
   void initState() {
     _nodeController.text = widget.node;
 
-    NodeUtils.getNodeChainIdentifier().then((int chainIdentifier) {
-      connectedNodeChainIdentifier = chainIdentifier;
-      setState(() {});
-    });
-
     super.initState();
+    unawaited(_loadCurrentChain());
+  }
+
+  Future<void> _loadCurrentChain() async {
+    final String node = widget.node;
+    if (node != widget.currentNode || node != kCurrentNode) return;
+    final int? chain = await NodeUtils.getNodeChainIdentifier();
+    if (!mounted ||
+        widget.node != node ||
+        widget.currentNode != node ||
+        kCurrentNode != node) {
+      return;
+    }
+    setState(() => connectedNodeChainIdentifier = chain);
+  }
+
+  @override
+  void didUpdateWidget(SettingsNode oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.node != widget.node ||
+        oldWidget.currentNode != widget.currentNode) {
+      connectedNodeChainIdentifier = null;
+      unawaited(_loadCurrentChain());
+    }
   }
 
   @override
@@ -70,6 +98,7 @@ class _SettingsNodeState extends State<SettingsNode> {
         !kDefaultCommunityNodes.contains(widget.node);
     final bool chainMatches =
         connectedNodeChainIdentifier == getChainIdentifier();
+    final int? chain = connectedNodeChainIdentifier;
     return Row(
       children: <Widget>[
         Expanded(
@@ -91,19 +120,25 @@ class _SettingsNodeState extends State<SettingsNode> {
             ),
           ),
         ),
-        if (widget.currentNode.contains(widget.node))
+        if (widget.currentNode == widget.node)
           StandardTooltipIcon(
-            chainMatches
+            chain == null
+                ? context.l10n.nodeSettingsUnknown
+                : chainMatches
                 ? context.l10n.settingsNodeChainIdTooltip(
                     getChainIdentifier(),
-                    connectedNodeChainIdentifier,
+                    chain,
                   )
                 : context.l10n.settingsNodeChainIdMismatchTooltip(
                     getChainIdentifier(),
-                    connectedNodeChainIdentifier,
+                    chain,
                   ),
             MaterialCommunityIcons.identifier,
-            iconColor: chainMatches ? AppColors.znnColor : AppColors.errorColor,
+            iconColor: chain == null
+                ? AppColors.faint
+                : chainMatches
+                ? AppColors.znnColor
+                : AppColors.errorColor,
           ),
         if (widget.node.contains('wss://'))
           StandardTooltipIcon(
@@ -190,7 +225,7 @@ class _SettingsNodeState extends State<SettingsNode> {
                 onSubmitted: (String value) {
                   if (_nodeController.text != widget.node &&
                       _ifUserInputValid()) {
-                    _onChangeButtonPressed();
+                    unawaited(_onChangeButtonPressed());
                   }
                 },
                 onChanged: (String value) {
@@ -242,22 +277,25 @@ class _SettingsNodeState extends State<SettingsNode> {
       _changeButtonKey.currentState!.showLoadingIndicator(true);
       if (_nodeController.text.isNotEmpty &&
           _nodeController.text.length <= kAddressLabelMaxLength &&
-          !<String>[...kDefaultNodes, ...kDefaultCommunityNodes, ...kDbNodes]
-              .contains(_nodeController.text)) {
+          !<String>[
+            ...kDefaultNodes,
+            ...kDefaultCommunityNodes,
+            ...kDbNodes,
+          ].contains(_nodeController.text)) {
         if (!Hive.isBoxOpen(kNodesBox)) {
           await Hive.openBox<String>(kNodesBox);
         }
         final Box<String> nodesBox = Hive.box<String>(kNodesBox);
-        final nodeKey = nodesBox.keys.firstWhere(
-          (key) => nodesBox.get(key) == widget.node,
+        final Object? nodeKey = nodesBox.keys.firstWhere(
+          (Object? key) => nodesBox.get(key) == widget.node,
         );
         await nodesBox.put(nodeKey, _nodeController.text);
         await NodeUtils.loadDbNodes();
+        if (!mounted) return;
         setState(() {
           _editable = false;
           _nodeError = null;
         });
-        if (!mounted) return;
         widget.onChangedOrDeletedNode();
       } else if (_nodeController.text.isEmpty) {
         setState(() {
@@ -274,13 +312,16 @@ class _SettingsNodeState extends State<SettingsNode> {
           _nodeError = currentL10n.settingsNodeExistsError;
         });
       }
-    } catch (e) {
+    } on Object catch (e) {
+      if (!mounted) return;
       await NotificationUtils.sendNotificationError(
         e,
         currentL10n.commonSomethingWentWrong,
       );
     } finally {
-      _changeButtonKey.currentState!.showLoadingIndicator(false);
+      if (mounted) {
+        _changeButtonKey.currentState?.showLoadingIndicator(false);
+      }
     }
   }
 
@@ -290,14 +331,15 @@ class _SettingsNodeState extends State<SettingsNode> {
         await Hive.openBox<String>(kNodesBox);
       }
       final Box<String> nodesBox = Hive.box<String>(kNodesBox);
-      final nodeKey = nodesBox.keys.firstWhere(
-        (key) => nodesBox.get(key) == node,
+      final Object? nodeKey = nodesBox.keys.firstWhere(
+        (Object? key) => nodesBox.get(key) == node,
       );
       await nodesBox.delete(nodeKey);
       kDbNodes.remove(node);
       if (!mounted) return;
       widget.onChangedOrDeletedNode();
-    } catch (e) {
+    } on Object catch (e) {
+      if (!mounted) return;
       await NotificationUtils.sendNotificationError(
         e,
         currentL10n.settingsNodeDeleteFailedNotificationTitle(node),

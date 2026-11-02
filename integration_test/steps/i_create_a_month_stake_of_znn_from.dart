@@ -1,20 +1,23 @@
 // BDD Usage comments intentionally mirror Gherkin placeholders.
-// ignore_for_file: unintended_html_in_doc_comment, non_constant_identifier_names
+// ignore_for_file: unintended_html_in_doc_comment
+// ignore_for_file: non_constant_identifier_names
 
 import 'dart:async';
 
-import 'package:material_ui/material_ui.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:material_ui/material_ui.dart';
 import 'package:zenon_syrius_wallet_flutter/l10n/app_localizations.dart';
 import 'package:zenon_syrius_wallet_flutter/main.dart' as app;
 import 'package:zenon_syrius_wallet_flutter/rearchitecture/features/features.dart';
 import 'package:zenon_syrius_wallet_flutter/utils/utils.dart';
 import 'package:znn_sdk_dart/znn_sdk_dart.dart';
 
+import '../support/devnet_stake_host.dart';
 import '../support/devnet_test_context.dart';
 
-/// Usage: I create a <duration_months> month stake of <amount> ZNN from <stake_address>
+/// Usage: I create a <duration_months> month stake of <amount> ZNN
+/// from <stake_address>
 Future<void> iCreateAMonthStakeOfZnnFrom(
   WidgetTester tester,
   dynamic duration_months,
@@ -35,8 +38,8 @@ Future<void> iCreateAMonthStakeOfZnnFrom(
       localizationsDelegates: AppLocalizations.localizationsDelegates,
       supportedLocales: AppLocalizations.supportedLocales,
       home: Scaffold(
-        body: BlocProvider<MultipleBalanceBloc>.value(
-          value: app.sl<MultipleBalanceBloc>(),
+        body: DevnetStakeHost(
+          balances: app.sl<MultipleBalanceBloc>(),
           child: CreateStakeCard(onStakeCreated: () {}),
         ),
       ),
@@ -53,7 +56,7 @@ Future<void> iCreateAMonthStakeOfZnnFrom(
     reason: 'Stake address does not have enough ZNN for the test stake',
   );
 
-  await _selectDuration(tester, durationMonths);
+  await selectDevnetStakeDuration(tester, durationMonths);
   await tester.enterText(
     find.byKey(const Key('create_stake_amount_field')),
     stakeAmount,
@@ -95,27 +98,6 @@ Future<void> iCreateAMonthStakeOfZnnFrom(
   } finally {
     await subscription.cancel();
   }
-}
-
-Future<void> _selectDuration(
-  WidgetTester tester,
-  String durationMonths,
-) async {
-  final Finder dropdown = find.byKey(
-    const Key('create_stake_duration_dropdown'),
-  );
-  await _pumpUntilFound(tester, dropdown);
-  await tester.tap(dropdown);
-  await tester.pumpAndSettle();
-
-  final Finder durationOption = find
-      .text(
-        '$durationMonths $stakeUnitDurationName${durationMonths == '1' ? '' : 's'}',
-      )
-      .last;
-  await _pumpUntilFound(tester, durationOption);
-  await tester.tap(durationOption);
-  await tester.pumpAndSettle();
 }
 
 Future<void> _pumpUntilFound(WidgetTester tester, Finder finder) async {

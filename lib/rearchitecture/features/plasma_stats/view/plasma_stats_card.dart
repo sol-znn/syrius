@@ -1,13 +1,14 @@
 import 'dart:math' as math;
 
-import 'package:material_ui/material_ui.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:material_ui/material_ui.dart';
+import 'package:zenon_syrius_wallet_flutter/blocs/blocs.dart';
+import 'package:zenon_syrius_wallet_flutter/main.dart' show sl;
 import 'package:zenon_syrius_wallet_flutter/rearchitecture/features/card_parts/card_parts.dart';
 import 'package:zenon_syrius_wallet_flutter/rearchitecture/features/features.dart';
 import 'package:zenon_syrius_wallet_flutter/rearchitecture/utils/utils.dart';
 import 'package:zenon_syrius_wallet_flutter/rearchitecture/utils/widgets/disclosure.dart';
 import 'package:zenon_syrius_wallet_flutter/rearchitecture/utils/widgets/eye_toggle.dart';
-import 'package:zenon_syrius_wallet_flutter/rearchitecture/utils/widgets/ltr.dart';
 import 'package:zenon_syrius_wallet_flutter/rearchitecture/utils/widgets/page/empty_note.dart';
 import 'package:zenon_syrius_wallet_flutter/rearchitecture/utils/widgets/plasma_well.dart';
 import 'package:zenon_syrius_wallet_flutter/utils/utils.dart';
@@ -17,19 +18,6 @@ import 'package:zenon_syrius_wallet_flutter/widgets/widgets.dart'
         InfiniteScrollTableCell,
         InfiniteScrollTableHeaderColumn;
 import 'package:znn_sdk_dart/znn_sdk_dart.dart';
-
-/// The side of the plasma mark at the head of the card, and the least it is
-/// drawn at when the card is short or the other addresses are open under it.
-const double _kMarkSize = 200;
-const double _kMarkMinSize = 96;
-
-/// The height the figures under the mark take, with the padding round the
-/// two. The mark gets what the card has over this.
-const double _kFiguresHeight = 116;
-
-/// The most of the card's height the other addresses open into; past it
-/// they scroll, so the mark and its figures are never pushed out.
-const double _kOthersShare = 0.45;
 
 /// The height of the line that names the list's two columns.
 const double _kListHeadHeight = 36;
@@ -42,7 +30,6 @@ const double _kRowLevelWidth = 60;
 /// height of one such bar (`Skeleton`'s default). On the Plasma page the
 /// rows are a section that opens under the mark, and are closer.
 const double _kRowHeight = 48;
-const double _kPageRowHeight = 40;
 const double _kSkeletonBar = 12;
 
 /// Display variants for [PlasmaStatsCard].
@@ -91,14 +78,12 @@ class PlasmaStatsCard extends StatelessWidget {
           ),
         ),
       ],
-      child:
-          BlocBuilder<PlasmaStatsBloc, InfiniteListState<PlasmaInfoWrapper>>(
-            builder: (_, InfiniteListState<PlasmaInfoWrapper> state) =>
-                _LevelsView(
-                  state: state,
-                  items: state.data ?? const <PlasmaInfoWrapper>[],
-                ),
-          ),
+      child: BlocBuilder<PlasmaStatsBloc, InfiniteListState<PlasmaInfoWrapper>>(
+        builder: (_, InfiniteListState<PlasmaInfoWrapper> state) => _LevelsView(
+          state: state,
+          items: state.data ?? const <PlasmaInfoWrapper>[],
+        ),
+      ),
     );
   }
 }
@@ -114,16 +99,17 @@ class _PageBody extends StatelessWidget {
   Widget build(BuildContext context) {
     return LayoutBuilder(
       builder: (BuildContext context, BoxConstraints constraints) {
+        final AppTokens tokens = AppTokens.of(context);
         final double height = constraints.maxHeight.isFinite
             ? constraints.maxHeight
-            : _kMarkSize + _kFiguresHeight;
+            : tokens.plasmaMarkSize + tokens.plasmaFiguresHeight;
         return Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: <Widget>[
             const Expanded(child: _Mark()),
             const Divider(),
             _OtherAddresses(
-              maxHeight: height * _kOthersShare,
+              maxHeight: height * tokens.plasmaOtherShare,
               onPicked: onAddressPicked,
             ),
           ],
@@ -148,15 +134,15 @@ class _Mark extends StatelessWidget {
     final String? selected = kSelectedAddress;
     return LayoutBuilder(
       builder: (BuildContext context, BoxConstraints constraints) {
+        final AppTokens tokens = AppTokens.of(context);
         // The mark gives way before the figures do: they are what is read.
-        final double size = (constraints.maxHeight - _kFiguresHeight)
-            .clamp(_kMarkMinSize, _kMarkSize)
-            .toDouble();
+        final double size = (constraints.maxHeight - tokens.plasmaFiguresHeight)
+            .clamp(tokens.plasmaMarkMinSize, tokens.plasmaMarkSize);
         // A scroll view that does not scroll: a card shorter than the least
         // mark and the figures cuts them instead of overflowing.
         return SingleChildScrollView(
           physics: const NeverScrollableScrollPhysics(),
-          padding: const EdgeInsetsDirectional.fromSTEB(16, 4, 16, 14),
+          padding: tokens.plasmaMarkPadding,
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             mainAxisSize: MainAxisSize.min,
@@ -167,10 +153,19 @@ class _Mark extends StatelessWidget {
               // drawn for, a disc as wide as its square: the halo has faded
               // out about 90 px from the middle, inside the disc's 100.
               Center(
-                child: PlasmaWell(
-                  child: PlasmaGlow(
-                    key: const Key('plasma_page_mark'),
-                    size: size,
+                child: _WithPlasmaGeneration(
+                  builder: ({required bool generating}) => PlasmaWell(
+                    child: PlasmaGlow(
+                      key: const Key('plasma_page_mark'),
+                      size: size,
+                      innerGlow: generating
+                          ? tokens.plasmaGeneratingInnerGlow
+                          : .5,
+                      outerGlow: generating
+                          ? tokens.plasmaGeneratingOuterGlow
+                          : .3,
+                      contour: generating ? tokens.plasmaGeneratingContour : .5,
+                    ),
                   ),
                 ),
               ),
@@ -180,16 +175,20 @@ class _Mark extends StatelessWidget {
                 _Reading?
               >(
                 selector: (InfiniteListState<PlasmaInfoWrapper> state) {
-                  for (final PlasmaInfoWrapper w
-                      in state.data ?? const <PlasmaInfoWrapper>[]) {
-                    if (w.address == selected) {
-                      return (
-                        current: w.plasmaInfo.currentPlasma,
-                        fused: w.plasmaInfo.qsrAmount,
-                      );
-                    }
+                  final PlasmaStatsBloc source = context
+                      .read<PlasmaStatsBloc>();
+                  if (state.status != InfiniteListStatus.success) {
+                    return null;
                   }
-                  return null;
+                  final PlasmaInfoWrapper? reading = source.currentReading(
+                    selected ?? '',
+                  );
+                  return reading == null
+                      ? null
+                      : (
+                          current: reading.plasmaInfo.currentPlasma,
+                          fused: reading.plasmaInfo.qsrAmount,
+                        );
                 },
                 builder: (_, _Reading? reading) => _Figures(reading: reading),
               ),
@@ -213,94 +212,87 @@ class _Figures extends StatelessWidget {
   Widget build(BuildContext context) {
     final _Reading? r = reading;
     final AppTokens tokens = AppTokens.of(context);
-    final String qsr = kQsrCoin.symbol;
-    final String fusedLabel = 'Fused $qsr';
-    final TextStyle fusedStyle = cardFigureStyle(
-      context,
-      color: r?.fused == BigInt.zero ? tokens.faint : tokens.qsrInk,
-    );
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       mainAxisSize: MainAxisSize.min,
       children: <Widget>[
+        Center(
+          child: ValueFlash(
+            key: ValueKey<bool>(r == null),
+            value: r?.current,
+            color: tokens.qsrInk,
+            child: HiddenAmount(
+              style: tokens.plasmaAmountText,
+              child: r == null
+                  ? Text(context.l10n.plasmaPageUnknown, style: tokens.bodyText)
+                  : AmountText(
+                      BigInt.from(r.current),
+                      key: const Key('plasma_page_available'),
+                      decimals: 0,
+                      style: tokens.plasmaAmountText,
+                    ),
+            ),
+          ),
+        ),
+        SizedBox(height: tokens.plasmaLevelGap),
         Row(
+          mainAxisAlignment: MainAxisAlignment.center,
           children: <Widget>[
-            Expanded(
-              child: Text(
-                context.l10n.level.toUpperCase(),
-                style: ledgerLabelStyle(context),
-              ),
+            Text(
+              '${context.l10n.plasma.toUpperCase()} · ',
+              style: tokens.ledgerText,
             ),
             PlasmaLevelLabel(plasma: r?.current),
           ],
         ),
-        const SizedBox(height: 6),
-        PlasmaLevelMeter(plasma: r?.current ?? 0),
-        const SizedBox(height: 12),
+        SizedBox(height: tokens.pageGap),
+        _WithPlasmaGeneration(
+          builder: ({required bool generating}) =>
+              PlasmaLevelMeter(plasma: r?.current ?? 0, generating: generating),
+        ),
+        SizedBox(height: tokens.plasmaLevelGap),
         Row(
-          crossAxisAlignment: CrossAxisAlignment.start,
           children: <Widget>[
-            Expanded(
-              child: ValueFlash(
-                // A flash per load state: the first value is not a change.
-                key: ValueKey<bool>(r == null),
-                value: r?.current,
-                color: tokens.qsrInk,
-                // The node's currentPlasma for the address: what its next
-                // block can spend. Plasma has no symbol, so each figure
-                // names its unit in the label and shows a bare number.
-                child: Figure(
-                  key: const Key('plasma_page_available'),
-                  label: context.l10n.plasma,
-                  value: r == null
-                      ? ''
-                      : cardAmount(BigInt.from(r.current), 0, ''),
-                  valueStyle: cardFigureStyle(
-                    context,
-                    color: r?.current == 0 ? tokens.faint : null,
-                  ),
-                ),
-              ),
-            ),
-            SizedBox(width: tokens.cardGap),
-            ValueFlash(
-              key: ValueKey<bool>(r == null),
-              value: r?.fused,
-              color: tokens.qsrInk,
-              // The node's qsrAmount: the QSR fused with this address as
-              // beneficiary, by anyone. Laid out as a Figure is, by hand:
-              // only the amount turns to dots while balances are hidden,
-              // and a Figure takes its value as a string.
-              child: Column(
-                key: const Key('plasma_page_fused'),
-                crossAxisAlignment: CrossAxisAlignment.start,
-                mainAxisSize: MainAxisSize.min,
-                children: <Widget>[
-                  Text(
-                    usesLatinScript(context)
-                        ? fusedLabel.toUpperCase()
-                        : fusedLabel,
-                    style: ledgerLabelStyle(context),
-                  ),
-                  const SizedBox(height: 4),
-                  HiddenAmount(
-                    style: fusedStyle,
-                    child: Ltr(
-                      child: Text(
-                        r == null
-                            ? ''
-                            : cardAmount(r.fused, kQsrCoin.decimals, ''),
-                        maxLines: 1,
-                        style: fusedStyle,
+            Text('${context.l10n.plasmaPageFused} ', style: tokens.dollarText),
+            Flexible(
+              child: HiddenAmount(
+                style: tokens.dataText,
+                child: r == null
+                    ? Text(
+                        context.l10n.plasmaPageUnknown,
+                        style: tokens.dollarText,
+                      )
+                    : AmountText(
+                        r.fused,
+                        key: const Key('plasma_page_fused'),
+                        decimals: coinDecimals,
+                        style: tokens.dataText,
+                        symbol: kQsrCoin.symbol,
                       ),
-                    ),
-                  ),
-                ],
               ),
             ),
           ],
         ),
       ],
+    );
+  }
+}
+
+class _WithPlasmaGeneration extends StatelessWidget {
+  const _WithPlasmaGeneration({required this.builder});
+  final Widget Function({required bool generating}) builder;
+
+  @override
+  Widget build(BuildContext context) {
+    final PowGeneratingStatusBloc? source =
+        sl.isRegistered<PowGeneratingStatusBloc>()
+        ? sl.get<PowGeneratingStatusBloc>()
+        : null;
+    return StreamBuilder<PowGenerationState>(
+      stream: source?.stream,
+      initialData: source?.value ?? const PowGenerationState.idle(),
+      builder: (_, AsyncSnapshot<PowGenerationState> state) =>
+          builder(generating: state.data?.isGenerating ?? false),
     );
   }
 }
@@ -321,48 +313,60 @@ class _OtherAddresses extends StatelessWidget {
     context.watch<SelectedAddressNotifier>();
     final String? selected = kSelectedAddress;
     return BlocBuilder<PlasmaStatsBloc, InfiniteListState<PlasmaInfoWrapper>>(
-      builder: (BuildContext context, InfiniteListState<PlasmaInfoWrapper> state) {
-        final bool loaded = state.status == InfiniteListStatus.success;
-        final List<PlasmaInfoWrapper> others = <PlasmaInfoWrapper>[
-          for (final PlasmaInfoWrapper w
-              in state.data ?? const <PlasmaInfoWrapper>[])
-            if (w.address != selected) w,
-        ];
-        final int low = others
-            .where(
-              (PlasmaInfoWrapper w) =>
-                  PlasmaLevel.of(w.plasmaInfo.currentPlasma) ==
-                  PlasmaLevel.low,
-            )
-            .length;
-        // As tall as its rows and the lines between them, so nothing
-        // scrolls until there are more than the card has room for.
-        final double wanted = loaded && others.isNotEmpty
-            ? others.length * (_kPageRowHeight + 1) - 1
-            : loaded
-            ? _kPageRowHeight
-            : _kPageRowHeight * 2;
-        return Disclosure(
-          key: const Key('plasma_other_addresses'),
-          title: context.l10n.plasmaPageOtherAddresses,
-          count: loaded ? others.length : null,
-          summary: low > 0 ? context.l10n.plasmaPageLowCount(low) : null,
-          storeKey: 'plasma.other_addresses',
-          keyPrefix: 'plasma_other_addresses',
-          // Mounted while closed: the list is what asks for the next page
-          // of addresses, and the selected one may be on it.
-          keepAlive: true,
-          child: SizedBox(
-            height: math.min(wanted, maxHeight),
-            child: _LevelsView(
-              state: state,
-              items: others,
-              onPage: true,
-              onPicked: onPicked,
-            ),
-          ),
-        );
-      },
+      builder:
+          (BuildContext context, InfiniteListState<PlasmaInfoWrapper> state) {
+            final PlasmaStatsBloc source = context.read<PlasmaStatsBloc>();
+            final AppTokens tokens = AppTokens.of(context);
+            final bool loaded =
+                state.status == InfiniteListStatus.success &&
+                source.hasCurrentRead;
+            final List<PlasmaInfoWrapper> others = <PlasmaInfoWrapper>[
+              for (final PlasmaInfoWrapper w in source.currentReadings)
+                if (w.address != selected) w,
+            ];
+            final int low = others
+                .where(
+                  (PlasmaInfoWrapper w) =>
+                      PlasmaLevel.of(w.plasmaInfo.currentPlasma) ==
+                      PlasmaLevel.low,
+                )
+                .length;
+            // Compact rows have no dividers. The list scrolls only after
+            // its rows and body inset use the space beneath the figures.
+            final double wanted = loaded && others.isNotEmpty
+                ? others.length * tokens.plasmaOtherRowHeight +
+                      tokens.plasmaOtherListPadding.vertical
+                : loaded
+                ? tokens.plasmaOtherRowHeight +
+                      tokens.plasmaOtherListPadding.vertical
+                : tokens.plasmaOtherRowHeight * 2 +
+                      tokens.plasmaOtherListPadding.vertical;
+            return Disclosure(
+              key: const Key('plasma_other_addresses'),
+              title: context.l10n.plasmaPageOtherAddresses,
+              count: loaded ? others.length : null,
+              summary: low > 0 ? context.l10n.plasmaPageLowCount(low) : null,
+              storeKey: 'plasma.other_addresses',
+              keyPrefix: 'plasma_other_addresses',
+              // Mounted while closed: the list is what asks for the next page
+              // of addresses, and the selected one may be on it.
+              keepAlive: true,
+              child: SizedBox(
+                height: math.min(wanted, maxHeight),
+                child: Padding(
+                  padding: tokens.plasmaOtherListPadding,
+                  child: _LevelsView(
+                    state: loaded || state.status == InfiniteListStatus.failure
+                        ? state
+                        : const InfiniteListState<PlasmaInfoWrapper>.initial(),
+                    items: others,
+                    onPage: true,
+                    onPicked: onPicked,
+                  ),
+                ),
+              ),
+            );
+          },
     );
   }
 }
@@ -402,10 +406,7 @@ class _LevelsView extends StatelessWidget {
         InfiniteListStatus.success when items.isEmpty && onPage => Align(
           key: const ValueKey<String>('empty'),
           alignment: AlignmentDirectional.centerStart,
-          child: Padding(
-            padding: const EdgeInsetsDirectional.symmetric(horizontal: 16),
-            child: EmptyNote.line(text: context.l10n.noItemsFound),
-          ),
+          child: EmptyNote.line(text: context.l10n.noItemsFound),
         ),
         InfiniteListStatus.success when items.isEmpty => SyriusErrorWidget(
           context.l10n.noItemsFound,
@@ -436,19 +437,21 @@ class _LevelsLoading extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final double row = onPage ? _kPageRowHeight : _kRowHeight;
+    final double row = onPage
+        ? AppTokens.of(context).plasmaOtherRowHeight
+        : _kRowHeight;
     // A short card shows fewer bars instead of overflowing.
     return SingleChildScrollView(
       physics: const NeverScrollableScrollPhysics(),
       padding: EdgeInsetsDirectional.fromSTEB(
-        16,
+        onPage ? 0 : 16,
         (onPage ? 0 : _kListHeadHeight + 1) + (row - _kSkeletonBar) / 2,
-        16,
+        onPage ? 0 : 16,
         0,
       ),
       child: SkeletonRows(
         rows: onPage ? 2 : _rows,
-        gap: row + 1 - _kSkeletonBar,
+        gap: row + (onPage ? 0 : 1) - _kSkeletonBar,
       ),
     );
   }
@@ -529,18 +532,26 @@ class _LevelListState extends State<_LevelList> {
   @override
   Widget build(BuildContext context) {
     final TextStyle label = ledgerLabelStyle(context);
-    final Widget list = ListView.separated(
-      controller: _controller,
-      padding: EdgeInsets.zero,
-      itemCount: widget.items.length,
-      separatorBuilder: (_, _) => const Divider(),
-      itemBuilder: (_, int index) => _LevelRow(
-        key: ValueKey<String>(widget.items[index].address),
-        item: widget.items[index],
-        onPage: widget.onPage,
-        onPicked: widget.onPicked,
-      ),
+    Widget itemBuilder(BuildContext context, int index) => _LevelRow(
+      key: ValueKey<String>(widget.items[index].address),
+      item: widget.items[index],
+      onPage: widget.onPage,
+      onPicked: widget.onPicked,
     );
+    final Widget list = widget.onPage
+        ? ListView.builder(
+            controller: _controller,
+            padding: EdgeInsets.zero,
+            itemCount: widget.items.length,
+            itemBuilder: itemBuilder,
+          )
+        : ListView.separated(
+            controller: _controller,
+            padding: EdgeInsets.zero,
+            itemCount: widget.items.length,
+            separatorBuilder: (_, _) => const Divider(),
+            itemBuilder: itemBuilder,
+          );
     if (widget.onPage) {
       return SizedBox.expand(child: list);
     }
@@ -595,9 +606,11 @@ class _LevelRow extends StatelessWidget {
     final String? name = kAddressLabelMap[address];
     final int plasma = item.plasmaInfo.currentPlasma;
     final Widget row = SizedBox(
-      height: onPage ? _kPageRowHeight : _kRowHeight,
+      height: onPage ? tokens.plasmaOtherRowHeight : _kRowHeight,
       child: Padding(
-        padding: const EdgeInsetsDirectional.symmetric(horizontal: 16),
+        padding: onPage
+            ? EdgeInsets.zero
+            : const EdgeInsetsDirectional.symmetric(horizontal: 16),
         child: Row(
           children: <Widget>[
             // The name and its copy button take all the row leaves after the
@@ -626,13 +639,26 @@ class _LevelRow extends StatelessWidget {
                   ),
                   Tooltip(
                     message: context.l10n.commonCopy,
-                    child: CopyToClipboardButton(address, iconSize: 15),
+                    child: onPage
+                        ? IconButtonTheme(
+                            data: IconButtonThemeData(
+                              style: IconButton.styleFrom(
+                                minimumSize: Size.square(
+                                  tokens.plasmaOtherRowHeight,
+                                ),
+                                padding: EdgeInsets.zero,
+                                tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                              ),
+                            ),
+                            child: CopyToClipboardButton(address, iconSize: 15),
+                          )
+                        : CopyToClipboardButton(address, iconSize: 15),
                   ),
                 ],
               ),
             ),
             SizedBox(
-              width: _kRowMeterWidth,
+              width: onPage ? tokens.plasmaOtherMeterWidth : _kRowMeterWidth,
               child: PlasmaLevelMeter(plasma: plasma),
             ),
             SizedBox(

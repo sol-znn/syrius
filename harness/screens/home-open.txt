@@ -1,0 +1,17 @@
+# prerequisite: unlocked-home
+# Real selected-address balances must have arrived. No example data is seeded.
+# Re-enter Home so its view-owned Tokens disclosure starts closed in each theme.
+goto transfer
+goto dashboard
+wait --key home_hero --timeout 30
+wait --key home_tokens_toggle --timeout 30
+tap --key rail_toggle
+wait --key rail_label_dashboard --timeout 5
+tap --key home_tokens_toggle
+wait --key home_tokens_body --timeout 5
+assert --key home_collect_all
+assert --key home_tokens_body
+
+# Restore Tokens only after each fully retained positive shot.
+# after-capture: tap --key home_tokens_toggle
+# after-capture: wait --key home_tokens_body --gone --timeout 5

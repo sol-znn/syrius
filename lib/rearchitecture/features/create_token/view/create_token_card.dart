@@ -1,9 +1,10 @@
-import 'package:material_ui/material_ui.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:lottie/lottie.dart';
+import 'package:material_ui/material_ui.dart';
 import 'package:zenon_syrius_wallet_flutter/rearchitecture/features/card_parts/card_parts.dart';
 import 'package:zenon_syrius_wallet_flutter/rearchitecture/features/create_token_stepper/create_token_stepper.dart';
 import 'package:zenon_syrius_wallet_flutter/rearchitecture/features/multiple_balance/multiple_balance.dart';
+import 'package:zenon_syrius_wallet_flutter/rearchitecture/features/send/bloc/send_transaction/send_transaction_bloc.dart';
 import 'package:zenon_syrius_wallet_flutter/rearchitecture/utils/utils.dart';
 import 'package:zenon_syrius_wallet_flutter/screens/screens.dart';
 import 'package:zenon_syrius_wallet_flutter/utils/utils.dart';
@@ -99,11 +100,12 @@ class _ViewState extends State<_View> with SingleTickerProviderStateMixin {
   }
 
   void _openStepper() {
+    final SendTransactionBloc sender = context.read<SendTransactionBloc>();
     Navigator.push(
       context,
       MaterialPageRoute<void>(
         builder: (BuildContext context) => StepperScreen(
-          stepper: const CreateTokenStepperPage(),
+          stepper: CreateTokenStepperPage(sender: sender),
           onStepperNotificationSeeMorePressed:
               widget.onStepperNotificationSeeMorePressed,
         ),

@@ -94,6 +94,39 @@ void main() {
       );
     });
 
+    test('text signing encodes Unicode as UTF-8', () {
+      expect(
+        messageBytesToSign('A\u00e9\u{1f680}'),
+        <int>[0x41, 0xc3, 0xa9, 0xf0, 0x9f, 0x9a, 0x80],
+      );
+    });
+
+    test('text signing refuses 32 encoded bytes before wallet acquisition', () {
+      for (final String message in <String>[
+        '\u00e9' * 16,
+        '\u{1f680}' * 8,
+        '${'a' * 30}\u00e9',
+      ]) {
+        expect(utf8.encode(message), hasLength(32));
+        expect(message.codeUnits.length, isNot(32));
+        expect(
+          () => walletSignMessage(message),
+          throwsA(isA<FormatException>()),
+        );
+      }
+    });
+
+    test('text signing preserves the neighboring Unicode byte lengths', () {
+      expect(
+        messageBytesToSign('${'\u00e9' * 15}a'),
+        hasLength(31),
+      );
+      expect(
+        messageBytesToSign('${'\u00e9' * 16}a'),
+        hasLength(33),
+      );
+    });
+
     test('FileUtils.deleteFile and deleteDirectory', () async {
       final String missing = pathOf('none');
       await expectLater(

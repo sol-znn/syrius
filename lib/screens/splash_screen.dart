@@ -2,186 +2,195 @@ import 'dart:async';
 import 'dart:io';
 
 import 'package:material_ui/material_ui.dart';
-import 'package:hive_ce/hive_ce.dart';
-import 'package:logging/logging.dart';
-import 'package:lottie/lottie.dart';
-import 'package:reown_walletkit/reown_walletkit.dart';
-import 'package:zenon_syrius_wallet_flutter/blocs/blocs.dart';
-import 'package:zenon_syrius_wallet_flutter/main.dart';
+import 'package:zenon_syrius_wallet_flutter/main.dart' show sharedPrefsService;
 import 'package:zenon_syrius_wallet_flutter/model/model.dart';
+import 'package:zenon_syrius_wallet_flutter/rearchitecture/utils/extensions/buildcontext_extension.dart';
 import 'package:zenon_syrius_wallet_flutter/screens/screens.dart';
-import 'package:zenon_syrius_wallet_flutter/services/i_web3wallet_service.dart';
+import 'package:zenon_syrius_wallet_flutter/utils/entry_capture_source.dart';
 import 'package:zenon_syrius_wallet_flutter/utils/utils.dart';
+import 'package:zenon_syrius_wallet_flutter/utils/wallet_maintenance.dart';
+import 'package:zenon_syrius_wallet_flutter/widgets/reusable_widgets/startup_stage.dart';
 import 'package:zenon_syrius_wallet_flutter/widgets/widgets.dart';
 
+/// Plays the original launch before the existing startup and routing work.
 class SplashScreen extends StatefulWidget {
+  /// Creates one startup session; rebuilding never starts initialization again.
+  const SplashScreen({
+    this.maintenance,
+    this.resetStartup,
+    super.key,
+  });
+
+  /// The initial route and the existing reset/cache re-entry route.
   static const String route = 'splash-screen';
 
-  final bool resetWalletFlow;
-  final bool deleteCacheFlow;
+  /// A one-use original request captured before its question or lock attempt.
+  /// Boolean maintenance routes cannot recapture mutable global resources.
+  final WalletMaintenanceRequest? maintenance;
 
-  const SplashScreen({
-    this.resetWalletFlow = false,
-    this.deleteCacheFlow = false,
-    Key? key,
-  }) : super(key: key);
+  /// Fresh startup is a separate captured owner after positive reset cleanup.
+  final WalletMaintenanceStartup? resetStartup;
 
   @override
   State<SplashScreen> createState() => _SplashScreenState();
 }
 
 class _SplashScreenState extends State<SplashScreen> {
-  // The start-up work runs once, when the animation has played. A rebuild
-  // (a theme change, a resize) must not start it again.
   bool _initsScheduled = false;
+  bool _maintenanceUnavailable = false;
+  late final StartupStageSession _startup;
+  final Object _entrySource = Object();
+  EntryStartupReceipt? _entryCapture;
 
-  // Set when the animation has played and the start-up work is still going.
-  bool _waiting = false;
-
-  void _onAnimationLoaded(LottieComposition composition) {
-    if (_initsScheduled) return;
-    _initsScheduled = true;
-    Future.delayed(composition.duration, () {
-      if (mounted) setState(() => _waiting = true);
-      // What the first pages draw, read while the start-up work waits on
-      // the disk and the node: off this isolate, and after the launch
-      // animation, so it costs that no frame.
-      unawaited(AppLottie.preload());
-      _splashInits();
+  @override
+  void initState() {
+    super.initState();
+    _startup = StartupStageSession(
+      onDone: _onFilmDone,
+      authBuilder: (_, StartupStageSession session) =>
+          widget.maintenance == null
+          ? LockTabChild(
+              session.unlock,
+              session.initialized,
+              replay: session.replay,
+              startup: session,
+            )
+          : const SizedBox.shrink(),
+    );
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) _startup.show(context);
     });
   }
 
   @override
-  Widget build(BuildContext context) {
-    // The animation's frames are drawn on black, edge to edge; the window
-    // round them is black too, so a window of another shape shows no seam.
-    return ColoredBox(
-      color: Colors.black,
-      child: Stack(
-        fit: StackFit.expand,
-        children: <Widget>[
-          // The launch animation is kept as it was, filling the window, on a
-          // layer of its own. Its 56 frames are given back when this screen
-          // goes.
-          AppLottie(
-            AppLottieAsset.splash,
-            repeat: false,
-            fit: BoxFit.contain,
-            onLoaded: _onAnimationLoaded,
-          ),
-          // Once the animation has played, a thin line says the app is
-          // still starting, rather than a still black window.
-          Align(
-            alignment: const Alignment(0, 0.82),
-            child: AnimatedOpacity(
-              opacity: _waiting ? 1 : 0,
-              duration: Durations.medium2,
-              curve: Easing.standard,
-              child: SizedBox(
-                width: 120,
-                child: ClipRRect(
-                  borderRadius: BorderRadius.circular(2),
-                  child: _waiting
-                      ? const LinearProgressIndicator(
-                          minHeight: 2,
-                          color: AppColors.znnColor,
-                          backgroundColor: Color(0x1FFFFFFF),
-                        )
-                      : const SizedBox(height: 2),
-                ),
-              ),
-            ),
-          ),
-        ],
-      ),
-    );
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    final ModalRoute<dynamic>? route = ModalRoute.of(context);
+    if (widget.maintenance != null || route == null) return;
+    final EntryStartupReceipt? receipt = EntryCaptureRegistry.instance
+        .attachStartup(
+          owner: this,
+          source: _entrySource,
+          route: route,
+          startupOwner: _startup,
+          detached: _startup.detached,
+          cleanup: _startup.cleanup,
+          current: () =>
+              mounted &&
+              route.isCurrent &&
+              identical(ModalRoute.of(context), route),
+        );
+    _entryCapture ??= receipt;
   }
+
+  void _onFilmDone() {
+    if (!mounted || _initsScheduled) return;
+    _initsScheduled = true;
+    _startup.wait();
+    // Optional art preloading cannot replace startup's actual result.
+    unawaited(AppLottie.preload().onError<Object>((Object _, StackTrace _) {}));
+    final Future<void> original = _splashInits();
+    _entryCapture?.retainSplashOperation(original);
+    unawaited(original);
+  }
+
+  @override
+  Widget build(BuildContext context) => ColoredBox(
+    color: AppTokens.of(context).launchStageBackground,
+    child: _maintenanceUnavailable
+        ? Center(child: Text(context.l10n.walletSettingsUnavailable))
+        : const SizedBox.expand(),
+  );
 
   Future<void> _splashInits() async {
     try {
-      widget.resetWalletFlow
-          ? await _resetWallet()
-          : widget.deleteCacheFlow
-          ? await _deleteCache().then((value) => exit(0))
-          : await InitUtils.initApp(context);
+      final WalletMaintenanceRequest? request = widget.maintenance;
+      if (request != null) {
+        final WalletMaintenanceOutcome outcome = await request.filmDone(
+          ModalRoute.of(context),
+        );
+        _startup.dispose();
+        if (!mounted || !request.canNavigate) {
+          return;
+        }
+        if (outcome.status == WalletMaintenanceStatus.completed) {
+          if (request.kind == WalletMaintenanceKind.cache) {
+            exit(0);
+          }
+          final WalletMaintenanceStartupReceipt? receipt = request
+              .takeStartupReceipt(ModalRoute.of(context));
+          final WalletMaintenanceStartup? startup = widget.resetStartup;
+          if (receipt != null && startup != null && await startup(receipt)) {
+            return;
+          }
+          if (mounted && request.canNavigate) {
+            setState(() => _maintenanceUnavailable = true);
+          }
+        } else {
+          setState(() => _maintenanceUnavailable = true);
+        }
+        return;
+      }
+      _entryCapture?.beginInitialization();
+      try {
+        final Future<void> original = InitUtils.initApp(context);
+        _entryCapture?.initializing(original);
+        await original;
+      } on Object catch (error, stack) {
+        _entryCapture?.initializationFailed(error, stack);
+        rethrow;
+      }
+      if (!mounted) return;
       _navigateToNextScreen();
-    } on Exception catch (e) {
-      Navigator.pushReplacementNamed(
+    } on Object catch (error) {
+      if (!mounted) return;
+      _startup.dispose();
+      if (widget.maintenance != null) {
+        // The exact original error remains in its owner; display no raw path.
+        if (widget.maintenance!.canNavigate) {
+          setState(() => _maintenanceUnavailable = true);
+        }
+        return;
+      }
+      Navigator.pushReplacementNamed<void, void>(
         context,
         SyriusErrorWidget.route,
-        arguments: CustomSyriusErrorWidgetArguments(e.toString()),
+        arguments: CustomSyriusErrorWidgetArguments(error.toString()),
       );
     }
   }
 
   void _navigateToNextScreen() {
-    return kWalletPath != null
-        ? _checkForDefaultNode()
-        : Navigator.pushReplacementNamed(
-            context,
-            AccessWalletScreen.route,
-          );
+    if (kWalletPath != null) {
+      _checkForDefaultNode();
+    } else {
+      _startup.dispose();
+      _entryCapture?.requestingWelcome();
+      Navigator.pushReplacementNamed<void, void>(
+        context,
+        AccessWalletScreen.route,
+        arguments: _entryCapture,
+      );
+    }
   }
 
   void _navigateToHomeScreen() {
+    if (kWalletInitCompleted) _startup.dispose();
     Navigator.of(
       context,
       rootNavigator: true,
-    ).pushReplacementNamed(MainAppContainer.route);
+    ).pushReplacementNamed<void, void>(
+      MainAppContainer.route,
+      arguments: _startup.isClosed ? null : _startup,
+    );
   }
 
   void _navigateToNodeManagementScreen() {
+    _startup.dispose();
     Navigator.of(
       context,
       rootNavigator: true,
-    ).pushReplacementNamed(NodeManagementScreen.route);
-  }
-
-  Future<void> _resetWallet() async {
-    // In case the notification was not dismissed, we add a null value to be ignored
-    // after the user creates or imports a new wallet
-    kWalletInitCompleted = false;
-    await sl.get<NotificationsBloc>().addNotification(null);
-    NodeUtils.stopWebSocketClient();
-    if (sl<AutoReceiveTxWorker>().pool.isNotEmpty) {
-      sl<AutoReceiveTxWorker>().pool.clear();
-    }
-    await _deleteCache();
-    await _deleteWalletFile();
-    if (!mounted) return;
-    await InitUtils.initApp(context);
-  }
-
-  Future<void> _deleteCache() async {
-    await Hive.close();
-    await Future.forEach<String>(
-      kCacheBoxesToBeDeleted,
-      (boxName) async => await Hive.deleteBoxFromDisk(boxName),
-    );
-    await _deleteWeb3Cache();
-  }
-
-  Future<void> _deleteWeb3Cache() async {
-    try {
-      final IWeb3WalletService web3WalletService = sl<IWeb3WalletService>();
-      for (final PairingInfo pairing in web3WalletService.pairings.value) {
-        await web3WalletService.deactivatePairing(topic: pairing.topic);
-      }
-    } catch (e, stackTrace) {
-      Logger(
-        'SplashScreen',
-      ).log(Level.WARNING, '_deleteWeb3Cache', e, stackTrace);
-    }
-  }
-
-  Future<void> _deleteWalletFile() async {
-    await Hive.deleteBoxFromDisk(kKeyStoreBox);
-    if (kWalletFile != null) kWalletFile!.close();
-    kWalletFile = null;
-    if (kWalletPath != null) {
-      await FileUtils.deleteFile(kWalletPath!);
-      kWalletPath = null;
-    }
+    ).pushReplacementNamed<void, void>(NodeManagementScreen.route);
   }
 
   void _checkForDefaultNode() =>
@@ -194,6 +203,7 @@ class _SplashScreenState extends State<SplashScreen> {
 
   @override
   void dispose() {
+    if (!_startup.claimed) _startup.dispose();
     super.dispose();
   }
 }

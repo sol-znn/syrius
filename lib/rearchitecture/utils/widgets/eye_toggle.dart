@@ -42,6 +42,7 @@ class EyeToggle extends StatefulWidget {
     required this.keyPrefix,
     this.tooltip,
     this.size = 20,
+    this.padding = const EdgeInsets.all(_kEyePadding),
     this.visibility,
     super.key,
   });
@@ -55,6 +56,9 @@ class EyeToggle extends StatefulWidget {
 
   /// The width of the eye itself, in logical pixels.
   final double size;
+
+  /// The pointer and focus inset around the glyph.
+  final EdgeInsetsGeometry padding;
 
   /// What it shows and toggles. [BalanceVisibility.instance] when null.
   final BalanceVisibility? visibility;
@@ -241,7 +245,7 @@ class _EyeToggleState extends State<EyeToggle>
               ),
             ),
             child: Padding(
-              padding: const EdgeInsets.all(_kEyePadding),
+              padding: widget.padding,
               child: eye,
             ),
           ),

@@ -1,5 +1,5 @@
-import 'package:material_ui/material_ui.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:material_ui/material_ui.dart';
 import 'package:zenon_syrius_wallet_flutter/l10n/app_localizations.dart';
 import 'package:zenon_syrius_wallet_flutter/l10n/l10n.dart';
 import 'package:zenon_syrius_wallet_flutter/rearchitecture/features/card_parts/card_parts.dart';
@@ -157,7 +157,7 @@ void main() {
 
       await tester.enterText(find.byKey(const Key('go_to_field')), 'zzz');
       await tester.pump();
-      expect(find.text('No page by that name'), findsOneWidget);
+      expect(find.text('None yet'), findsOneWidget);
 
       await tester.pumpWidget(
         _app(const GoToPalette<int>(entries: entries, hintText: 'Jump')),

@@ -42,11 +42,14 @@ final class IssueTokenDone extends IssueTokenState {
 /// Failure state emitted when issuing fails.
 final class IssueTokenFailure extends IssueTokenState {
   /// Creates an [IssueTokenFailure] state.
-  const IssueTokenFailure({required this.exception});
+  const IssueTokenFailure({required this.exception, this.error});
 
   /// The error that caused token issuing to fail.
   final SyriusException exception;
 
+  /// The original preparation or publication error before display mapping.
+  final Object? error;
+
   @override
-  List<Object?> get props => <Object?>[exception];
+  List<Object?> get props => <Object?>[exception, error];
 }

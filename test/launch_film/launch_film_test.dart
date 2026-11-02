@@ -85,8 +85,7 @@ Future<int> _colour(WidgetTester tester) async {
   final ByteData? pixels = await tester.runAsync<ByteData?>(
     image.toByteData,
   );
-  final int offset =
-      ((image.height ~/ 2) * image.width + image.width ~/ 2) * 4;
+  final int offset = ((image.height ~/ 2) * image.width + image.width ~/ 2) * 4;
   return pixels!.getUint32(offset) >> 8;
 }
 
@@ -540,6 +539,11 @@ void main() {
     expect(done, 1);
     expect(_shown(tester), isNull);
     expect(controller.frame, -1);
+
+    controller.skipToEnd();
+    await _step(tester);
+    expect(done, 1);
+    expect(tester.takeException(), isNull);
   });
 
   testWidgets('a controller swapped in mid-run takes the film over', (
@@ -564,5 +568,124 @@ void main() {
     // The one let go heard nothing more.
     expect(first.frame, 0);
     expect(first.isDone, isFalse);
+  });
+
+  testWidgets('a queued play takes over and cancels the previous run', (
+    WidgetTester tester,
+  ) async {
+    final LaunchFilmController first = LaunchFilmController();
+    final LaunchFilmController second = LaunchFilmController()..play(from: 5);
+    addTearDown(first.dispose);
+    addTearDown(second.dispose);
+    final List<int> frames = _record(second);
+    await tester.pumpWidget(_host(LaunchFilm(asset: _film, controller: first)));
+    await _until(tester, () => first.frame == 0);
+
+    await tester.pumpWidget(
+      _host(LaunchFilm(asset: _film, controller: second)),
+    );
+    expect(second.frame, 0);
+    await _until(tester, () => second.frame != 0);
+    expect(second.frame, 5);
+    expect(await _colour(tester), _colours[5]);
+    await _until(
+      tester,
+      () => second.isDone,
+      by: const Duration(milliseconds: 20),
+    );
+    expect(frames, <int>[0, 5, 6, 7]);
+    expect(first.frame, 0);
+
+    // The pending command was consumed. Reattaching that controller to
+    // the finished film must not replay it a second time.
+    await tester.pumpWidget(_host(LaunchFilm(asset: _film, controller: first)));
+    await tester.pumpWidget(
+      _host(LaunchFilm(asset: _film, controller: second)),
+    );
+    await _step(tester, const Duration(milliseconds: 500));
+    expect(second.isDone, isTrue);
+    expect(frames, <int>[0, 5, 6, 7]);
+  });
+
+  testWidgets('a queued skip is applied when a controller takes over', (
+    WidgetTester tester,
+  ) async {
+    final LaunchFilmController first = LaunchFilmController();
+    final LaunchFilmController second = LaunchFilmController()..skipToEnd();
+    addTearDown(first.dispose);
+    addTearDown(second.dispose);
+    final List<int> frames = _record(second);
+    await tester.pumpWidget(_host(LaunchFilm(asset: _film, controller: first)));
+    await _until(
+      tester,
+      () => first.frame == 1,
+      by: const Duration(milliseconds: 20),
+    );
+
+    await tester.pumpWidget(
+      _host(LaunchFilm(asset: _film, controller: second)),
+    );
+    // The skip does not wait for the remaining frames' display durations.
+    await _until(tester, () => second.isDone);
+    expect(frames, <int>[1, _last]);
+    expect(await _colour(tester), _colours[_last]);
+    expect(first.frame, 1);
+  });
+
+  testWidgets('a newer takeover listener request replaces the queued one', (
+    WidgetTester tester,
+  ) async {
+    final LaunchFilmController first = LaunchFilmController();
+    final LaunchFilmController second = LaunchFilmController()..play(from: 5);
+    addTearDown(first.dispose);
+    addTearDown(second.dispose);
+    bool requested = false;
+    second.addListener(() {
+      if (!requested && second.frame == 0) {
+        requested = true;
+        second.play(from: 3);
+      }
+    });
+    await tester.pumpWidget(_host(LaunchFilm(asset: _film, controller: first)));
+    await _until(tester, () => first.frame == 0);
+
+    await tester.pumpWidget(
+      _host(LaunchFilm(asset: _film, controller: second)),
+    );
+    await _until(tester, () => second.frame != 0);
+    expect(requested, isTrue);
+    expect(second.frame, 3);
+    expect(await _colour(tester), _colours[3]);
+    await tester.pumpWidget(const SizedBox());
+    await _step(tester);
+    expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('a reused completed controller can skip a new film', (
+    WidgetTester tester,
+  ) async {
+    final LaunchFilmController controller = LaunchFilmController()..skipToEnd();
+    addTearDown(controller.dispose);
+    int done = 0;
+    Widget film() => _host(
+      LaunchFilm(
+        asset: _film,
+        autoplay: false,
+        controller: controller,
+        onDone: () => done += 1,
+      ),
+    );
+    await tester.pumpWidget(film());
+    await _until(tester, () => controller.isDone);
+    expect(await _colour(tester), _colours[_last]);
+    await tester.pumpWidget(const SizedBox());
+
+    controller.skipToEnd();
+    await tester.pumpWidget(film());
+    expect(controller.isDone, isFalse);
+    await _until(tester, () => controller.isDone);
+    expect(controller.frame, _last);
+    expect(await _colour(tester), _colours[_last]);
+    expect(done, 2);
   });
 }

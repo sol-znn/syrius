@@ -1,0 +1,11 @@
+# prerequisite: unlocked-home
+# Uses the selected account's actual balances and the complete node catalog.
+# No issuance, favorite mutation, signing or chain action is performed.
+goto tokens
+wait --key tokens_strip --timeout 30
+wait --key tokens_list --timeout 30
+wait --key tokens_filter_held --timeout 30
+tap --key tokens_filter_held
+assert --key tokens_search_field
+# after-capture: goto dashboard
+# after-capture: wait --key home_hero --timeout 5

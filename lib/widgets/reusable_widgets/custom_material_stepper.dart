@@ -1,5 +1,5 @@
 import 'package:material_ui/material_ui.dart';
-import 'package:zenon_syrius_wallet_flutter/rearchitecture/utils/widgets/motion/state_switcher.dart';
+import 'package:zenon_syrius_wallet_flutter/rearchitecture/utils/widgets/motion/step_switcher.dart';
 import 'package:zenon_syrius_wallet_flutter/utils/app_colors.dart';
 import 'package:zenon_syrius_wallet_flutter/utils/app_theme.dart';
 
@@ -22,8 +22,7 @@ enum StepState {
   /// A step that is disabled and does not to react to taps.
   disabled,
 
-  /// A step that is currently having an error. e.g. the user has submitted wrong
-  /// input.
+  /// A step with an error, such as invalid submitted input.
   error,
 }
 
@@ -62,9 +61,6 @@ const double _kDoneLine = 0.5;
 // below each mark.
 const double _kConnectorWidth = 1;
 const double _kConnectorStub = 12;
-// How far a step's content travels as it opens: the same few pixels the
-// shared `StateSwitcher` moves a state along its axis.
-const double _kTravel = 16;
 // A connector is three parts in a row: the stub under a mark, the line
 // beside the step's content, the stub over the next mark. Each takes its
 // share of the fill, so the green runs from one mark to the next.
@@ -148,7 +144,10 @@ class Stepper extends StatefulWidget {
     this.onStepCancel,
     this.controlsBuilder,
     this.activeColor = AppColors.znnColor,
-  }) : assert(0 <= currentStep && currentStep < steps.length);
+  }) : assert(
+         0 <= currentStep && currentStep < steps.length,
+         'The selected step must belong to the stepper.',
+       );
 
   /// The color of the circle next to the name of the step when the step
   /// is selected or completed
@@ -205,7 +204,10 @@ class Stepper extends StatefulWidget {
   /// Widget build(BuildContext context) {
   ///   return Stepper(
   ///     controlsBuilder:
-  ///       (BuildContext context, { VoidCallback onStepContinue, VoidCallback onStepCancel }) {
+  ///       (BuildContext context, {
+  ///         VoidCallback onStepContinue,
+  ///         VoidCallback onStepCancel,
+  ///       }) {
   ///          return Row(
   ///            children: <Widget>[
   ///              TextButton(
@@ -249,9 +251,6 @@ class _StepperState extends State<Stepper> with TickerProviderStateMixin {
   late List<GlobalKey> _keys;
   final Map<int, StepState> _oldStates = <int, StepState>{};
 
-  // Whether the last change of step went on, or back.
-  bool _forward = true;
-
   @override
   void initState() {
     super.initState();
@@ -268,13 +267,13 @@ class _StepperState extends State<Stepper> with TickerProviderStateMixin {
   @override
   void didUpdateWidget(Stepper oldWidget) {
     super.didUpdateWidget(oldWidget);
-    assert(widget.steps.length == oldWidget.steps.length);
+    assert(
+      widget.steps.length == oldWidget.steps.length,
+      'Use a new stepper key when changing the number of steps.',
+    );
 
     for (int i = 0; i < oldWidget.steps.length; i += 1) {
       _oldStates[i] = oldWidget.steps[i].state;
-    }
-    if (widget.currentStep != oldWidget.currentStep) {
-      _forward = widget.currentStep > oldWidget.currentStep;
     }
   }
 
@@ -587,7 +586,11 @@ class _StepperState extends State<Stepper> with TickerProviderStateMixin {
     );
   }
 
-  Widget _buildVerticalBody(int index) {
+  bool get _showContent =>
+      !_isLast(widget.currentStep) ||
+      widget.steps[widget.currentStep].state != StepState.complete;
+
+  Widget _buildVerticalBody(int index, Widget entry) {
     return Stack(
       children: <Widget>[
         PositionedDirectional(
@@ -604,88 +607,61 @@ class _StepperState extends State<Stepper> with TickerProviderStateMixin {
             ),
           ),
         ),
-        AnimatedCrossFade(
-          firstChild: Container(height: 0),
-          secondChild: Container(
-            margin: const EdgeInsetsDirectional.only(
-              start: 40,
-              end: 24,
-            ),
-            // The content of the step that opens travels a few pixels into
-            // place along the steps' axis: up when the flow moves on, down
-            // when it goes back.
-            child: TweenAnimationBuilder<double>(
-              tween: Tween<double>(end: _isCurrent(index) ? 0 : 1),
-              duration: Durations.medium1,
-              curve: Easing.emphasizedDecelerate,
-              builder: (BuildContext context, double t, Widget? child) =>
-                  Transform.translate(
-                    offset: Offset(0, (_forward ? _kTravel : -_kTravel) * t),
-                    child: child,
-                  ),
-              child: Column(
-                children: <Widget>[
-                  Visibility(
-                    visible: index == widget.steps.length - 1
-                        ? widget.steps[index].state != StepState.complete
-                        : true,
-                    child: widget.steps[index].content,
-                  ),
-                  _buildVerticalControls(),
-                ],
-              ),
-            ),
-          ),
-          firstCurve: const Interval(0, 0.6, curve: Easing.standard),
-          secondCurve: const Interval(0.4, 1, curve: Easing.standard),
-          sizeCurve: Easing.standard,
-          crossFadeState: _isCurrent(index)
-              ? CrossFadeState.showSecond
-              : CrossFadeState.showFirst,
-          duration: Durations.medium1,
+        Container(
+          margin: const EdgeInsetsDirectional.only(start: 40, end: 24),
+          child: entry,
         ),
       ],
     );
   }
 
   Widget _buildVertical() {
-    return ListView(
-      shrinkWrap: true,
-      physics: widget.physics,
+    return StepSwitcher.retained(
+      step: widget.currentStep,
+      showContent: _showContent,
+      fillColor: AppTokens.of(context).card,
       children: <Widget>[
-        for (int i = 0; i < widget.steps.length; i += 1)
-          Column(
-            key: _keys[i],
-            children: <Widget>[
-              InkWell(
-                overlayColor: WidgetStateProperty.resolveWith(
-                  (Set<WidgetState> states) =>
-                      states.contains(WidgetState.hovered)
-                      ? Colors.transparent
-                      : null,
-                ),
-                onTap: widget.steps[i].state != StepState.disabled
-                    ? () {
-                        // In the vertical case we need to scroll to the newly tapped
-                        // step.
-                        Scrollable.ensureVisible(
-                          _keys[i].currentContext!,
-                          curve: Easing.standard,
-                          duration: Durations.short4,
-                        );
-
-                        if (widget.onStepTapped != null) {
-                          widget.onStepTapped!(i);
-                        }
-                      }
-                    : null,
-                canRequestFocus: widget.steps[i].state != StepState.disabled,
-                child: _buildVerticalHeader(i),
-              ),
-              _buildVerticalBody(i),
-            ],
-          ),
+        for (final Step step in widget.steps) step.content,
       ],
+      layoutBuilder: (BuildContext context, List<Widget> entries) =>
+          SingleChildScrollView(
+            physics: widget.physics,
+            // A lazy list can dispose a closed step outside the viewport.
+            // The flow owns every body until the stepper itself is removed.
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: <Widget>[
+                for (int i = 0; i < widget.steps.length; i += 1)
+                  Column(
+                    key: _keys[i],
+                    children: <Widget>[
+                      InkWell(
+                        overlayColor: WidgetStateProperty.resolveWith(
+                          (Set<WidgetState> states) =>
+                              states.contains(WidgetState.hovered)
+                              ? Colors.transparent
+                              : null,
+                        ),
+                        onTap: widget.steps[i].state != StepState.disabled
+                            ? () {
+                                Scrollable.ensureVisible(
+                                  _keys[i].currentContext!,
+                                  curve: Easing.standard,
+                                  duration: Durations.short4,
+                                );
+                                widget.onStepTapped?.call(i);
+                              }
+                            : null,
+                        canRequestFocus:
+                            widget.steps[i].state != StepState.disabled,
+                        child: _buildVerticalHeader(i),
+                      ),
+                      _buildVerticalBody(i, entries[i]),
+                    ],
+                  ),
+              ],
+            ),
+          ),
     );
   }
 
@@ -695,7 +671,7 @@ class _StepperState extends State<Stepper> with TickerProviderStateMixin {
         InkResponse(
           onTap: widget.steps[i].state != StepState.disabled
               ? () {
-                  if (widget.onStepTapped != null) widget.onStepTapped!(i);
+                  widget.onStepTapped?.call(i);
                 }
               : null,
           canRequestFocus: widget.steps[i].state != StepState.disabled,
@@ -746,27 +722,13 @@ class _StepperState extends State<Stepper> with TickerProviderStateMixin {
             physics: widget.physics,
             padding: const EdgeInsets.all(24),
             children: <Widget>[
-              Visibility(
-                visible: widget.currentStep == widget.steps.length - 1
-                    ? widget.steps[widget.currentStep].state !=
-                          StepState.complete
-                    : true,
-                // Steps follow one another, so they share the horizontal
-                // axis: the next comes in from the right, the last from the
-                // left.
-                child: AnimatedSize(
-                  curve: Easing.standard,
-                  duration: Durations.short4,
-                  alignment: Alignment.topCenter,
-                  child: StateSwitcher(
-                    axis: Axis.horizontal,
-                    forward: _forward,
-                    child: KeyedSubtree(
-                      key: ValueKey<int>(widget.currentStep),
-                      child: widget.steps[widget.currentStep].content,
-                    ),
-                  ),
-                ),
+              StepSwitcher.retained(
+                step: widget.currentStep,
+                showContent: _showContent,
+                fillColor: AppTokens.of(context).card,
+                children: <Widget>[
+                  for (final Step step in widget.steps) step.content,
+                ],
               ),
               _buildVerticalControls(),
             ],
@@ -778,8 +740,11 @@ class _StepperState extends State<Stepper> with TickerProviderStateMixin {
 
   @override
   Widget build(BuildContext context) {
-    assert(debugCheckHasMaterial(context));
-    assert(debugCheckHasMaterialLocalizations(context));
+    assert(debugCheckHasMaterial(context), 'A stepper needs Material.');
+    assert(
+      debugCheckHasMaterialLocalizations(context),
+      'A stepper needs Material localizations.',
+    );
     assert(() {
       if (context.findAncestorWidgetOfExactType<Stepper>() != null) {
         throw FlutterError(
@@ -790,7 +755,7 @@ class _StepperState extends State<Stepper> with TickerProviderStateMixin {
         );
       }
       return true;
-    }());
+    }(), 'Steppers cannot be nested.');
     switch (widget.type) {
       case StepperType.vertical:
         return _buildVertical();

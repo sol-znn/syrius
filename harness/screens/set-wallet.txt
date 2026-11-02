@@ -1,0 +1,17 @@
+# prerequisite: unlocked-home
+# Use an isolated harness profile.
+# Navigation only. Do not change preferences, scan receives or delete data.
+goto settings
+tap --key settings_wallet
+wait --key wallet_settings_page --timeout 30
+assert --key wallet_settings_preferences
+assert --key wallet_settings_autoReceive
+assert --key wallet_settings_desktopNotifications
+assert --key wallet_settings_launchAtStartup
+assert --key wallet_settings_modes_gate
+assert --key wallet_settings_wallets_gate
+assert --key wallet_settings_maintenance_toggle
+
+# Return only after a fully retained positive shot.
+# after-capture: goto dashboard
+# after-capture: wait --key home_hero --timeout 5

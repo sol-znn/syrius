@@ -1,519 +1,382 @@
 import 'dart:async';
 
 import 'package:material_ui/material_ui.dart';
-import 'package:flutter_svg/svg.dart';
-import 'package:stacked/stacked.dart';
-import 'package:zenon_syrius_wallet_flutter/blocs/p2p_swap/htlc_swap/complete_htlc_swap_bloc.dart';
-import 'package:zenon_syrius_wallet_flutter/blocs/p2p_swap/htlc_swap/htlc_swap_bloc.dart';
-import 'package:zenon_syrius_wallet_flutter/blocs/p2p_swap/htlc_swap/reclaim_htlc_swap_funds_bloc.dart';
+import 'package:zenon_syrius_wallet_flutter/blocs/p2p_swap/htlc_swap/swap_action_origin.dart';
+import 'package:zenon_syrius_wallet_flutter/blocs/p2p_swap/htlc_swap/swap_actions.dart';
 import 'package:zenon_syrius_wallet_flutter/model/p2p_swap/htlc_swap.dart';
-import 'package:zenon_syrius_wallet_flutter/model/p2p_swap/p2p_swap.dart';
-import 'package:zenon_syrius_wallet_flutter/rearchitecture/features/home/home.dart'
-    show AmountText;
 import 'package:zenon_syrius_wallet_flutter/rearchitecture/utils/extensions/buildcontext_extension.dart';
-import 'package:zenon_syrius_wallet_flutter/utils/utils.dart';
-import 'package:zenon_syrius_wallet_flutter/widgets/modular_widgets/p2p_swap_widgets/htlc_card.dart';
-import 'package:zenon_syrius_wallet_flutter/widgets/modular_widgets/p2p_swap_widgets/htlc_swap_details_widget.dart';
-import 'package:zenon_syrius_wallet_flutter/widgets/reusable_widgets/buttons/instruction_button.dart';
-import 'package:zenon_syrius_wallet_flutter/widgets/reusable_widgets/error_widget.dart';
-import 'package:zenon_syrius_wallet_flutter/widgets/reusable_widgets/exchange_rate_widget.dart';
-import 'package:zenon_syrius_wallet_flutter/widgets/reusable_widgets/important_text_container.dart';
-import 'package:zenon_syrius_wallet_flutter/widgets/reusable_widgets/loading_info_text.dart';
-import 'package:zenon_syrius_wallet_flutter/widgets/reusable_widgets/loading_widget.dart';
-import 'package:zenon_syrius_wallet_flutter/widgets/reusable_widgets/modals/base_modal.dart';
+import 'package:zenon_syrius_wallet_flutter/utils/app_theme.dart';
+import 'package:zenon_syrius_wallet_flutter/utils/constants.dart';
+import 'package:zenon_syrius_wallet_flutter/widgets/modular_widgets/p2p_swap_widgets/modals/swap_action_boundary.dart';
+import 'package:zenon_syrius_wallet_flutter/widgets/modular_widgets/p2p_swap_widgets/modals/swap_action_data.dart';
+import 'package:zenon_syrius_wallet_flutter/widgets/modular_widgets/p2p_swap_widgets/modals/swap_action_surface.dart';
+import 'package:zenon_syrius_wallet_flutter/widgets/modular_widgets/p2p_swap_widgets/modals/swap_modal_state.dart';
 import 'package:znn_sdk_dart/znn_sdk_dart.dart';
 
-/// One swap, from its first deposit to its end: what each side puts in,
-/// and the one thing this wallet can do next.
+/// Recorded terms and current positive deposits remain separate facts.
 class NativeP2pSwapModal extends StatefulWidget {
-  /// Creates the dialog of the swap with [swapId].
+  /// Opens exact original history and independently refreshed public deposits.
   const NativeP2pSwapModal({
     required this.swapId,
     this.onSwapStarted,
+    this.source,
+    this.sourceIsCurrent,
+    this.dollars = swapLiveDollars,
     super.key,
   });
 
-  /// The swap shown.
+  /// Exact original key; changing it cannot retarget this mounted view.
   final String swapId;
 
-  /// Called with the swap's id once it has started.
-  final Function(String)? onSwapStarted;
+  /// Legacy accepted-start callback retained for constructor compatibility.
+  final ValueChanged<String>? onSwapStarted;
 
+  /// Original wallet and chain capabilities retained by this route.
+  final SwapActionOrigin? source;
+
+  /// Caller-owned exact-row or catalogue guard.
+  final bool Function()? sourceIsCurrent;
+
+  /// Dollar-line renderer, independent of financial-action authority.
+  final SwapDollarBuilder dollars;
   @override
   State<NativeP2pSwapModal> createState() => _NativeP2pSwapModalState();
 }
 
-class _NativeP2pSwapModalState extends State<NativeP2pSwapModal> {
-  late final HtlcSwapBloc _htlcSwapBloc;
+enum _DetailAction { unlock, reclaim }
 
-  String _swapCompletedText = 'Swap completed';
-
-  bool _isSendingTransaction = false;
-  bool _shouldShowIncorrectAmountInstructions = false;
+class _NativeP2pSwapModalState extends State<NativeP2pSwapModal>
+    with CapturedSwapModal<NativeP2pSwapModal> {
+  @override
+  SwapActionOrigin? get providedOrigin => widget.source;
+  @override
+  bool Function()? get providedIsCurrent => widget.sourceIsCurrent;
+  late final String _originalId;
+  SwapDetailRead? _details;
+  Future<SwapDetailRead>? _read;
+  bool _attempted = false;
+  bool _reading = false;
+  bool _readFailed = false;
+  bool _checkedAmounts = false;
+  _DetailAction? _action;
 
   @override
   void initState() {
     super.initState();
-    _htlcSwapBloc = HtlcSwapBloc(widget.swapId);
-    _htlcSwapBloc.getDataPeriodically();
+    _originalId = widget.swapId;
   }
 
-  @override
-  void dispose() {
-    _htlcSwapBloc.dispose();
-    super.dispose();
-  }
+  bool _owns(SwapViewLease lease) =>
+      owns(lease) && widget.swapId == _originalId;
 
-  @override
-  Widget build(BuildContext context) {
-    return StreamBuilder<HtlcSwap>(
-      stream: _htlcSwapBloc.stream,
-      builder: (_, AsyncSnapshot<HtlcSwap> snapshot) {
-        if (snapshot.hasData) {
-          return BaseModal(
-            title: _getTitle(snapshot.data!),
-            child: _buildContent(snapshot.data!),
-          );
-        } else if (snapshot.hasError) {
-          return BaseModal(
-            title: '',
-            child: Padding(
-              padding: const EdgeInsets.all(20),
-              child: RepaintBoundary(
-                child: SyriusErrorWidget(snapshot.error!),
-              ),
-            ),
-          );
-        }
-        return const SyriusLoadingWidget(size: 18, strokeWidth: 1.5);
-      },
-    );
-  }
-
-  String _getTitle(HtlcSwap swap) {
-    return swap.state == P2pSwapState.active ? 'Active swap' : '';
-  }
-
-  TextStyle get _dim =>
-      Theme.of(context).textTheme.titleMedium!.copyWith(fontSize: 13);
-
-  TextStyle get _body =>
-      Theme.of(context).textTheme.bodyLarge!.copyWith(fontSize: 14);
-
-  Widget _buildContent(HtlcSwap swap) {
-    switch (swap.state) {
-      case P2pSwapState.pending:
-        return _buildPendingView();
-      case P2pSwapState.active:
-        return _buildActiveView(swap);
-      case P2pSwapState.completed:
-        return _buildCompletedView(swap);
-      case P2pSwapState.reclaimable:
-      case P2pSwapState.unsuccessful:
-        return _buildUnsuccessfulView(swap);
-      default:
-        return const SizedBox.shrink();
+  Future<void> _refresh(SwapViewLease lease) async {
+    if (!_owns(lease) || busy || _reading || origin == null) return;
+    final SwapActionOrigin original = origin!;
+    final String id = _originalId;
+    setState(() {
+      _reading = true;
+      _readFailed = false;
+      _checkedAmounts = false;
+    });
+    final Future<SwapDetailRead> read = SwapDetailRead.read(original, id);
+    _read = read;
+    try {
+      final SwapDetailRead details = await read;
+      if (!_owns(lease) || !identical(_read, read)) return;
+      setState(() {
+        _details = details;
+        epoch = Object();
+      });
+    } on Object {
+      if (_owns(lease) && identical(_read, read)) {
+        setState(() {
+          _details = null;
+          _readFailed = true;
+          epoch = Object();
+        });
+      }
+    } finally {
+      if (mounted && identical(_read, read)) setState(() => _reading = false);
     }
   }
 
-  Widget _buildPendingView() {
-    return SizedBox(
-      height: 180,
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: <Widget>[
-          Text('Starting swap', style: _body.copyWith(fontSize: 15)),
-          const SizedBox(height: 20),
-          const SyriusLoadingWidget(size: 18, strokeWidth: 1.5),
-        ],
-      ),
-    );
+  bool _canUnlock(SwapDetailRead details) =>
+      details.ownMatches &&
+      details.otherMatches &&
+      !details.own!.expired &&
+      details.original.preimage != null &&
+      details.other!.expires - details.other!.chainTime >
+          kMinSafeTimeToCompleteSwap.inSeconds;
+  bool _canReclaim(SwapDetailRead details) =>
+      details.ownMatches && details.own!.expired;
+
+  Future<void> _unlock(SwapViewLease lease, SwapDetailRead details) async {
+    if (!_owns(lease) ||
+        busy ||
+        held ||
+        _reading ||
+        !_checkedAmounts ||
+        !identical(_details, details) ||
+        !_canUnlock(details) ||
+        origin == null) {
+      return;
+    }
+    final SwapActionOrigin original = origin!;
+    final HtlcSwap exact = HtlcSwap.fromJson(details.original.toJson());
+    _action = _DetailAction.unlock;
+    await submit(lease, () => SwapActions.complete(original, exact));
   }
 
-  Widget _buildActiveView(HtlcSwap swap) {
-    return Column(
-      children: <Widget>[
-        const SizedBox(height: 20),
-        HtlcCard.sending(swap: swap),
-        const SizedBox(height: 10),
-        const Icon(Icons.arrow_downward, color: AppColors.faint, size: 18),
-        const SizedBox(height: 10),
-        HtlcCard.receiving(swap: swap),
-        const SizedBox(height: 20),
-        _buildBottomSection(swap),
-      ],
-    );
+  Future<void> _reclaim(SwapViewLease lease, SwapDetailRead details) async {
+    if (!_owns(lease) ||
+        busy ||
+        held ||
+        _reading ||
+        !identical(_details, details) ||
+        !_canReclaim(details) ||
+        origin == null) {
+      return;
+    }
+    final SwapActionOrigin original = origin!;
+    final Hash id = Hash.parse(details.own!.id);
+    final String signer = details.original.selfAddress;
+    _action = _DetailAction.reclaim;
+    await submit(lease, () => SwapActions.reclaim(original, id, signer));
   }
 
-  /// The inner surface of a result: the card colour on the dialog's raised
-  /// tone, at the card radius.
-  Widget _buildSummary(List<Widget> rows) {
-    return Material(
-      color: Theme.of(context).colorScheme.primary,
-      borderRadius: BorderRadius.circular(kCardRadius),
-      child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-        child: Column(children: rows),
-      ),
-    );
-  }
-
-  /// A label and its value at the two ends of a line.
-  ///
-  /// An amount is a single text and fades if it outgrows the line. The rate
-  /// is a row of its own that would stretch across the space it is given,
-  /// so with [shrinkValue] it is laid out at its own width instead.
-  Widget _buildSummaryRow(
-    String label,
-    Widget value, {
-    bool shrinkValue = false,
+  @override
+  Widget build(BuildContext context) => captured((
+    BuildContext context,
+    SwapViewLease lease, {
+    required bool hidden,
   }) {
-    return SizedBox(
-      height: 32,
-      child: Row(
-        children: <Widget>[
-          Text(label, style: _dim),
-          const SizedBox(width: 12),
-          if (shrinkValue) ...<Widget>[
-            const Spacer(),
-            value,
-          ] else
-            Expanded(
-              child: Align(alignment: Alignment.centerRight, child: value),
-            ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildAmount(BigInt amount, int decimals, String symbol) {
-    return AmountText(amount, decimals: decimals, style: _body, symbol: symbol);
-  }
-
-  Widget _buildCompletedView(HtlcSwap swap) {
-    return Column(
-      mainAxisAlignment: MainAxisAlignment.center,
-      children: <Widget>[
-        const SizedBox(height: 10),
-        SizedBox(
-          width: 64,
-          height: 64,
-          child: SvgPicture.asset(
-            'assets/svg/ic_completed_symbol.svg',
-            colorFilter: const ColorFilter.mode(
-              AppColors.znnColor,
-              BlendMode.srcIn,
-            ),
-          ),
-        ),
-        const SizedBox(height: 20),
-        Text(
-          _swapCompletedText,
-          textAlign: TextAlign.center,
-          style: _body.copyWith(fontSize: 15),
-        ),
-        const SizedBox(height: 20),
-        _buildSummary(<Widget>[
-          _buildSummaryRow(
-            'Sent',
-            _buildAmount(swap.fromAmount, swap.fromDecimals, swap.fromSymbol),
-          ),
-          _buildSummaryRow(
-            'Received',
-            _buildAmount(swap.toAmount!, swap.toDecimals!, swap.toSymbol!),
-          ),
-          _buildSummaryRow(
-            'Rate',
-            _buildExchangeRate(swap),
-            shrinkValue: true,
-          ),
-        ]),
-        const SizedBox(height: 16),
-        HtlcSwapDetailsWidget(swap: swap),
-      ],
-    );
-  }
-
-  Widget _buildUnsuccessfulView(HtlcSwap swap) {
-    final int? expiration = swap.direction == P2pSwapDirection.outgoing
-        ? swap.initialHtlcExpirationTime
-        : swap.counterHtlcExpirationTime;
-    final Duration remainingDuration = Duration(
-      seconds: (expiration ?? 0) - DateTimeUtils.unixTimeNow,
-    );
-    final bool isReclaimable =
-        remainingDuration.inSeconds <= 0 &&
-        swap.state == P2pSwapState.reclaimable;
-    return Column(
-      mainAxisAlignment: MainAxisAlignment.center,
-      children: <Widget>[
-        const SizedBox(height: 10),
-        SizedBox(
-          width: 64,
-          height: 64,
-          child: SvgPicture.asset(
-            'assets/svg/ic_unsuccessful_symbol.svg',
-            colorFilter: const ColorFilter.mode(
-              AppColors.errorColor,
-              BlendMode.srcIn,
-            ),
-          ),
-        ),
-        const SizedBox(height: 20),
-        Text(
-          isReclaimable || swap.state == P2pSwapState.unsuccessful
-              ? 'Swap unsuccessful'
-              : 'Swap unsuccessful. Reclaim your deposit once it expires.',
-          style: _body.copyWith(fontSize: 15),
-          textAlign: TextAlign.center,
-        ),
-        const SizedBox(height: 20),
-        _buildSummary(<Widget>[
-          if (remainingDuration.inSeconds > 0)
-            TweenAnimationBuilder<Duration>(
-              duration: remainingDuration,
-              tween: Tween<Duration>(
-                begin: remainingDuration,
-                end: Duration.zero,
-              ),
-              onEnd: () => setState(() {}),
-              builder: (_, Duration d, _) {
-                return Visibility(
-                  visible: d.inSeconds > 0,
-                  child: _buildSummaryRow(
-                    'Deposit expires in',
-                    Text(
-                      d.toString().split('.').first,
-                      style: monoStyle(_body),
-                    ),
-                  ),
-                );
-              },
-            ),
-          _buildSummaryRow(
-            swap.state == P2pSwapState.reclaimable ? 'Deposited' : 'Reclaimed',
-            _buildAmount(swap.fromAmount, swap.fromDecimals, swap.fromSymbol),
-          ),
-        ]),
-        if (isReclaimable)
-          Padding(
-            padding: const EdgeInsets.only(top: 20),
-            child: _buildReclaimButton(swap),
-          ),
-        const SizedBox(height: 16),
-        HtlcSwapDetailsWidget(swap: swap),
-      ],
-    );
-  }
-
-  Widget _buildBottomSection(HtlcSwap swap) {
-    if (swap.counterHtlcId == null) {
-      return Column(
-        children: <Widget>[
-          Text(
-            'Send the deposit ID to your counterparty so they can join.',
-            textAlign: TextAlign.center,
-            style: _dim.copyWith(fontSize: 14),
-          ),
-          const SizedBox(height: 20),
-          SizedBox(
-            width: double.infinity,
-            child: OutlinedButton.icon(
-              key: const Key('p2p_copy_deposit_id'),
-              onPressed: () =>
-                  ClipboardUtils.copyToClipboard(swap.initialHtlcId, context),
-              icon: const Icon(Icons.copy_outlined, size: 18),
-              label: const Text('Copy deposit ID'),
-            ),
-          ),
-        ],
+    final AppTokens tokens = AppTokens.of(context);
+    if (!sourceCurrent || widget.swapId != _originalId) {
+      return SwapDialogSurface(
+        title: context.l10n.swapActionTitle,
+        marker: const Key('swap_detail_screen_marker'),
+        onClose: close(lease),
+        notice: SwapNotice(context.l10n.swapListSourceChanged, error: true),
+        child: const SizedBox.shrink(),
       );
     }
-    return Column(
-      children: <Widget>[
-        Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 4),
-          child: _buildSummaryRow(
-            'Rate',
-            _buildExchangeRate(swap),
-            shrinkValue: true,
-          ),
-        ),
-        const SizedBox(height: 16),
-        if (swap.direction == P2pSwapDirection.outgoing) ...<Widget>[
-          if (!isTrustedToken(swap.toTokenStandard ?? ''))
-            Padding(
-              padding: const EdgeInsets.only(bottom: 20),
-              child: ImportantTextContainer(
-                text:
-                    'This token is not in your favorites. Check its token '
-                    'standard: ${swap.toTokenStandard ?? ''}',
-                isSelectable: true,
+    final bool current = _owns(lease);
+    if (current && !_attempted) {
+      _attempted = true;
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (_owns(lease)) unawaited(_refresh(lease));
+      });
+    }
+    final SwapDetailRead? details = _details;
+    final SwapDepositFact? own = details?.ownMatches == true
+        ? details?.own
+        : null;
+    final SwapDepositFact? other = details?.other;
+    final Widget? notice = !current
+        ? resultNotice(context)
+        : shownResult?.status == SwapActionStatus.submitted
+        ? SwapNotice(
+            _action == _DetailAction.unlock
+                ? context.l10n.swapActionUnlockSubmitted
+                : context.l10n.swapActionReclaimSubmitted,
+            waiting: true,
+          )
+        : resultNotice(context) ??
+              (_readFailed || (other != null && details?.otherMatches != true)
+                  ? SwapNotice(context.l10n.swapActionReadFailed, error: true)
+                  : own == null
+                  ? SwapNotice(
+                      context.l10n.swapActionChainPending,
+                      waiting: true,
+                    )
+                  : SwapNotice(
+                      own.expired
+                          ? context.l10n.swapActionCanReclaim
+                          : context.l10n.swapActionDepositLive,
+                      waiting: !own.expired,
+                    ));
+    final bool reclaim = details != null && _canReclaim(details);
+    final bool unlock = details != null && _canUnlock(details);
+    return SwapDialogSurface(
+      title: context.l10n.swapActionTitle,
+      marker: const Key('swap_detail_screen_marker'),
+      onClose: close(lease),
+      notice: notice,
+      primary: !reclaim && !unlock
+          ? null
+          : SwapPrimaryAction(
+              key: const Key('swap_detail_action'),
+              label: busy
+                  ? context.l10n.swapActionSending
+                  : reclaim
+                  ? context.l10n.swapListReclaim
+                  : context.l10n.swapActionUnlock,
+              busy: busy,
+              onPressed:
+                  !current ||
+                      busy ||
+                      held ||
+                      _reading ||
+                      (!reclaim && !_checkedAmounts)
+                  ? null
+                  : reclaim
+                  ? () => unawaited(_reclaim(lease, details))
+                  : () => unawaited(_unlock(lease, details)),
+            ),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: <Widget>[
+          if (details != null) ...<Widget>[
+            SwapTransferPanes(
+              send: SwapAmountPane(
+                label: context.l10n.swapListYouSend,
+                token: own?.token ?? details.sending,
+                amount: own?.amount ?? details.original.fromAmount,
+                visible: current,
+                hideBalances: hidden,
+                dollars: widget.dollars,
+                party: Text(
+                  own == null
+                      ? context.l10n.swapActionRecorded
+                      : context.l10n.swapActionDepositVerified,
+                  style: tokens.captionText,
+                ),
+              ),
+              receive: other != null
+                  ? SwapAmountPane(
+                      label: context.l10n.swapListYouReceive,
+                      token: other.token,
+                      amount: other.amount,
+                      visible: current,
+                      hideBalances: hidden,
+                      dollars: widget.dollars,
+                      party: Text(
+                        context.l10n.swapActionDepositVerified,
+                        style: tokens.captionText,
+                      ),
+                    )
+                  : details.receiving == null
+                  ? SwapUnknownPane(label: context.l10n.swapListYouReceive)
+                  : SwapAmountPane(
+                      label: context.l10n.swapListYouReceive,
+                      token: details.receiving!,
+                      amount: details.original.toAmount,
+                      visible: current,
+                      hideBalances: hidden,
+                      dollars: widget.dollars,
+                      party: Text(
+                        context.l10n.swapActionRecorded,
+                        style: tokens.captionText,
+                      ),
+                    ),
+            ),
+            SizedBox(height: tokens.swapActionGap),
+            SwapFactRow(
+              label: context.l10n.swapListCounterparty,
+              value: SwapIdentifier(details.original.counterpartyAddress),
+            ),
+            if (other != null)
+              SwapFactRow(
+                label: context.l10n.swapListRate,
+                value: SwapRate(
+                  fromAmount: own?.amount ?? details.original.fromAmount,
+                  fromToken: own?.token ?? details.sending,
+                  toAmount: other.amount,
+                  toToken: other.token,
+                ),
+              ),
+            if (unlock)
+              CheckboxListTile(
+                key: const Key('swap_check_amounts'),
+                value: _checkedAmounts,
+                contentPadding: EdgeInsets.zero,
+                title: Text(
+                  context.l10n.swapActionConfirmAmount,
+                  style: tokens.transferCaptionText,
+                ),
+                onChanged: !current || busy || held || _reading
+                    ? null
+                    : (bool? value) =>
+                          change(lease, () => _checkedAmounts = value == true),
+              ),
+            SwapActionDetails(
+              summary: context.l10n.swapActionRecorded,
+              onToggle: () => _owns(lease) && !_reading && toggleDetails(lease),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: <Widget>[
+                  SwapFactRow(
+                    label: context.l10n.swapListYourAddress,
+                    value: SwapIdentifier(details.original.selfAddress),
+                  ),
+                  SwapFactRow(
+                    label: context.l10n.swapListInitialDepositId,
+                    value: SwapIdentifier(details.original.initialHtlcId),
+                  ),
+                  OutlinedButton.icon(
+                    key: const Key('p2p_copy_deposit_id'),
+                    onPressed: !current
+                        ? null
+                        : () => unawaited(
+                            copy(lease, details.original.initialHtlcId),
+                          ),
+                    icon: Icon(
+                      Icons.copy_outlined,
+                      size: tokens.swapActionTokenIconSize,
+                    ),
+                    label: Text(context.l10n.swapListCopyForThem),
+                  ),
+                  if (details.original.counterHtlcId != null)
+                    SwapFactRow(
+                      label: context.l10n.swapListCounterpartyDepositId,
+                      value: SwapIdentifier(details.original.counterHtlcId!),
+                    ),
+                  SwapFactRow(
+                    label: context.l10n.swapListTokenStandard,
+                    value: SwapIdentifier(
+                      details.sending.tokenStandard.toString(),
+                    ),
+                  ),
+                  if (other != null)
+                    SwapFactRow(
+                      label: context.l10n.swapListTokenStandard,
+                      value: SwapIdentifier(
+                        other.token.tokenStandard.toString(),
+                      ),
+                    ),
+                  Text(
+                    context.l10n.swapActionTiming(
+                      kInitialHtlcDuration.inHours,
+                      kCounterHtlcDuration.inHours,
+                    ),
+                    style: tokens.captionText,
+                  ),
+                  Text(
+                    context.l10n.swapActionDiscovery(
+                      kMinSafeTimeToFindPreimage.inHours,
+                      kMinSafeTimeToCompleteSwap.inMinutes,
+                    ),
+                    style: tokens.captionText,
+                  ),
+                ],
               ),
             ),
-          _buildExpirationWarningForOutgoingSwap(swap),
-          _buildSwapButton(swap),
-          const SizedBox(height: 16),
-          _buildIncorrectAmountButton(swap),
+          ],
+          TextButton(
+            key: const Key('swap_detail_refresh'),
+            onPressed: !current || busy || _reading
+                ? null
+                : () => unawaited(_refresh(lease)),
+            child: Text(
+              _reading
+                  ? context.l10n.swapActionSearching
+                  : context.l10n.swapActionFreshDetails,
+            ),
+          ),
         ],
-        if (swap.direction == P2pSwapDirection.incoming)
-          const Padding(
-            padding: EdgeInsets.symmetric(vertical: 12),
-            child: LoadingInfoText(
-              text: 'Waiting for the counterparty. Keep Syrius open.',
-              tooltipText: 'The wallet does not auto-lock during a swap',
-            ),
-          ),
-      ],
-    );
-  }
-
-  Widget _buildExpirationWarningForOutgoingSwap(HtlcSwap swap) {
-    const Duration warningThreshold = Duration(minutes: 10);
-    final Duration timeToCompleteSwap =
-        Duration(
-          seconds: swap.counterHtlcExpirationTime! - DateTimeUtils.unixTimeNow,
-        ) -
-        kMinSafeTimeToCompleteSwap;
-    return TweenAnimationBuilder<Duration>(
-      duration: timeToCompleteSwap,
-      tween: Tween<Duration>(begin: timeToCompleteSwap, end: Duration.zero),
-      onEnd: () => setState(() {}),
-      builder: (_, Duration d, _) {
-        return Visibility(
-          visible: timeToCompleteSwap <= warningThreshold,
-          child: Padding(
-            padding: const EdgeInsets.only(bottom: 20),
-            child: ImportantTextContainer(
-              text: context.l10n.p2pSwapExpiresIn(
-                FormatUtils.formatDuration(context.l10n, d),
-              ),
-            ),
-          ),
-        );
-      },
-    );
-  }
-
-  Widget _buildSwapButton(HtlcSwap swap) {
-    return ViewModelBuilder<CompleteHtlcSwapBloc>.reactive(
-      onViewModelReady: (CompleteHtlcSwapBloc model) {
-        model.stream.listen(
-          (HtlcSwap? event) async {
-            if (event is HtlcSwap) {
-              setState(() {
-                _swapCompletedText = 'Swap completed. Funds arrive shortly.';
-              });
-            }
-          },
-          onError: (Object error) {
-            if (!mounted) return;
-            setState(() {
-              _isSendingTransaction = false;
-            });
-            ToastUtils.showToast(context, error.toString());
-          },
-        );
-      },
-      builder: (_, CompleteHtlcSwapBloc model, _) => InstructionButton(
-        text: 'Swap',
-        isEnabled: true,
-        isLoading: _isSendingTransaction,
-        loadingText: 'Swapping',
-        onPressed: () {
-          setState(() {
-            _isSendingTransaction = true;
-          });
-          unawaited(model.completeHtlcSwap(swap: swap));
-        },
-      ),
-      viewModelBuilder: CompleteHtlcSwapBloc.new,
-    );
-  }
-
-  Widget _buildIncorrectAmountButton(HtlcSwap swap) {
-    return SizedBox(
-      width: double.infinity,
-      child: AnimatedCrossFade(
-        duration: Durations.short4,
-        firstCurve: Easing.standard,
-        secondCurve: Easing.standard,
-        sizeCurve: Easing.standard,
-        firstChild: Center(
-          child: InkWell(
-            borderRadius: BorderRadius.circular(16),
-            mouseCursor: SystemMouseCursors.click,
-            onTap: () => setState(() {
-              _shouldShowIncorrectAmountInstructions = true;
-            }),
-            child: Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-              child: Text('Wrong token or amount?', style: _dim),
-            ),
-          ),
-        ),
-        secondChild: _buildIncorrectAmountInstructions(
-          swap.initialHtlcExpirationTime,
-        ),
-        crossFadeState: _shouldShowIncorrectAmountInstructions
-            ? CrossFadeState.showSecond
-            : CrossFadeState.showFirst,
       ),
     );
-  }
-
-  Widget _buildIncorrectAmountInstructions(int expirationTime) {
-    final String expires = FormatUtils.formatDeadline(expirationTime * 1000);
-    return Text(
-      'Do not swap. Your deposit expires at $expires; reclaim it then.',
-      textAlign: TextAlign.center,
-      style: _dim,
-    );
-  }
-
-  Widget _buildReclaimButton(HtlcSwap swap) {
-    return ViewModelBuilder<ReclaimHtlcSwapFundsBloc>.reactive(
-      onViewModelReady: (ReclaimHtlcSwapFundsBloc model) {
-        model.stream.listen(
-          null,
-          onError: (Object error) {
-            setState(() {
-              _isSendingTransaction = false;
-            });
-          },
-        );
-      },
-      builder: (_, ReclaimHtlcSwapFundsBloc model, _) => InstructionButton(
-        text: 'Reclaim funds',
-        isEnabled: true,
-        isLoading: _isSendingTransaction,
-        loadingText: 'Reclaiming',
-        onPressed: () {
-          setState(() {
-            _isSendingTransaction = true;
-          });
-          unawaited(
-            model.reclaimFunds(
-              htlcId: swap.direction == P2pSwapDirection.outgoing
-                  ? Hash.parse(swap.initialHtlcId)
-                  : Hash.parse(swap.counterHtlcId!),
-              selfAddress: Address.parse(swap.selfAddress),
-            ),
-          );
-        },
-      ),
-      viewModelBuilder: ReclaimHtlcSwapFundsBloc.new,
-    );
-  }
-
-  Widget _buildExchangeRate(HtlcSwap swap) {
-    return ExchangeRateWidget(
-      fromAmount: swap.fromAmount,
-      fromDecimals: swap.fromDecimals,
-      fromSymbol: swap.fromSymbol,
-      toAmount: swap.toAmount!,
-      toDecimals: swap.toDecimals!,
-      toSymbol: swap.toSymbol!,
-    );
-  }
+  });
 }

@@ -57,7 +57,7 @@ class Events implements IEvents {
         );
         await recordEvent(event);
       }
-    } catch (e, _) {
+    } catch (e) {
       _core.logger.e('[$runtimeType] ❌ ${event.runtimeType} error $e');
     }
   }
@@ -71,7 +71,7 @@ class Events implements IEvents {
       }).toList();
 
       await _sendBatchEvents(encodedEvents);
-    } catch (e, _) {
+    } catch (e) {
       _core.logger.e('[$runtimeType] ❌ send batch events error $e');
     }
   }

@@ -4,7 +4,6 @@ import 'dart:isolate';
 
 import 'package:flutter/foundation.dart' show kDebugMode, kIsWeb;
 import 'package:flutter/gestures.dart';
-import 'package:material_ui/material_ui.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:get_it/get_it.dart';
 import 'package:hive_ce/hive_ce.dart';
@@ -12,6 +11,7 @@ import 'package:hydrated_bloc/hydrated_bloc.dart';
 import 'package:layout/layout.dart';
 import 'package:local_notifier/local_notifier.dart';
 import 'package:logging/logging.dart';
+import 'package:material_ui/material_ui.dart';
 import 'package:nested/nested.dart';
 import 'package:overlay_support/overlay_support.dart';
 import 'package:path/path.dart' as path;
@@ -38,27 +38,40 @@ import 'package:zenon_syrius_wallet_flutter/services/htlc_swaps_service.dart';
 import 'package:zenon_syrius_wallet_flutter/services/i_web3wallet_service.dart';
 import 'package:zenon_syrius_wallet_flutter/services/shared_prefs_service.dart';
 import 'package:zenon_syrius_wallet_flutter/services/web3wallet_service.dart';
+import 'package:zenon_syrius_wallet_flutter/utils/font_licences.dart';
 import 'package:zenon_syrius_wallet_flutter/utils/functions.dart';
 import 'package:zenon_syrius_wallet_flutter/utils/motion_binding.dart';
 import 'package:zenon_syrius_wallet_flutter/utils/utils.dart';
+import 'package:zenon_syrius_wallet_flutter/utils/window_chrome.dart';
 import 'package:zenon_syrius_wallet_flutter/widgets/widgets.dart';
+import 'package:zenon_syrius_wallet_flutter/widgets/window_frame.dart';
 import 'package:znn_sdk_dart/znn_sdk_dart.dart';
 
+/// The current process SDK; owned operations retain their original instance.
 Zenon? zenon;
+
+/// Process preferences remain distinct from captured original Box receipts.
 SharedPrefsService? sharedPrefsService;
+
+/// The initialized encrypted swap service, not a name-based replacement lookup.
 HtlcSwapsService? htlcSwapsService;
+
+/// The existing WalletConnect owner shared by the application entrypoint.
 IWeb3WalletService? web3WalletService;
 
+/// Process service registry; asynchronous actions must capture before waiting.
 final GetIt sl = GetIt.instance;
 
+/// The root navigator used by explicit application routes and owned overlays.
 final GlobalKey<NavigatorState> globalNavigatorKey =
     GlobalKey<NavigatorState>();
 
-main() async {
+Future<void> main() async {
   // Not the SDK's binding: this one keeps every animation at full length when
   // the system asks for reduced motion. It must be the first binding the
   // process creates, so anything that wraps this main installs it too.
   MotionBinding.ensureInitialized();
+  registerBundledFontLicences();
   Bloc.observer = CustomBlocObserver();
   if (Platform.isWindows) {
     registerProtocolHandler(kDeepLinkingUrlScheme);
@@ -81,38 +94,44 @@ main() async {
   if (!syriusLogDir.existsSync()) {
     syriusLogDir.createSync(recursive: true);
   }
-  final File logFile = File(
-    '${syriusLogDir.path}${path.separator}syrius-${DateTime.now().millisecondsSinceEpoch}.log',
-  );
+  final String logName = 'syrius-${DateTime.now().millisecondsSinceEpoch}.log';
+  final File logFile = File(path.join(syriusLogDir.path, logName));
   Logger.root.level = Level.ALL;
   Logger.root.onRecord.listen((LogRecord record) {
     if (kDebugMode) {
       print(
-        '${record.level.name} ${record.loggerName} ${record.message} ${record.time}: '
+        '${record.level.name} ${record.loggerName} ${record.message} '
+        '${record.time}: '
         '${record.error} ${record.stackTrace}\n',
       );
     }
-    logFile.writeAsString(
-      '${record.level.name} ${record.loggerName} ${record.message} ${record.time}: '
-      '${record.error} ${record.stackTrace}\n',
-      mode: FileMode.append,
-      flush: true,
+    unawaited(
+      logFile.writeAsString(
+        '${record.level.name} ${record.loggerName} ${record.message} '
+        '${record.time}: '
+        '${record.error} ${record.stackTrace}\n',
+        mode: FileMode.append,
+        flush: true,
+      ),
     );
   });
 
-  windowManager.ensureInitialized();
+  await windowManager.ensureInitialized();
+  await configureAppWindowChrome();
   await windowManager.setPreventClose(true);
 
   web3WalletService = Web3WalletService();
-  web3WalletService!.create();
+  await web3WalletService!.create();
 
   // Setup services
   setup();
 
-  retry(
-    () => web3WalletService!.init(),
-    retryIf: (e) => e is SocketException || e is TimeoutException,
-    maxAttempts: 0x7FFFFFFFFFFFFFFF,
+  unawaited(
+    retry(
+      () => web3WalletService!.init(),
+      retryIf: (Exception e) => e is SocketException || e is TimeoutException,
+      maxAttempts: 0x7FFFFFFFFFFFFFFF,
+    ),
   );
 
   // Setup local_notifier
@@ -141,45 +160,47 @@ main() async {
   // about the wallet until the person approves the page's origin.
   unawaited(DappBridge.instance.start());
 
-  windowManager.waitUntilReadyToShow().then((_) async {
-    await windowManager.setTitle('s y r i u s');
-    await windowManager.setMinimumSize(const Size(1200, 600));
-    await windowManager.show();
+  unawaited(
+    windowManager.waitUntilReadyToShow().then((_) async {
+      await windowManager.setTitle('s y r i u s');
+      await windowManager.setMinimumSize(const Size(1200, 600));
+      await windowManager.show();
 
-    if (sharedPrefsService != null) {
-      final double? windowSizeWidth = sharedPrefsService!.get(
-        kWindowSizeWidthKey,
-      );
-      final double? windowSizeHeight = sharedPrefsService!.get(
-        kWindowSizeHeightKey,
-      );
-      if (windowSizeWidth != null &&
-          windowSizeWidth >= 1200 &&
-          windowSizeHeight != null &&
-          windowSizeHeight >= 600) {
-        await windowManager.setSize(Size(windowSizeWidth, windowSizeHeight));
-      } else {
-        await windowManager.setSize(const Size(1200, 600));
-      }
-
-      double? windowPositionX = sharedPrefsService!.get(kWindowPositionXKey);
-      double? windowPositionY = sharedPrefsService!.get(kWindowPositionYKey);
-      if (windowPositionX != null && windowPositionY != null) {
-        windowPositionX = windowPositionX >= 0 ? windowPositionX : 100;
-        windowPositionY = windowPositionY >= 0 ? windowPositionY : 100;
-        await windowManager.setPosition(
-          Offset(windowPositionX, windowPositionY),
+      if (sharedPrefsService != null) {
+        final double? windowSizeWidth = sharedPrefsService!.get(
+          kWindowSizeWidthKey,
         );
-      }
+        final double? windowSizeHeight = sharedPrefsService!.get(
+          kWindowSizeHeightKey,
+        );
+        if (windowSizeWidth != null &&
+            windowSizeWidth >= 1200 &&
+            windowSizeHeight != null &&
+            windowSizeHeight >= 600) {
+          await windowManager.setSize(Size(windowSizeWidth, windowSizeHeight));
+        } else {
+          await windowManager.setSize(const Size(1200, 600));
+        }
 
-      final bool? windowMaximized = sharedPrefsService!.get(
-        kWindowMaximizedKey,
-      );
-      if (windowMaximized == true) {
-        await windowManager.maximize();
+        double? windowPositionX = sharedPrefsService!.get(kWindowPositionXKey);
+        double? windowPositionY = sharedPrefsService!.get(kWindowPositionYKey);
+        if (windowPositionX != null && windowPositionY != null) {
+          windowPositionX = windowPositionX >= 0 ? windowPositionX : 100;
+          windowPositionY = windowPositionY >= 0 ? windowPositionY : 100;
+          await windowManager.setPosition(
+            Offset(windowPositionX, windowPositionY),
+          );
+        }
+
+        final bool? windowMaximized = sharedPrefsService!.get(
+          kWindowMaximizedKey,
+        );
+        if (windowMaximized == true) {
+          await windowManager.maximize();
+        }
       }
-    }
-  });
+    }),
+  );
 
   runApp(
     const MyApp(),
@@ -215,20 +236,21 @@ Future<void> _setupTrayManager() async {
 
 Future<void> _loadDefaultCommunityNodes() async {
   try {
-    final List nodes =
+    final List<dynamic> nodes =
         await loadJsonFromAssets('assets/community-nodes.json')
             as List<dynamic>;
     kDefaultCommunityNodes = nodes
-        .map((node) => node.toString())
+        .map((dynamic node) => node.toString())
         .where((String node) => InputValidators.node(node) == null)
         .toList();
-  } catch (e, stackTrace) {
+  } on Object catch (e, stackTrace) {
     Logger(
       'main',
     ).log(Level.WARNING, '_loadDefaultCommunityNodes', e, stackTrace);
   }
 }
 
+/// Installs the production process owners without reopening a wallet file.
 void setup() {
   sl.registerSingleton<Zenon>(Zenon());
   zenon = sl<Zenon>();
@@ -237,7 +259,7 @@ void setup() {
       (SharedPrefsService? value) => value!,
     ),
   );
-  sl.registerSingleton<HtlcSwapsService>(HtlcSwapsService.getInstance());
+  sl.registerSingleton<HtlcSwapsService>(HtlcSwapsService.shared());
 
   // Initialize WalletConnect service
   sl.registerSingleton<IWeb3WalletService>(web3WalletService!);
@@ -256,36 +278,43 @@ void setup() {
       zenon: zenon!,
     ),
   );
-  sl.registerSingleton<MultipleBalanceBloc>(MultipleBalanceBloc(zenon: zenon!));
-  sl.registerSingleton<AutoReceiveTxWorker>(AutoReceiveTxWorker.getInstance());
-  sl.registerSingleton<AutoUnlockHtlcWorker>(
-    AutoUnlockHtlcWorker.getInstance(),
-  );
+  sl
+    ..registerSingleton<MultipleBalanceBloc>(MultipleBalanceBloc(zenon: zenon!))
+    ..registerSingleton<AutoReceiveTxWorker>(AutoReceiveTxWorker.shared())
+    ..registerSingleton<AutoUnlockHtlcWorker>(AutoUnlockHtlcWorker.shared());
 
-  sl.registerSingleton<HtlcSwapsHandler>(HtlcSwapsHandler.getInstance());
+  sl
+    ..registerSingleton<HtlcSwapsHandler>(HtlcSwapsHandler.shared())
+    ..registerSingleton<ReceivePort>(
+      ReceivePort(),
+      instanceName: 'embeddedStoppedPort',
+    )
+    ..registerSingleton<Stream<dynamic>>(
+      sl<ReceivePort>(instanceName: 'embeddedStoppedPort').asBroadcastStream(),
+      instanceName: 'embeddedStoppedStream',
+    );
 
-  sl.registerSingleton<ReceivePort>(
-    ReceivePort(),
-    instanceName: 'embeddedStoppedPort',
-  );
-  sl.registerSingleton<Stream>(
-    sl<ReceivePort>(instanceName: 'embeddedStoppedPort').asBroadcastStream(),
-    instanceName: 'embeddedStoppedStream',
-  );
+  sl
+    ..registerSingleton<BalanceBloc>(BalanceBloc())
+    ..registerSingleton<NotificationsBloc>(NotificationsBloc())
+    ..registerSingleton<AcceleratorBalanceBloc>(AcceleratorBalanceBloc())
+    ..registerSingleton<PowGeneratingStatusBloc>(PowGeneratingStatusBloc())
+    ..registerSingleton<WalletConnectPairingsBloc>(WalletConnectPairingsBloc())
+    ..registerSingleton<WalletConnectSessionsBloc>(WalletConnectSessionsBloc());
+}
 
-  sl.registerSingleton<BalanceBloc>(BalanceBloc());
-  sl.registerSingleton<NotificationsBloc>(NotificationsBloc());
-  sl.registerSingleton<AcceleratorBalanceBloc>(AcceleratorBalanceBloc());
-  sl.registerSingleton<PowGeneratingStatusBloc>(PowGeneratingStatusBloc());
-  sl.registerSingleton<WalletConnectPairingsBloc>(
-    WalletConnectPairingsBloc(),
-  );
-  sl.registerSingleton<WalletConnectSessionsBloc>(
-    WalletConnectSessionsBloc(),
+Route<dynamic>? _buildErrorRoute(RouteSettings settings) {
+  if (settings.name != SyriusErrorWidget.route) return null;
+  final CustomSyriusErrorWidgetArguments args =
+      settings.arguments! as CustomSyriusErrorWidgetArguments;
+  return MaterialPageRoute<dynamic>(
+    builder: (BuildContext context) => SyriusErrorWidget(args.errorText),
   );
 }
 
+/// The production application shell and its process-level desktop listeners.
 class MyApp extends StatefulWidget {
+  /// Builds routes without accessing a wallet from this widget constructor.
   const MyApp({super.key});
 
   @override
@@ -299,7 +328,7 @@ class _MyAppState extends State<MyApp> with WindowListener, TrayListener {
   void initState() {
     windowManager.addListener(this);
     trayManager.addListener(this);
-    initPlatformState();
+    unawaited(initPlatformState());
     super.initState();
   }
 
@@ -383,97 +412,100 @@ class _MyAppState extends State<MyApp> with WindowListener, TrayListener {
             create: (_) => LockBloc(),
             builder: (BuildContext context, Widget? child) {
               return Consumer2<AppThemeNotifier, LocaleNotifier>(
-                builder: (
-                  _,
-                  AppThemeNotifier appThemeNotifier,
-                  LocaleNotifier localeNotifier,
-                  __,
-                ) {
-                  final LockBloc lockBloc = Provider.of<LockBloc>(
-                    context,
-                    listen: false,
-                  );
-                  return OverlaySupport(
-                    child: Listener(
-                      onPointerSignal: (PointerSignalEvent event) {
-                        if (event is PointerScrollEvent) {
-                          lockBloc.addEvent(LockEvent.resetTimer);
-                        }
-                      },
-                      onPointerCancel: (_) =>
-                          lockBloc.addEvent(LockEvent.resetTimer),
-                      onPointerDown: (_) =>
-                          lockBloc.addEvent(LockEvent.resetTimer),
-                      onPointerHover: (_) =>
-                          lockBloc.addEvent(LockEvent.resetTimer),
-                      onPointerMove: (_) =>
-                          lockBloc.addEvent(LockEvent.resetTimer),
-                      onPointerUp: (_) =>
-                          lockBloc.addEvent(LockEvent.resetTimer),
-                      child: MouseRegion(
-                        onEnter: (_) => lockBloc.addEvent(LockEvent.resetTimer),
-                        onExit: (_) => lockBloc.addEvent(LockEvent.resetTimer),
-                        child: KeyboardListener(
-                          focusNode: FocusNode(),
-                          onKeyEvent: (KeyEvent event) {
-                            lockBloc.addEvent(LockEvent.resetTimer);
+                builder:
+                    (
+                      _,
+                      AppThemeNotifier appThemeNotifier,
+                      LocaleNotifier localeNotifier,
+                      _,
+                    ) {
+                      final LockBloc lockBloc = Provider.of<LockBloc>(
+                        context,
+                        listen: false,
+                      );
+                      return OverlaySupport(
+                        child: Listener(
+                          onPointerSignal: (PointerSignalEvent event) {
+                            if (event is PointerScrollEvent) {
+                              lockBloc.addEvent(LockEvent.resetTimer);
+                            }
                           },
-                          child: Layout(
-                            child: MaterialApp(
-                              title: 's y r i u s',
-                              navigatorKey: globalNavigatorKey,
-                              debugShowCheckedModeBanner: false,
-                              theme: AppTheme.lightTheme,
-                              darkTheme: AppTheme.darkTheme,
-                              themeMode: appThemeNotifier.currentThemeMode,
-                              initialRoute: SplashScreen.route,
-                              scrollBehavior: RemoveOverscrollEffect(),
-                              // The app is on material_ui; window_manager,
-                              // lottie and expandable still build on the
-                              // SDK's Material, which looks up its own
-                              // Theme. The bridge hands them this one.
-                              builder: (BuildContext context, Widget? child) =>
-                                  MaterialUiCompatibilityBridge(child: child!),
-                              // Null follows the system; the callback maps
-                              // either to one of the five, else English.
-                              // The delegates carry the framework's own
-                              // strings and right-to-left for Arabic.
-                              locale: localeNotifier.locale,
-                              localeListResolutionCallback: resolveAppLocale,
-                              localizationsDelegates: appLocalizationsDelegates,
-                              supportedLocales:
-                                  AppLocalizations.supportedLocales,
-                              routes: <String, WidgetBuilder>{
-                                AccessWalletScreen.route:
-                                    (BuildContext context) =>
-                                        const AccessWalletScreen(),
-                                SplashScreen.route: (BuildContext context) =>
-                                    const SplashScreen(),
-                                MainAppContainer.route:
-                                    (BuildContext context) =>
-                                        const MainAppContainer(),
-                                NodeManagementScreen.route: (_) =>
-                                    const NodeManagementScreen(),
+                          onPointerCancel: (_) =>
+                              lockBloc.addEvent(LockEvent.resetTimer),
+                          onPointerDown: (_) =>
+                              lockBloc.addEvent(LockEvent.resetTimer),
+                          onPointerHover: (_) =>
+                              lockBloc.addEvent(LockEvent.resetTimer),
+                          onPointerMove: (_) =>
+                              lockBloc.addEvent(LockEvent.resetTimer),
+                          onPointerUp: (_) =>
+                              lockBloc.addEvent(LockEvent.resetTimer),
+                          child: MouseRegion(
+                            onEnter: (_) =>
+                                lockBloc.addEvent(LockEvent.resetTimer),
+                            onExit: (_) =>
+                                lockBloc.addEvent(LockEvent.resetTimer),
+                            child: KeyboardListener(
+                              focusNode: FocusNode(),
+                              onKeyEvent: (KeyEvent event) {
+                                lockBloc.addEvent(LockEvent.resetTimer);
                               },
-                              onGenerateRoute: (RouteSettings settings) {
-                                if (settings.name == SyriusErrorWidget.route) {
-                                  final CustomSyriusErrorWidgetArguments args =
-                                      settings.arguments!
-                                          as CustomSyriusErrorWidgetArguments;
-                                  return MaterialPageRoute(
-                                    builder: (BuildContext context) =>
-                                        SyriusErrorWidget(args.errorText),
-                                  );
-                                }
-                                return null;
-                              },
+                              child: Layout(
+                                child: MaterialApp(
+                                  title: 's y r i u s',
+                                  navigatorKey: globalNavigatorKey,
+                                  debugShowCheckedModeBanner: false,
+                                  theme: AppTheme.lightTheme,
+                                  darkTheme: AppTheme.darkTheme,
+                                  themeMode: appThemeNotifier.currentThemeMode,
+                                  initialRoute: SplashScreen.route,
+                                  scrollBehavior: RemoveOverscrollEffect(),
+                                  // The app is on material_ui; window_manager,
+                                  // lottie and expandable still build on the
+                                  // SDK's Material, which looks up its own
+                                  // Theme. The bridge hands them this one.
+                                  builder:
+                                      (BuildContext context, Widget? child) =>
+                                          // Unmigrated dependencies still read
+                                          // the SDK theme via this bridge.
+                                          // ignore: deprecated_member_use
+                                          MaterialUiCompatibilityBridge(
+                                            child: AppWindowFrame(
+                                              child: child!,
+                                            ),
+                                          ),
+                                  // Null follows the system; the callback maps
+                                  // either to one of the five, else English.
+                                  // The delegates carry the framework's own
+                                  // strings and right-to-left for Arabic.
+                                  locale: localeNotifier.locale,
+                                  localeListResolutionCallback:
+                                      resolveAppLocale,
+                                  localizationsDelegates:
+                                      appLocalizationsDelegates,
+                                  supportedLocales:
+                                      AppLocalizations.supportedLocales,
+                                  routes: <String, WidgetBuilder>{
+                                    AccessWalletScreen.route:
+                                        (BuildContext context) =>
+                                            const AccessWalletScreen(),
+                                    SplashScreen.route:
+                                        (BuildContext context) =>
+                                            const SplashScreen(),
+                                    MainAppContainer.route:
+                                        (BuildContext context) =>
+                                            const MainAppContainer(),
+                                    NodeManagementScreen.route: (_) =>
+                                        const NodeManagementScreen(),
+                                  },
+                                  onGenerateRoute: _buildErrorRoute,
+                                ),
+                              ),
                             ),
                           ),
                         ),
-                      ),
-                    ),
-                  );
-                },
+                      );
+                    },
               );
             },
           ),
@@ -490,7 +522,7 @@ class _MyAppState extends State<MyApp> with WindowListener, TrayListener {
       windowMaximized,
     );
 
-    if (windowMaximized != true) {
+    if (!windowMaximized) {
       final Size windowSize = await windowManager.getSize();
       await sharedPrefsService!.put(
         kWindowSizeWidthKey,
@@ -513,7 +545,9 @@ class _MyAppState extends State<MyApp> with WindowListener, TrayListener {
     }
 
     sl<Zenon>().wsClient.stop();
-    Future.delayed(const Duration(seconds: 60)).then((value) => exit(0));
+    unawaited(
+      Future<void>.delayed(const Duration(seconds: 60)).then((_) => exit(0)),
+    );
     await NodeUtils.closeEmbeddedNode();
     await sl.reset();
     super.onWindowClose();
@@ -524,7 +558,7 @@ class _MyAppState extends State<MyApp> with WindowListener, TrayListener {
 
   @override
   void onTrayIconMouseDown() {
-    trayManager.popUpContextMenu();
+    unawaited(trayManager.popUpContextMenu());
   }
 
   @override
@@ -537,13 +571,13 @@ class _MyAppState extends State<MyApp> with WindowListener, TrayListener {
   Future<void> onTrayMenuItemClick(MenuItem menuItem) async {
     switch (menuItem.key) {
       case 'show_wallet':
-        windowManager.show();
+        await windowManager.show();
       case 'hide_wallet':
         if (!await windowManager.isMinimized()) {
-          windowManager.minimize();
+          await windowManager.minimize();
         }
       case 'exit':
-        windowManager.destroy();
+        await windowManager.destroy();
       default:
         break;
     }

@@ -1,0 +1,4 @@
+# prerequisite: pending qualified Zap receive identity and durable atomic admission
+# The receive service is missing. Do not seed receipts, hashes or balances.
+# A native capture also needs an actual qualified receive and message surface.
+assert --key home_zap_sparks

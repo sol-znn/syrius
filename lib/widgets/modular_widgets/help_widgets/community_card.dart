@@ -1,80 +1,118 @@
-import 'package:material_ui/material_ui.dart';
+import 'dart:async';
+
 import 'package:flutter_vector_icons/flutter_vector_icons.dart';
+import 'package:material_ui/material_ui.dart';
+import 'package:zenon_syrius_wallet_flutter/rearchitecture/utils/extensions/buildcontext_extension.dart';
+import 'package:zenon_syrius_wallet_flutter/rearchitecture/utils/widgets/disclosure.dart';
 import 'package:zenon_syrius_wallet_flutter/rearchitecture/utils/widgets/page/page_widgets.dart';
-import 'package:zenon_syrius_wallet_flutter/utils/app_colors.dart';
+import 'package:zenon_syrius_wallet_flutter/utils/app_theme.dart';
 import 'package:zenon_syrius_wallet_flutter/utils/constants.dart';
 import 'package:zenon_syrius_wallet_flutter/utils/navigation_utils.dart';
-import 'package:zenon_syrius_wallet_flutter/widgets/modular_widgets/settings_widgets/settings_parts.dart';
 
-/// Where the Zenon community is: sites, explorers, social and documents.
-/// Each row opens its link in the browser.
+/// All original community destinations, inside one initially closed group.
 class CommunityCard extends StatelessWidget {
-  const CommunityCard({super.key});
+  /// Browser opening is injectable for finite checks without external actions.
+  const CommunityCard({this.openLink, super.key});
+
+  /// Null retains the existing system-browser action.
+  final ValueChanged<String>? openLink;
 
   @override
   Widget build(BuildContext context) {
+    final List<(IconData, String, String)> links = <(IconData, String, String)>[
+      (MaterialCommunityIcons.home, context.l10n.aboutZenonNetwork, kWebsite),
+      (
+        MaterialCommunityIcons.forum,
+        context.l10n.aboutCommunityForum,
+        kOrgCommunityForum,
+      ),
+      (MaterialCommunityIcons.tools, context.l10n.aboutZenonTools, kTools),
+      (
+        MaterialCommunityIcons.web,
+        context.l10n.aboutZenonOrg,
+        kOrgCommunityWebsite,
+      ),
+      (
+        MaterialCommunityIcons.lan,
+        context.l10n.aboutZenonHub,
+        kHubCommunityWebsite,
+      ),
+      (Icons.explore_outlined, context.l10n.aboutExplorer, kExplorer),
+      (
+        Icons.explore_outlined,
+        context.l10n.aboutHubExplorer,
+        kHubCommunityExplorer,
+      ),
+      (MaterialCommunityIcons.twitter, context.l10n.aboutTwitter, kTwitter),
+      (MaterialCommunityIcons.discord, context.l10n.aboutDiscord, kDiscord),
+      (Icons.telegram, context.l10n.aboutTelegram, kTelegram),
+      (Icons.article_outlined, context.l10n.aboutMedium, kMedium),
+      (MaterialCommunityIcons.github, context.l10n.aboutGithub, kGithub),
+      (
+        MaterialCommunityIcons.bitcoin,
+        context.l10n.aboutBitcoinTalk,
+        kBitcoinTalk,
+      ),
+      (MaterialCommunityIcons.reddit, context.l10n.aboutReddit, kReddit),
+      (MaterialCommunityIcons.youtube, context.l10n.aboutYoutube, kYoutube),
+      (
+        MaterialCommunityIcons.book_open_page_variant,
+        context.l10n.aboutWiki,
+        kWiki,
+      ),
+      (
+        MaterialCommunityIcons.book_multiple,
+        context.l10n.aboutCommunityWiki,
+        kOrgCommunityWiki,
+      ),
+      (
+        MaterialCommunityIcons.file_document,
+        context.l10n.aboutWhitepaper,
+        kWhitepaper,
+      ),
+    ];
+    final Map<int, String> groups = <int, String>{
+      0: context.l10n.aboutWebsites,
+      5: context.l10n.aboutExplorers,
+      7: context.l10n.aboutSocial,
+      15: context.l10n.aboutDocumentation,
+    };
+    final AppTokens tokens = AppTokens.of(context);
     return Panel(
-      title: 'Community',
-      child: SingleChildScrollView(
-        padding: const EdgeInsets.only(bottom: 10),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: <Widget>[
-            const SettingGroupLabel('Websites'),
-            const _Link(MaterialCommunityIcons.home, 'Zenon Network', kWebsite),
-            const _Link(
-              MaterialCommunityIcons.forum,
-              'Community forum',
-              kOrgCommunityForum,
-            ),
-            const _Link(MaterialCommunityIcons.tools, 'Zenon Tools', kTools),
-            const _Link(
-              MaterialCommunityIcons.web,
-              'Zenon ORG',
-              kOrgCommunityWebsite,
-            ),
-            const _Link(
-              MaterialCommunityIcons.lan,
-              'Zenon Hub',
-              kHubCommunityWebsite,
-            ),
-            const SettingGroupLabel('Explorers'),
-            const _Link(Icons.explore_outlined, 'Explorer', kExplorer),
-            const _Link(
-              Icons.explore_outlined,
-              'Hub explorer',
-              kHubCommunityExplorer,
-            ),
-            const SettingGroupLabel('Social'),
-            const _Link(MaterialCommunityIcons.twitter, 'Twitter', kTwitter),
-            const _Link(MaterialCommunityIcons.discord, 'Discord', kDiscord),
-            const _Link(Icons.telegram, 'Telegram', kTelegram),
-            const _Link(Icons.article_outlined, 'Medium', kMedium),
-            const _Link(MaterialCommunityIcons.github, 'GitHub', kGithub),
-            const _Link(
-              MaterialCommunityIcons.bitcoin,
-              'Bitcoin Talk',
-              kBitcoinTalk,
-            ),
-            const _Link(MaterialCommunityIcons.reddit, 'Reddit', kReddit),
-            const _Link(MaterialCommunityIcons.youtube, 'YouTube', kYoutube),
-            const SettingGroupLabel('Documentation'),
-            const _Link(
-              MaterialCommunityIcons.book_open_page_variant,
-              'Wiki',
-              kWiki,
-            ),
-            const _Link(
-              MaterialCommunityIcons.book_multiple,
-              'Community wiki',
-              kOrgCommunityWiki,
-            ),
-            const _Link(
-              MaterialCommunityIcons.file_document,
-              'Whitepaper',
-              kWhitepaper,
-            ),
-          ],
+      key: const Key('about_links'),
+      child: Disclosure(
+        title: context.l10n.aboutLinks,
+        summary: context.l10n.aboutLinksHint,
+        count: links.length,
+        keyPrefix: 'about_links',
+        keepAlive: true,
+        child: Padding(
+          padding: EdgeInsetsDirectional.only(bottom: tokens.cardGap),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: <Widget>[
+              for (int index = 0; index < links.length; index++) ...<Widget>[
+                if (groups[index] != null)
+                  Padding(
+                    padding: tokens.settingsRowPadding,
+                    child: Text(
+                      usesLatinScript(context)
+                          ? groups[index]!.toUpperCase()
+                          : groups[index]!,
+                      style: tokens.ledgerText,
+                    ),
+                  ),
+                _Link(
+                  key: ValueKey<String>('about_link_$index'),
+                  icon: links[index].$1,
+                  title: links[index].$2,
+                  url: links[index].$3,
+                  openLink: openLink,
+                ),
+              ],
+            ],
+          ),
         ),
       ),
     );
@@ -82,34 +120,55 @@ class CommunityCard extends StatelessWidget {
 }
 
 class _Link extends StatelessWidget {
-  const _Link(this.icon, this.title, this.url);
+  const _Link({
+    required this.icon,
+    required this.title,
+    required this.url,
+    this.openLink,
+    super.key,
+  });
 
   final IconData icon;
   final String title;
   final String url;
+  final ValueChanged<String>? openLink;
 
   @override
   Widget build(BuildContext context) {
+    final AppTokens tokens = AppTokens.of(context);
     return Tooltip(
       message: url,
       waitDuration: Durations.long2,
-      child: InkWell(
-        onTap: () => NavigationUtils.openUrl(url),
-        child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-          child: Row(
-            children: <Widget>[
-              Icon(icon, size: 18, color: AppColors.faint),
-              const SizedBox(width: 12),
-              Expanded(
-                child: Text(
-                  title,
-                  overflow: TextOverflow.ellipsis,
-                  style: Theme.of(context).textTheme.bodyLarge,
+      child: Semantics(
+        link: true,
+        child: InkWell(
+          mouseCursor: SystemMouseCursors.click,
+          hoverColor: tokens.hover,
+          onTap: () {
+            final ValueChanged<String>? open = openLink;
+            if (open != null) {
+              open(url);
+            } else {
+              unawaited(NavigationUtils.openUrl(url));
+            }
+          },
+          child: Padding(
+            padding: EdgeInsetsDirectional.symmetric(
+              horizontal: tokens.cardPadding.horizontal / 2,
+              vertical: tokens.inlineGap,
+            ),
+            child: Row(
+              children: <Widget>[
+                Icon(icon, size: tokens.railIconSize, color: tokens.faint),
+                SizedBox(width: tokens.cardGap),
+                Expanded(child: Text(title, style: tokens.bodyText)),
+                Icon(
+                  Icons.open_in_new,
+                  size: tokens.settingsIconSize,
+                  color: tokens.faint,
                 ),
-              ),
-              const Icon(Icons.open_in_new, size: 14, color: AppColors.faint),
-            ],
+              ],
+            ),
           ),
         ),
       ),

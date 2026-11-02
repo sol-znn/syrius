@@ -1,69 +1,76 @@
 import 'package:material_ui/material_ui.dart';
-import 'package:zenon_syrius_wallet_flutter/rearchitecture/utils/utils.dart';
+import 'package:zenon_syrius_wallet_flutter/rearchitecture/features/home/widgets/amount_text.dart';
+import 'package:zenon_syrius_wallet_flutter/rearchitecture/features/registration_success/registration_confirmation.dart';
+import 'package:zenon_syrius_wallet_flutter/rearchitecture/features/registration_success/registration_success_surface.dart';
+import 'package:zenon_syrius_wallet_flutter/rearchitecture/utils/extensions/buildcontext_extension.dart';
+import 'package:zenon_syrius_wallet_flutter/utils/app_theme.dart';
+import 'package:zenon_syrius_wallet_flutter/utils/zts_utils.dart';
 import 'package:zenon_syrius_wallet_flutter/widgets/reusable_widgets/app_lottie.dart';
-import 'package:zenon_syrius_wallet_flutter/widgets/reusable_widgets/modals/modal_chrome.dart';
 
-/// Success UI shown after a token has been created.
+/// Waiting and confirmed views of the original token issuance.
 class TokenCreatedSuccess extends StatelessWidget {
-  /// Creates a [TokenCreatedSuccess].
+  /// Keeps both existing callbacks and their explicit meanings.
   const TokenCreatedSuccess({
     required this.onCreateAnotherTokenPressed,
     required this.onViewTokensPressed,
+    this.confirmation,
     super.key,
   });
 
-  /// Called when the user wants to create another token.
+  /// Starts another token only after this one is confirmed.
   final VoidCallback onCreateAnotherTokenPressed;
 
-  /// Called when the user wants to return to the tokens view.
+  /// Returns to the token list.
   final VoidCallback onViewTokensPressed;
+
+  /// The original account, chain and exact positive evidence.
+  final RegistrationConfirmation? confirmation;
 
   @override
   Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsetsDirectional.only(
-        top: 50,
-        bottom: 20,
-      ),
-      // The quiet way on first, the main one last, as under every step.
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: <Widget>[
-          TextButton.icon(
-            style: quietButtonStyle(context),
-            onPressed: onCreateAnotherTokenPressed,
-            icon: const Icon(Icons.refresh, size: 18),
-            label: Text(context.l10n.createAnotherToken),
+    final RegistrationPublication? publication = confirmation?.publication;
+    return RegistrationSuccessSurface(
+      asset: AppLottieAsset.zts,
+      confirmation: confirmation,
+      confirmedKey: const Key('token_registration_confirmed'),
+      heading: context.l10n.registrationTokenCreated,
+      steps: <String>[
+        context.l10n.tokenCreateNameAndSymbol,
+        context.l10n.tokensSupply,
+        context.l10n.tokenCreateOptions,
+        context.l10n.tokenCreateIssue,
+      ],
+      facts: <Widget>[
+        if (publication != null)
+          RegistrationReceiptFact(
+            label: context.l10n.createTokenFeeLabel,
+            value: AmountText(
+              publication.amount,
+              decimals: kZnnCoin.decimals,
+              symbol: kZnnCoin.symbol,
+              style: AppTokens.of(context).dataText,
+            ),
           ),
-          const SizedBox(width: 8),
-          OutlinedButton(
-            onPressed: onViewTokensPressed,
-            child: Text(context.l10n.viewMyTokens),
-          ),
-        ],
-      ),
+      ],
+      viewLabel: context.l10n.registrationViewToken,
+      onView: onViewTokensPressed,
+      anotherLabel: context.l10n.createAnotherToken,
+      onAnother: onCreateAnotherTokenPressed,
     );
   }
 }
 
-/// Animated token success illustration.
+/// The legacy entry point also requires the original positive confirmation.
 class TokenCreatedSuccessAnimation extends StatelessWidget {
-  /// Creates a [TokenCreatedSuccessAnimation].
-  const TokenCreatedSuccessAnimation({super.key});
+  /// A standalone animation without a confirmation owner stays empty.
+  const TokenCreatedSuccessAnimation({this.confirmation, super.key});
+
+  /// The original registration's confirmation owner.
+  final RegistrationConfirmation? confirmation;
 
   @override
-  Widget build(BuildContext context) {
-    // At the end of the line, so it stays clear of the steps when the
-    // interface runs right to left.
-    return const PositionedDirectional(
-      end: 50,
-      child: SizedBox(
-        width: 400,
-        height: 400,
-        child: Center(
-          child: AppLottie(AppLottieAsset.zts, size: 400, repeat: false),
-        ),
-      ),
-    );
-  }
+  Widget build(BuildContext context) => RegistrationConfirmedArt(
+    asset: AppLottieAsset.zts,
+    confirmation: confirmation,
+  );
 }

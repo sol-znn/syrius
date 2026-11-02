@@ -1,55 +1,85 @@
 import 'dart:async';
 
-import 'package:material_ui/material_ui.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:intl/intl.dart' show DateFormat;
+import 'package:material_ui/material_ui.dart';
 import 'package:zenon_syrius_wallet_flutter/main.dart';
 import 'package:zenon_syrius_wallet_flutter/rearchitecture/features/card_parts/card_parts.dart';
 import 'package:zenon_syrius_wallet_flutter/rearchitecture/features/features.dart';
 import 'package:zenon_syrius_wallet_flutter/rearchitecture/utils/utils.dart';
+import 'package:zenon_syrius_wallet_flutter/rearchitecture/utils/widgets/eye_toggle.dart';
+import 'package:zenon_syrius_wallet_flutter/rearchitecture/utils/widgets/ltr.dart';
+import 'package:zenon_syrius_wallet_flutter/rearchitecture/utils/widgets/segment.dart';
 import 'package:zenon_syrius_wallet_flutter/utils/utils.dart';
-import 'package:zenon_syrius_wallet_flutter/widgets/widgets.dart';
+import 'package:zenon_syrius_wallet_flutter/widgets/reusable_widgets/buttons/primary_pill.dart';
+import 'package:zenon_syrius_wallet_flutter/widgets/reusable_widgets/buttons/sheen.dart';
+import 'package:zenon_syrius_wallet_flutter/widgets/reusable_widgets/input_fields/amount_input_field.dart';
 import 'package:znn_sdk_dart/znn_sdk_dart.dart';
 
-/// The least width of the Stake button, as the Send button beside its field.
-const double _kButtonMinWidth = 104;
+const double _kDurationWidth = 300;
+const double _kUnlockWidth = 140;
+const double _kButtonMinWidth = 120;
+const double _kInlineFormWidth = 1000;
+const List<int> _kMonthPresets = <int>[1, 2, 3, 6, 9, 12];
 
-/// A card that lets the user create a stake for the selected address.
+String _unlockDate(BuildContext context, Duration duration) {
+  final DateTime unlocks = DateTime.now().add(duration);
+  final Locale locale = Localizations.localeOf(context);
+  return locale.languageCode == 'en'
+      ? DateFormat('d MMM yyyy', 'en').format(unlocks)
+      : FormatUtils.formatDate(unlocks.millisecondsSinceEpoch, locale: locale);
+}
+
+/// Creates a stake from the selected address without replacing its live flow.
 class CreateStakeCard extends StatelessWidget {
-  /// Creates a stake creation widget.
+  /// Creates the stake form.
   const CreateStakeCard({
     required this.onStakeCreated,
     this.framed = true,
+    this.createTransactionBloc,
+    this.onStakePublished,
     super.key,
   });
 
-  /// Called after a stake transaction was successfully created.
+  /// Called after the stake block is created successfully.
   final VoidCallback onStakeCreated;
 
-  /// Whether the form stands in a titled card that fills its cell. Without
-  /// the frame it is a bare surface as tall as the form, laid out along
-  /// one line: what opens under the Staking page's strip.
+  /// Observes the original accepted block without changing its result.
+  final ValueChanged<AccountBlockTemplate>? onStakePublished;
+
+  /// Whether a title surrounds the form. The page disclosure supplies its own.
   final bool framed;
 
+  /// Overrides transaction construction while retaining the same event flow.
+  /// The provider owns and closes the returned bloc.
+  final SendTransactionBloc Function()? createTransactionBloc;
+
   @override
-  Widget build(BuildContext context) {
-    return BlocProvider<SendTransactionBloc>(
-      create: (_) => SendTransactionBloc(),
-      child: _View(onStakeCreated: onStakeCreated, framed: framed),
-    );
-  }
+  Widget build(BuildContext context) => BlocProvider<SendTransactionBloc>(
+    create: (_) => createTransactionBloc?.call() ?? SendTransactionBloc(),
+    child: _View(
+      onStakeCreated: onStakeCreated,
+      onStakePublished: onStakePublished,
+      framed: framed,
+    ),
+  );
 }
 
 class _View extends StatelessWidget {
-  const _View({required this.onStakeCreated, required this.framed});
+  const _View({
+    required this.onStakeCreated,
+    required this.framed,
+    this.onStakePublished,
+  });
 
   final VoidCallback onStakeCreated;
 
+  /// Observes the original accepted block without changing its result.
+  final ValueChanged<AccountBlockTemplate>? onStakePublished;
   final bool framed;
 
   @override
   Widget build(BuildContext context) {
-    // The stake is made from the selected address, which can change while
-    // the page is open.
     context.watch<SelectedAddressNotifier>();
     final Widget body = BlocBuilder<MultipleBalanceBloc, MultipleBalanceState>(
       builder: (_, MultipleBalanceState state) {
@@ -60,12 +90,12 @@ class _View extends StatelessWidget {
               state.error!,
               key: const ValueKey<String>('failure'),
             ),
-            // A refresh keeps the balances it had, so the form stays up,
-            // with what was typed in it, while the new ones load.
+            // A balance refresh retains the mounted draft.
             _ when accountInfo != null => _Populated(
-              key: const ValueKey<String>('form'),
+              key: ValueKey<String?>('form_$kSelectedAddress'),
               accountInfo: accountInfo,
               onStakeCreated: onStakeCreated,
+              onStakePublished: onStakePublished,
               framed: framed,
             ),
             _ => const _Loading(key: ValueKey<String>('loading')),
@@ -73,73 +103,50 @@ class _View extends StatelessWidget {
         );
       },
     );
-    if (!framed) return Panel(child: body);
     return Panel(
-      title: 'New stake',
-      actions: const <Widget>[RefreshButton(onPressed: _fetchBalance)],
+      title: framed ? context.l10n.stakingNewStake : null,
+      shrinkWrap: framed,
       child: body,
     );
   }
 }
 
-/// The width of the duration menu where it shares a line with the amount.
-const double _kDurationWidth = 200;
-
 void _fetchBalance() {
   sl.get<MultipleBalanceBloc>().add(
     MultipleBalanceFetch(
-      addresses: kDefaultAddressList.map((String? e) => e!).toList(),
+      addresses: kDefaultAddressList
+          .map((String? address) => address!)
+          .toList(),
     ),
   );
 }
 
-/// The form while the balance loads: a bar or a block where each of its
-/// parts will be, so the form arrives where they stood.
 class _Loading extends StatelessWidget {
   const _Loading({super.key});
 
   @override
   Widget build(BuildContext context) {
     final AppTokens tokens = AppTokens.of(context);
-    return SingleChildScrollView(
-      physics: const NeverScrollableScrollPhysics(),
-      padding: kCardBodyPadding,
-      child: RepaintBoundary(
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: <Widget>[
-            // The Available line: its label, and the balance at the right.
-            const Padding(
-              padding: EdgeInsets.symmetric(vertical: 4),
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: <Widget>[
-                  Skeleton(width: 72),
-                  Skeleton(width: 96),
-                ],
-              ),
+    return Padding(
+      padding: tokens.stripPadding.copyWith(
+        top: tokens.panelGap,
+        bottom: tokens.panelGap,
+      ),
+      child: Row(
+        children: <Widget>[
+          Expanded(
+            child: Skeleton(
+              height: tokens.fieldHeight,
+              radius: tokens.cardRadius,
             ),
-            const SizedBox(height: 12),
-            Skeleton(height: kCardFieldHeight, radius: tokens.cardRadius),
-            SizedBox(height: tokens.cardGap),
-            Row(
-              children: <Widget>[
-                Expanded(
-                  child: Skeleton(
-                    height: kCardFieldHeight,
-                    radius: tokens.cardRadius,
-                  ),
-                ),
-                SizedBox(width: tokens.cardGap),
-                const Skeleton(
-                  width: _kButtonMinWidth,
-                  height: kCardFieldHeight,
-                  radius: kCardFieldHeight / 2,
-                ),
-              ],
-            ),
-          ],
-        ),
+          ),
+          SizedBox(width: tokens.panelGap),
+          Skeleton(
+            width: _kButtonMinWidth,
+            height: tokens.fieldHeight,
+            radius: tokens.pillRadius,
+          ),
+        ],
       ),
     );
   }
@@ -150,13 +157,15 @@ class _Populated extends StatefulWidget {
     required this.accountInfo,
     required this.onStakeCreated,
     required this.framed,
+    this.onStakePublished,
     super.key,
   });
 
   final AccountInfo accountInfo;
-
   final VoidCallback onStakeCreated;
 
+  /// Observes the original accepted block without changing its result.
+  final ValueChanged<AccountBlockTemplate>? onStakePublished;
   final bool framed;
 
   @override
@@ -165,17 +174,10 @@ class _Populated extends StatefulWidget {
 
 class _PopulatedState extends State<_Populated> {
   final TextEditingController _amountController = TextEditingController();
-  final TextEditingController _menuLabelController = TextEditingController();
   final FocusNode _amountFocusNode = FocusNode();
-
-  final GlobalKey<LoadingButtonState> _stakeButtonKey = GlobalKey();
-
-  final List<Duration> _durations = List<Duration>.generate(
-    stakeTimeMaxSec ~/ stakeTimeUnitSec,
-    (int index) => Duration(seconds: (index + 1) * stakeTimeUnitSec),
-  );
-
+  final SheenController _submitSheen = SheenController();
   Duration? _selectedStakeDuration;
+  bool _submitting = false;
 
   BigInt get _maxZnnAmount =>
       widget.accountInfo.getBalance(kZnnCoin.tokenStandard);
@@ -192,67 +194,197 @@ class _PopulatedState extends State<_Populated> {
         )
       : null;
 
-  bool get _isInputValid =>
-      _selectedStakeDuration != null &&
-      _amount.isNotEmpty &&
-      _amountErrorText == null;
+  bool get _isInputValid {
+    final int? seconds = _selectedStakeDuration?.inSeconds;
+    return seconds != null &&
+        seconds >= stakeTimeUnitSec &&
+        seconds <= stakeTimeMaxSec &&
+        seconds % stakeTimeUnitSec == 0 &&
+        _amount.isNotEmpty &&
+        _amountErrorText == null;
+  }
 
   @override
   void dispose() {
     _amountController.dispose();
-    _menuLabelController.dispose();
     _amountFocusNode.dispose();
+    _submitSheen.dispose();
     super.dispose();
   }
 
   @override
   Widget build(BuildContext context) {
     final AppTokens tokens = AppTokens.of(context);
-    final Widget available = ValueFlash(
-      // Another address's balance is not a change of this one.
-      key: ValueKey<String?>(kSelectedAddress),
-      value: _maxZnnAmount,
-      color: tokens.znnInk,
-      child: CardAvailable(
-        amount: _maxZnnAmount,
-        decimals: kZnnCoin.decimals,
-        symbol: kZnnCoin.symbol,
-        symbolColor: tokens.znnInk,
+    final bool busy =
+        _submitting ||
+        context.select<SendTransactionBloc, bool>(
+          (SendTransactionBloc bloc) =>
+              bloc.state.status == SendTransactionStatus.loading,
+        );
+    final int? selectedMonths = _selectedStakeDuration == null
+        ? null
+        : _selectedStakeDuration!.inSeconds ~/ stakeTimeUnitSec;
+    // A held valid draft also survives a change to the displayed presets.
+    final List<int> months = <int>{
+      ..._kMonthPresets.where(
+        (int month) => month * stakeTimeUnitSec <= stakeTimeMaxSec,
       ),
-    );
+      if (selectedMonths != null &&
+          selectedMonths > 0 &&
+          selectedMonths * stakeTimeUnitSec <= stakeTimeMaxSec)
+        selectedMonths,
+    }.toList()..sort();
     final Widget duration = FocusTraversalOrder(
       order: const NumericFocusOrder(1),
-      child: _DurationDropdown(
-        controller: _menuLabelController,
-        durations: _durations,
-        onSelected: _onStakeDurationChanged,
+      child: _Control(
+        label: context.l10n.duration,
+        child: IgnorePointer(
+          ignoring: busy,
+          child: ExcludeFocus(
+            excluding: busy,
+            child: Segment<int>(
+              keyPrefix: 'create_stake_months',
+              items: <SegmentItem<int>>[
+                for (final int month in months)
+                  SegmentItem<int>(
+                    value: month,
+                    label: month == months.last
+                        ? context.l10n.stakeDurationMonths(month)
+                        : MaterialLocalizations.of(
+                            context,
+                          ).formatDecimal(month),
+                  ),
+              ],
+              selected: selectedMonths,
+              onChanged: (int month) => _onStakeDurationChanged(
+                Duration(seconds: month * stakeTimeUnitSec),
+              ),
+            ),
+          ),
+        ),
       ),
     );
     final Widget amount = FocusTraversalOrder(
       order: const NumericFocusOrder(2),
-      child: ValueListenableBuilder<TextEditingValue>(
-        valueListenable: _amountController,
-        // A refused key, a comma for one, says so under the field, over
-        // what the validator says.
-        builder: (_, TextEditingValue amount, _) => AmountRefusalScope(
-          controller: _amountController,
-          builder: (_, String? refusal) => TextField(
-            key: const Key('create_stake_amount_field'),
+      child: _Control(
+        label: context.l10n.amount,
+        child: ValueListenableBuilder<TextEditingValue>(
+          valueListenable: _amountController,
+          builder: (_, TextEditingValue value, _) => AmountRefusalScope(
             controller: _amountController,
-            focusNode: _amountFocusNode,
-            style: monoStyle(cardValueStyle(context)),
-            decoration: InputDecoration(
-              errorText: refusal ?? _amountErrorText,
-              hintText: context.l10n.amount,
-              suffixIcon: CardFieldAction(
-                label: context.l10n.max,
-                onPressed: _maxZnnAmount > BigInt.zero ? _onMaxPressed : null,
+            builder: (_, String? refusal) => TextField(
+              key: const Key('create_stake_amount_field'),
+              controller: _amountController,
+              focusNode: _amountFocusNode,
+              enabled: !busy,
+              textDirection: TextDirection.ltr,
+              style: tokens.dataText.copyWith(fontSize: 18),
+              decoration: InputDecoration(
+                errorText: refusal ?? _amountErrorText,
+                hintText: '0',
+                filled: true,
+                fillColor: tokens.card2,
+                isDense: true,
+                constraints: BoxConstraints(minHeight: tokens.fieldHeight),
+                contentPadding: EdgeInsetsDirectional.symmetric(
+                  horizontal: tokens.pageGap,
+                  vertical: tokens.inlineGap,
+                ),
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(tokens.cardRadius),
+                  borderSide: BorderSide(color: tokens.line),
+                ),
+                enabledBorder: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(tokens.cardRadius),
+                  borderSide: BorderSide(color: tokens.line),
+                ),
+                focusedBorder: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(tokens.cardRadius),
+                  borderSide: BorderSide(color: tokens.faint),
+                ),
+                suffixIconConstraints: BoxConstraints(
+                  maxWidth: 220,
+                  minHeight: tokens.fieldHeight,
+                ),
+                suffixIcon: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: <Widget>[
+                    TextButton(
+                      key: const Key('create_stake_max_button'),
+                      style: TextButton.styleFrom(
+                        foregroundColor: tokens.znnInk,
+                        disabledForegroundColor: tokens.faint,
+                        minimumSize: Size(0, tokens.fieldHeight),
+                        padding: EdgeInsetsDirectional.symmetric(
+                          horizontal: tokens.inlineGap,
+                        ),
+                      ),
+                      onPressed: !busy && _maxZnnAmount > BigInt.zero
+                          ? _onMaxPressed
+                          : null,
+                      child: Text(context.l10n.max),
+                    ),
+                    Flexible(
+                      child: Padding(
+                        padding: EdgeInsetsDirectional.only(
+                          end: tokens.pageGap,
+                        ),
+                        child: ValueFlash(
+                          key: ValueKey<String?>('balance_$kSelectedAddress'),
+                          value: _maxZnnAmount,
+                          color: tokens.znnInk,
+                          child: FittedBox(
+                            fit: BoxFit.scaleDown,
+                            child: HiddenAmount(
+                              style: tokens.dataText.copyWith(fontSize: 13),
+                              child: Ltr(
+                                child: Text(
+                                  context.l10n.stakingAmountOf(
+                                    cardAmount(
+                                      _maxZnnAmount,
+                                      kZnnCoin.decimals,
+                                      '',
+                                    ),
+                                  ),
+                                  maxLines: 1,
+                                  style: tokens.dataText.copyWith(
+                                    fontSize: 13,
+                                    color: tokens.dim,
+                                  ),
+                                ),
+                              ),
+                            ),
+                          ),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
               ),
+              inputFormatters: FormatUtils.getAmountTextInputFormatters(
+                value.text,
+              ),
+              onSubmitted: (_) => _onStakePressed(),
             ),
-            inputFormatters: FormatUtils.getAmountTextInputFormatters(
-              amount.text,
+          ),
+        ),
+      ),
+    );
+    final Duration? selected = _selectedStakeDuration;
+    final Widget unlocks = _Control(
+      label: context.l10n.stakingUnlocks,
+      child: SizedBox(
+        height: tokens.fieldHeight,
+        child: Align(
+          alignment: AlignmentDirectional.centerStart,
+          child: Ltr(
+            child: Text(
+              selected == null ? '' : _unlockDate(context, selected),
+              key: const Key('create_stake_unlock_date'),
+              style: tokens.dataText,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
             ),
-            onSubmitted: (_) => _onStakePressed(),
           ),
         ),
       ),
@@ -261,95 +393,99 @@ class _PopulatedState extends State<_Populated> {
       order: const NumericFocusOrder(3),
       child: ListenableBuilder(
         listenable: _amountController,
-        builder: (_, _) => KeyedSubtree(
+        builder: (_, _) => PrimaryPill(
           key: const Key('create_stake_submit_button'),
-          child: LoadingButton(
-            key: _stakeButtonKey,
-            text: context.l10n.stake,
-            minimumSize: const Size(_kButtonMinWidth, kCardFieldHeight),
-            paddingAroundChild: const EdgeInsets.symmetric(horizontal: 20),
-            circularBorderRadius: kCardFieldHeight / 2,
-            onPressed: _isInputValid ? _onStakePressed : null,
+          sheen: _submitSheen,
+          style: OutlinedButton.styleFrom(
+            minimumSize: Size(_kButtonMinWidth, tokens.fieldHeight),
+            padding: EdgeInsetsDirectional.symmetric(
+              horizontal: tokens.pageGap,
+            ),
           ),
+          onPressed: !busy && _isInputValid ? _onStakePressed : null,
+          child: busy
+              ? SizedBox.square(
+                  dimension: tokens.inlineGap * 2,
+                  child: CircularProgressIndicator(
+                    strokeWidth: 2,
+                    color: tokens.primaryButtonForeground,
+                  ),
+                )
+              : Text(
+                  _isInputValid
+                      ? context.l10n.stakingStakeAmount(
+                          cardAmount(
+                            _amount.extractDecimals(kZnnCoin.decimals),
+                            kZnnCoin.decimals,
+                            '',
+                          ),
+                        )
+                      : context.l10n.stake,
+                  maxLines: 1,
+                ),
         ),
       ),
     );
     return BlocListener<SendTransactionBloc, SendTransactionState>(
       listener: (_, SendTransactionState state) =>
           _onTransactionStateChanged(state),
-      // The stake is always made from the selected address, which the
-      // shell already names; the old disabled address field is gone.
-      child: CardFields(
-        // Tab goes through the fields before it reaches the button.
-        child: FocusTraversalGroup(
-          policy: OrderedTraversalPolicy(),
-          child: widget.framed
-              // A scroll view, so an error line under the amount can never
-              // push the Stake button off the card.
-              ? SingleChildScrollView(
-                  padding: kCardBodyPadding,
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.stretch,
+      child: FocusTraversalGroup(
+        policy: OrderedTraversalPolicy(),
+        child: Padding(
+          padding: tokens.stripPadding.copyWith(
+            top: tokens.panelGap,
+            bottom: tokens.panelGap,
+          ),
+          child: LayoutBuilder(
+            builder: (_, BoxConstraints constraints) {
+              if (!widget.framed && constraints.maxWidth >= _kInlineFormWidth) {
+                return Row(
+                  crossAxisAlignment: CrossAxisAlignment.end,
+                  children: <Widget>[
+                    SizedBox(width: _kDurationWidth, child: duration),
+                    SizedBox(width: tokens.panelGap),
+                    Expanded(child: amount),
+                    SizedBox(width: tokens.panelGap),
+                    SizedBox(width: _kUnlockWidth, child: unlocks),
+                    SizedBox(width: tokens.panelGap),
+                    submit,
+                  ],
+                );
+              }
+              return Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: <Widget>[
+                  Row(
+                    crossAxisAlignment: CrossAxisAlignment.end,
                     children: <Widget>[
-                      available,
-                      const SizedBox(height: 12),
-                      duration,
-                      SizedBox(height: tokens.cardGap),
-                      // The amount and the one action of the card share a
-                      // line.
-                      Row(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: <Widget>[
-                          Expanded(child: amount),
-                          SizedBox(width: tokens.cardGap),
-                          submit,
-                        ],
-                      ),
+                      Expanded(child: duration),
+                      SizedBox(width: tokens.panelGap),
+                      SizedBox(width: _kUnlockWidth, child: unlocks),
                     ],
                   ),
-                )
-              // As tall as the form, so the page under it moves down by
-              // no more than that: the whole form on one line, under what
-              // can be spent. The card's refresh button has no title row
-              // to stand in here and ends that first line.
-              : Padding(
-                  padding: const EdgeInsetsDirectional.fromSTEB(16, 6, 16, 16),
-                  child: Column(
-                    mainAxisSize: MainAxisSize.min,
-                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                  SizedBox(height: tokens.panelGap),
+                  Row(
+                    crossAxisAlignment: CrossAxisAlignment.end,
                     children: <Widget>[
-                      Row(
-                        children: <Widget>[
-                          Expanded(child: available),
-                          const RefreshButton(onPressed: _fetchBalance),
-                        ],
-                      ),
-                      const SizedBox(height: 6),
-                      Row(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: <Widget>[
-                          SizedBox(width: _kDurationWidth, child: duration),
-                          SizedBox(width: tokens.cardGap),
-                          Expanded(child: amount),
-                          SizedBox(width: tokens.cardGap),
-                          submit,
-                        ],
-                      ),
+                      Expanded(child: amount),
+                      SizedBox(width: tokens.panelGap),
+                      submit,
                     ],
                   ),
-                ),
+                ],
+              );
+            },
+          ),
         ),
       ),
     );
   }
 
-  void _onStakeDurationChanged(Duration? value) {
-    setState(() {
-      _selectedStakeDuration = value;
-    });
-    if (value != null) {
-      _amountFocusNode.requestFocus();
-    }
+  void _onStakeDurationChanged(Duration value) {
+    if (_submitting) return;
+    setState(() => _selectedStakeDuration = value);
+    _amountFocusNode.requestFocus();
   }
 
   void _onMaxPressed() {
@@ -357,16 +493,19 @@ class _PopulatedState extends State<_Populated> {
   }
 
   void _onStakePressed() {
-    if (!_isInputValid) {
+    final SendTransactionBloc bloc = context.read<SendTransactionBloc>();
+    // The keyboard can submit before the loading state reaches the button.
+    if (_submitting ||
+        bloc.state.status == SendTransactionStatus.loading ||
+        !_isInputValid) {
       return;
     }
-
     final AccountBlockTemplate block = zenon!.embedded.stake.stake(
       _selectedStakeDuration!.inSeconds,
       _amount.extractDecimals(kZnnCoin.decimals),
     );
-
-    context.read<SendTransactionBloc>().add(
+    setState(() => _submitting = true);
+    bloc.add(
       SendTransactionInitiateFromBlock(
         block: block,
         fromAddress: kSelectedAddress!,
@@ -376,19 +515,23 @@ class _PopulatedState extends State<_Populated> {
   }
 
   void _onTransactionStateChanged(SendTransactionState state) {
-    if (state.status == SendTransactionStatus.loading) {
-      _stakeButtonKey.currentState?.animateForward();
-    } else if (state.status == SendTransactionStatus.success) {
-      _stakeButtonKey.currentState?.animateReverse();
+    if (state.status == SendTransactionStatus.success) {
+      _submitSheen.pass();
       setState(() {
+        _submitting = false;
         _amountController.clear();
-        _menuLabelController.clear();
         _selectedStakeDuration = null;
       });
+      final AccountBlockTemplate? original = state.data;
+      try {
+        if (original != null) widget.onStakePublished?.call(original);
+      } on Object {
+        // A read-only observer cannot change the accepted result or form flow.
+      }
       widget.onStakeCreated();
       _fetchBalance();
     } else if (state.status == SendTransactionStatus.failure) {
-      _stakeButtonKey.currentState?.animateReverse();
+      setState(() => _submitting = false);
       unawaited(
         NotificationUtils.sendNotificationError(
           state.error!,
@@ -399,44 +542,20 @@ class _PopulatedState extends State<_Populated> {
   }
 }
 
-/// How long to stake for: one to twelve months.
-class _DurationDropdown extends StatelessWidget {
-  const _DurationDropdown({
-    required this.controller,
-    required this.durations,
-    required this.onSelected,
-  });
+class _Control extends StatelessWidget {
+  const _Control({required this.label, required this.child});
 
-  final TextEditingController controller;
-  final List<Duration> durations;
-  final ValueChanged<Duration?> onSelected;
+  final String label;
+  final Widget child;
 
   @override
-  Widget build(BuildContext context) {
-    final Color faint = AppTokens.of(context).faint;
-    return DropdownMenu<Duration>(
-      controller: controller,
-      key: const Key('create_stake_duration_dropdown'),
-      hintText: context.l10n.duration,
-      dropdownMenuEntries: <DropdownMenuEntry<Duration>>[
-        for (final Duration duration in durations)
-          DropdownMenuEntry<Duration>(
-            value: duration,
-            label: stakeDurationText(duration.inSeconds),
-          ),
-      ],
-      onSelected: onSelected,
-      selectOnly: true,
-      expandedInsets: EdgeInsets.zero,
-      // No decoration of its own: it takes the card's, from CardFields, so
-      // it matches the amount field under it.
-      menuHeight: kDropdownMenuHeight,
-      textStyle: cardValueStyle(context),
-      trailingIcon: Icon(Icons.keyboard_arrow_down_rounded, color: faint),
-      selectedTrailingIcon: Icon(
-        Icons.keyboard_arrow_up_rounded,
-        color: faint,
-      ),
-    );
-  }
+  Widget build(BuildContext context) => Column(
+    mainAxisSize: MainAxisSize.min,
+    crossAxisAlignment: CrossAxisAlignment.stretch,
+    children: <Widget>[
+      Text(label.toUpperCase(), style: ledgerLabelStyle(context)),
+      SizedBox(height: AppTokens.of(context).fieldLabelGap),
+      child,
+    ],
+  );
 }

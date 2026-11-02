@@ -1,0 +1,2 @@
+# prerequisite: pending P08 cold-start handoff and measured transition-frame control
+assert --key startup_stage_rect

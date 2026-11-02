@@ -1,30 +1,25 @@
 import 'package:material_ui/material_ui.dart';
-import 'package:hive_ce/hive_ce.dart';
 import 'package:zenon_syrius_wallet_flutter/model/p2p_swap/htlc_swap.dart';
 import 'package:zenon_syrius_wallet_flutter/model/p2p_swap/p2p_swap.dart';
 import 'package:zenon_syrius_wallet_flutter/rearchitecture/features/home/home.dart'
     show AmountText;
+import 'package:zenon_syrius_wallet_flutter/rearchitecture/utils/extensions/buildcontext_extension.dart';
 import 'package:zenon_syrius_wallet_flutter/rearchitecture/utils/widgets/page/page_widgets.dart';
-import 'package:zenon_syrius_wallet_flutter/utils/address_utils.dart';
-import 'package:zenon_syrius_wallet_flutter/utils/app_colors.dart';
+import 'package:zenon_syrius_wallet_flutter/rearchitecture/utils/widgets/row_detail.dart';
 import 'package:zenon_syrius_wallet_flutter/utils/app_theme.dart';
-import 'package:zenon_syrius_wallet_flutter/utils/color_utils.dart';
-import 'package:zenon_syrius_wallet_flutter/utils/constants.dart';
-import 'package:zenon_syrius_wallet_flutter/utils/date_time_utils.dart';
 import 'package:zenon_syrius_wallet_flutter/utils/format_utils.dart';
 import 'package:zenon_syrius_wallet_flutter/widgets/modular_widgets/p2p_swap_widgets/detail_row.dart';
-import 'package:zenon_syrius_wallet_flutter/widgets/reusable_widgets/loading_info_text.dart';
+import 'package:zenon_syrius_wallet_flutter/widgets/modular_widgets/p2p_swap_widgets/p2p_swaps_list_item.dart'
+    show swapListShortId;
 import 'package:znn_sdk_dart/znn_sdk_dart.dart';
 
-/// One leg of a swap inside a swap dialog: the amount under a ledger label,
-/// and the deposit's details behind a chevron.
-class HtlcCard extends StatefulWidget {
-  /// Creates a leg from its parts.
+/// One public deposit leg. A stored receiving amount does not establish proof.
+class HtlcCard extends StatelessWidget {
+  /// Renders supplied public facts and leaves unavailable values unknown.
   const HtlcCard({
     required this.title,
     required this.sender,
     required this.htlcId,
-    required this.hashLock,
     required this.expirationTime,
     required this.recipient,
     required this.amount,
@@ -34,19 +29,14 @@ class HtlcCard extends StatefulWidget {
     super.key,
   });
 
-  /// The leg this wallet deposits.
-  factory HtlcCard.sending({
-    required HtlcSwap swap,
-  }) => HtlcCard(
+  /// Shows the recorded sending leg without inventing a current expiration.
+  factory HtlcCard.sending({required HtlcSwap swap}) => HtlcCard(
     title: 'You send',
     sender: swap.selfAddress,
     htlcId: swap.direction == P2pSwapDirection.outgoing
         ? swap.initialHtlcId
         : swap.counterHtlcId,
-    hashLock: swap.hashLock,
-    expirationTime: swap.direction == P2pSwapDirection.outgoing
-        ? swap.initialHtlcExpirationTime
-        : swap.counterHtlcExpirationTime,
+    expirationTime: null,
     recipient: swap.counterpartyAddress,
     amount: swap.fromAmount,
     tokenStandard: swap.fromTokenStandard,
@@ -54,28 +44,22 @@ class HtlcCard extends StatefulWidget {
     tokenSymbol: swap.fromSymbol,
   );
 
-  /// The leg the counterparty deposits. Without a deposit id yet, the card
-  /// says it is waiting.
-  factory HtlcCard.receiving({
-    required HtlcSwap swap,
-  }) => HtlcCard(
+  /// Shows public receiving identifiers while leaving unproven amounts unknown.
+  factory HtlcCard.receiving({required HtlcSwap swap}) => HtlcCard(
     title: 'You receive',
     sender: swap.counterpartyAddress,
     htlcId: swap.direction == P2pSwapDirection.outgoing
         ? swap.counterHtlcId
         : swap.initialHtlcId,
-    hashLock: swap.hashLock,
-    expirationTime: swap.direction == P2pSwapDirection.outgoing
-        ? swap.counterHtlcExpirationTime
-        : swap.initialHtlcExpirationTime,
+    expirationTime: null,
     recipient: swap.selfAddress,
-    amount: swap.toAmount,
-    tokenStandard: swap.toTokenStandard,
-    tokenDecimals: swap.toDecimals,
-    tokenSymbol: swap.toSymbol,
+    amount: null,
+    tokenStandard: null,
+    tokenDecimals: null,
+    tokenSymbol: null,
   );
 
-  /// A leg read from the chain, before this wallet has joined.
+  /// Shows live amount metadata only when the supplied token standard matches.
   factory HtlcCard.fromHtlcInfo({
     required String title,
     required HtlcInfo htlc,
@@ -84,222 +68,136 @@ class HtlcCard extends StatefulWidget {
     title: title,
     sender: htlc.timeLocked.toString(),
     htlcId: htlc.id.toString(),
-    hashLock: FormatUtils.encodeHexString(htlc.hashLock),
     expirationTime: htlc.expirationTime,
     recipient: htlc.hashLocked.toString(),
-    amount: htlc.amount,
-    tokenStandard: token.tokenStandard.toString(),
-    tokenDecimals: token.decimals,
-    tokenSymbol: token.symbol,
+    amount: htlc.tokenStandard == token.tokenStandard ? htlc.amount : null,
+    tokenStandard: htlc.tokenStandard == token.tokenStandard
+        ? token.tokenStandard.toString()
+        : null,
+    tokenDecimals: htlc.tokenStandard == token.tokenStandard
+        ? token.decimals
+        : null,
+    tokenSymbol: htlc.tokenStandard == token.tokenStandard
+        ? token.symbol
+        : null,
   );
 
-  /// The ledger label over the amount.
+  /// Public leg label, localized for the built-in sending and receiving modes.
   final String title;
 
-  /// Who deposits.
+  /// Public sender of the displayed deposit leg.
   final String sender;
 
-  /// The deposit's id; null until the deposit exists.
+  /// Exact deposit identifier, absent before its creation is established.
   final String? htlcId;
 
-  /// The hashlock both legs share.
-  final String? hashLock;
-
-  /// When the deposit expires, in Unix seconds.
+  /// Proven current expiration, never derived from an unavailable lookup.
   final int? expirationTime;
 
-  /// Who can unlock the deposit.
+  /// Public withdrawal recipient when known.
   final String? recipient;
 
-  /// The amount in the smallest unit.
+  /// Exact base-unit amount, displayed only with complete matching metadata.
   final BigInt? amount;
 
-  /// The token's standard.
+  /// Token standard associated with [amount].
   final String? tokenStandard;
 
-  /// The token's decimals.
+  /// Matching token precision associated with [amount].
   final int? tokenDecimals;
 
-  /// The token's symbol.
+  /// Matching token symbol associated with [amount].
   final String? tokenSymbol;
 
   @override
-  State<HtlcCard> createState() => _HtlcCardState();
-}
-
-class _HtlcCardState extends State<HtlcCard> {
-  bool _areDetailsExpanded = false;
-
-  @override
   Widget build(BuildContext context) {
-    return AnimatedSize(
-      duration: Durations.short4,
-      curve: Easing.standard,
-      alignment: Alignment.topCenter,
-      child: Material(
-        color: Theme.of(context).colorScheme.primary,
-        borderRadius: BorderRadius.circular(kCardRadius),
-        clipBehavior: Clip.antiAlias,
-        child: widget.htlcId == null ? _buildWaitingBody() : _buildBody(),
-      ),
-    );
-  }
-
-  Widget _buildWaitingBody() {
-    return const SizedBox(
-      height: 76,
-      child: LoadingInfoText(text: 'Waiting for the counterparty'),
-    );
-  }
-
-  Widget _buildBody() {
-    final ThemeData theme = Theme.of(context);
-    return Padding(
-      padding: const EdgeInsets.fromLTRB(16, 12, 8, 12),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        mainAxisSize: MainAxisSize.min,
-        children: <Widget>[
-          Text(widget.title.toUpperCase(), style: ledgerLabelStyle(context)),
-          const SizedBox(height: 4),
-          Row(
+    final AppTokens tokens = AppTokens.of(context);
+    final bool knownAmount =
+        amount != null &&
+        tokenDecimals != null &&
+        tokenStandard != null &&
+        tokenSymbol != null;
+    final String label = switch (title) {
+      'You send' => context.l10n.swapListYouSend,
+      'You receive' => context.l10n.swapListYouReceive,
+      _ => title,
+    };
+    return Material(
+      color: tokens.card2,
+      borderRadius: BorderRadius.circular(tokens.compactRadius),
+      clipBehavior: Clip.antiAlias,
+      child: RowDetail(
+        keyPrefix: 'htlc_$title',
+        row: Padding(
+          padding: tokens.cardPadding,
+          child: Row(
             children: <Widget>[
               Expanded(
-                child: Row(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  mainAxisSize: MainAxisSize.min,
                   children: <Widget>[
-                    Flexible(
-                      child: AmountText(
-                        widget.amount!,
-                        decimals: widget.tokenDecimals!,
-                        style: theme.textTheme.bodyLarge!.copyWith(
-                          fontSize: 20,
-                          fontWeight: FontWeight.w500,
-                        ),
-                        symbol: widget.tokenSymbol,
-                      ),
+                    Text(
+                      usesLatinScript(context) ? label.toUpperCase() : label,
+                      style: ledgerLabelStyle(context),
                     ),
-                    const SizedBox(width: 8),
-                    Container(
-                      height: 6,
-                      width: 6,
-                      decoration: BoxDecoration(
-                        shape: BoxShape.circle,
-                        color: ColorUtils.getTokenColor(
-                          TokenStandard.parse(widget.tokenStandard!),
-                        ),
+                    SizedBox(height: tokens.fieldLabelGap),
+                    if (knownAmount)
+                      AmountText(
+                        amount!,
+                        decimals: tokenDecimals!,
+                        symbol: tokenSymbol,
+                        style: tokens.transferAmountText,
+                      )
+                    else
+                      Text(
+                        context.l10n.swapListUnknown,
+                        style: tokens.compactText.copyWith(color: tokens.dim),
                       ),
-                    ),
                   ],
                 ),
               ),
-              IconButton(
-                tooltip: 'Details',
-                iconSize: 20,
-                visualDensity: VisualDensity.compact,
-                onPressed: () => setState(() {
-                  _areDetailsExpanded = !_areDetailsExpanded;
-                }),
-                icon: AnimatedRotation(
-                  turns: _areDetailsExpanded ? 0.5 : 0,
-                  duration: Durations.short4,
-                  curve: Easing.standard,
-                  child: const Icon(
-                    Icons.keyboard_arrow_down,
-                    color: AppColors.faint,
-                  ),
-                ),
-              ),
+              const RowDetailChevron(),
             ],
           ),
-          if (_areDetailsExpanded) ...<Widget>[
-            const SizedBox(height: 8),
-            const Padding(
-              padding: EdgeInsets.only(right: 8),
-              child: Divider(),
-            ),
-            const SizedBox(height: 4),
-            _buildDetailsList(),
-          ],
-        ],
+        ),
+        detail: (BuildContext context) => Padding(
+          padding: tokens.swapDetailPadding,
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: <Widget>[
+              if (htlcId != null)
+                DetailRow(
+                  label: context.l10n.swapListDepositId,
+                  value: htlcId!,
+                  valueToShow: swapListShortId(htlcId!),
+                ),
+              if (tokenStandard != null)
+                DetailRow(
+                  label: context.l10n.swapListTokenStandard,
+                  value: tokenStandard!,
+                ),
+              DetailRow(
+                label: context.l10n.swapListSender,
+                value: sender,
+                valueToShow: swapListShortId(sender),
+              ),
+              if (recipient != null)
+                DetailRow(
+                  label: context.l10n.swapListRecipient,
+                  value: recipient!,
+                  valueToShow: swapListShortId(recipient!),
+                ),
+              if (expirationTime != null)
+                DetailRow(
+                  label: context.l10n.swapListExpires,
+                  value: FormatUtils.formatDateTime(expirationTime! * 1000),
+                  canBeCopied: false,
+                ),
+            ],
+          ),
+        ),
       ),
-    );
-  }
-
-  Widget _buildDetailsList() {
-    final Hash htlcId = Hash.parse(widget.htlcId!);
-    final Hash hashLock = Hash.parse(widget.hashLock!);
-    return Column(
-      children: <Widget>[
-        _buildExpirationRow(widget.expirationTime!),
-        DetailRow(
-          label: 'Deposit ID',
-          value: htlcId.toString(),
-          valueToShow: htlcId.toShortString(),
-        ),
-        DetailRow(
-          label: 'Token standard',
-          value: widget.tokenStandard!,
-          prefixWidget: _buildTokenStandardMark(widget.tokenStandard ?? ''),
-        ),
-        DetailRow(
-          label: 'Sender',
-          value: widget.sender,
-          valueToShow: ZenonAddressUtils.getLabel(widget.sender),
-        ),
-        DetailRow(
-          label: 'Recipient',
-          value: widget.recipient!,
-          valueToShow: ZenonAddressUtils.getLabel(widget.recipient!),
-        ),
-        DetailRow(
-          label: 'Hashlock',
-          value: hashLock.toString(),
-          valueToShow: hashLock.toShortString(),
-        ),
-      ],
-    );
-  }
-
-  Widget _buildTokenStandardMark(String tokenStandard) {
-    String message = 'Not in your favorites';
-    IconData icon = Icons.help;
-    Color iconColor = AppColors.errorColor;
-    if (<String>[znnTokenStandard, qsrTokenStandard].contains(tokenStandard)) {
-      message = 'Verified';
-      icon = Icons.check_circle_outline;
-      iconColor = AppColors.znnColor;
-    } else if (Hive.box(kFavoriteTokensBox).values.contains(tokenStandard)) {
-      message = 'In your favorites';
-      icon = Icons.star;
-      iconColor = AppColors.znnColor;
-    }
-    return Tooltip(
-      message: message,
-      child: Icon(icon, color: iconColor, size: 14),
-    );
-  }
-
-  Widget _buildExpirationRow(int expirationTime) {
-    final Duration duration = Duration(
-      seconds: expirationTime - DateTimeUtils.unixTimeNow,
-    );
-    if (duration.isNegative) {
-      return const DetailRow(
-        label: 'Expires in',
-        value: 'Expired',
-        canBeCopied: false,
-      );
-    }
-    return TweenAnimationBuilder<Duration>(
-      duration: duration,
-      tween: Tween<Duration>(begin: duration, end: Duration.zero),
-      builder: (_, Duration d, _) {
-        return DetailRow(
-          label: 'Expires in',
-          value: d.toString().split('.').first,
-          canBeCopied: false,
-        );
-      },
     );
   }
 }

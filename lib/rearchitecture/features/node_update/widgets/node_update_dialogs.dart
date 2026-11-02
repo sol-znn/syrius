@@ -191,6 +191,22 @@ class _Question extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    // Both actions use ordinary dialog geometry. This is a shared consistency
+    // rule; the extra node-management questions have no exact reference shot.
+    final ButtonStyle confirmStyle = (_confirmStyle ?? const ButtonStyle())
+        .copyWith(
+          minimumSize: WidgetStatePropertyAll<Size>(
+            Size(64, AppTokens.of(context).buttonHeight),
+          ),
+          padding: const WidgetStatePropertyAll<EdgeInsetsGeometry>(
+            EdgeInsets.symmetric(horizontal: 16),
+          ),
+          textStyle: const WidgetStatePropertyAll<TextStyle>(
+            kOutlinedButtonTextStyle,
+          ),
+          visualDensity: VisualDensity.standard,
+          tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+        );
     return DialogCard(
       title: _title,
       width: _kDialogWidth,
@@ -218,7 +234,7 @@ class _Question extends StatelessWidget {
         ),
         OutlinedButton(
           key: _confirmKey,
-          style: _confirmStyle,
+          style: confirmStyle,
           onPressed: () => Navigator.of(context).pop(true),
           child: Text(_confirmLabel),
         ),

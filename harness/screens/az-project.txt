@@ -1,0 +1,10 @@
+# prerequisite: pending F06 reversible project fixture preparation
+# Requires a completed Accelerator project read with at least one project.
+# Opens its original detail route. It does not create, update, donate or vote.
+goto accelerator
+wait --key accelerator_list --timeout 30
+tap --key accelerator_filter_all
+wait --type AcceleratorProjectListItem --timeout 30
+tap --type AcceleratorProjectListItem --nth 0
+wait --key accelerator_project_loaded --timeout 30
+assert --key accelerator_project_loaded

@@ -11,7 +11,12 @@ part of 'infinite_scroll_table.dart';
 /// gives the same number to the cell under it.
 class InfiniteScrollTableHead {
   /// Creates a new instance.
-  const InfiniteScrollTableHead({this.name, this.tooltip, this.flex});
+  const InfiniteScrollTableHead({
+    this.name,
+    this.tooltip,
+    this.flex,
+    this.alignment,
+  });
 
   /// The name shown, in place of the column type's.
   final String? name;
@@ -21,6 +26,9 @@ class InfiniteScrollTableHead {
 
   /// The space the column takes, in place of the column type's.
   final int? flex;
+
+  /// A status heading can align with the status chips below it.
+  final MainAxisAlignment? alignment;
 }
 
 /// A widget that represents a column inside the [InfiniteScrollTable] header.

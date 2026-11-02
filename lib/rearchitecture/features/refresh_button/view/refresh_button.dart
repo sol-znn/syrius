@@ -1,9 +1,9 @@
 import 'package:material_ui/material_ui.dart';
+import 'package:zenon_syrius_wallet_flutter/rearchitecture/utils/extensions/buildcontext_extension.dart';
+import 'package:zenon_syrius_wallet_flutter/utils/app_theme.dart';
+import 'package:zenon_syrius_wallet_flutter/widgets/shell/page_refresh.dart';
 
-/// A button that, initially, shows a refresh icon but re-builds to show a
-/// loading indicator to show to the user that an async operation is being done
-///
-/// Future not fully implemented
+/// A read refresh shared by the page's button and its shell shortcut.
 class RefreshButton extends StatelessWidget {
   /// Constructs a new instance.
   const RefreshButton({
@@ -15,29 +15,16 @@ class RefreshButton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    // TODO(maznnwell): implement re-building via a listener
-    return _Initial(
-      onPressed: _onPressed,
-    );
-  }
-}
-
-class _Initial extends StatelessWidget {
-  const _Initial({
-    required this.onPressed,
-  });
-
-  final VoidCallback onPressed;
-
-  @override
-  Widget build(BuildContext context) {
-    return IconButton(
-      mouseCursor: SystemMouseCursors.click,
-      tooltip: 'Refresh',
-      iconSize: 18,
-      color: const Color(0xFF717671),
-      icon: const Icon(Icons.refresh),
-      onPressed: onPressed,
+    return PageRefreshAction(
+      onRefresh: _onPressed,
+      child: IconButton(
+        mouseCursor: SystemMouseCursors.click,
+        tooltip: context.l10n.commonRefresh,
+        iconSize: 18,
+        color: AppTokens.of(context).dim,
+        icon: const Icon(Icons.refresh),
+        onPressed: _onPressed,
+      ),
     );
   }
 }

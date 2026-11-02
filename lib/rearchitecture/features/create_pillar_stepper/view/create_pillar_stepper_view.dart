@@ -1,10 +1,12 @@
 import 'dart:async';
 
-import 'package:material_ui/material_ui.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:material_ui/material_ui.dart';
 import 'package:zenon_syrius_wallet_flutter/main.dart';
 import 'package:zenon_syrius_wallet_flutter/rearchitecture/features/card_parts/card_parts.dart';
 import 'package:zenon_syrius_wallet_flutter/rearchitecture/features/features.dart';
+import 'package:zenon_syrius_wallet_flutter/rearchitecture/features/registration_success/registration_confirmation.dart';
+import 'package:zenon_syrius_wallet_flutter/rearchitecture/features/registration_success/registration_success_surface.dart';
 import 'package:zenon_syrius_wallet_flutter/rearchitecture/utils/utils.dart';
 import 'package:zenon_syrius_wallet_flutter/utils/app_theme.dart';
 import 'package:zenon_syrius_wallet_flutter/utils/global.dart';
@@ -32,7 +34,10 @@ enum _Step {
 /// allowed to deposit totally.
 class CreatePillarStepperView extends StatefulWidget {
   /// {@macro default_constructor}
-  const CreatePillarStepperView({super.key});
+  const CreatePillarStepperView({this.confirmation, super.key});
+
+  /// A page-owned confirmation survives every retained step and balance read.
+  final RegistrationConfirmation? confirmation;
 
   @override
   State createState() {
@@ -41,6 +46,9 @@ class CreatePillarStepperView extends StatefulWidget {
 }
 
 class _MainPillarState extends State<CreatePillarStepperView> {
+  late final RegistrationConfirmation _confirmation;
+  AccountInfo? _lastAccountInfo;
+  int _registrationRun = 0;
   final TextEditingController _qsrAmountController = TextEditingController();
   final TextEditingController _znnAmountController = TextEditingController();
   final TextEditingController _addressController = TextEditingController();
@@ -53,6 +61,7 @@ class _MainPillarState extends State<CreatePillarStepperView> {
   @override
   void initState() {
     super.initState();
+    _confirmation = widget.confirmation ?? RegistrationConfirmation.capture();
     // Shown, never typed: grouped, and with no trailing zeros.
     _znnAmountController.text = cardAmount(
       pillarRegisterZnnAmount,
@@ -72,26 +81,34 @@ class _MainPillarState extends State<CreatePillarStepperView> {
     return BlocBuilder<MultipleBalanceBloc, MultipleBalanceState>(
       // Loading, the steps and an error fade into one another. The steps
       // themselves change with the stepper's own transition.
-      builder: (_, MultipleBalanceState state) => StateSwitcher(
-        alignment: Alignment.center,
-        child: switch (state.status) {
-          MultipleBalanceStatus.failure => SyriusErrorWidget(
-            state.error!,
-            key: const ValueKey<String>('error'),
-          ),
-          MultipleBalanceStatus.initial ||
-          MultipleBalanceStatus.loading => const SyriusLoadingWidget(
-            key: ValueKey<String>('loading'),
-          ),
-          MultipleBalanceStatus.success => KeyedSubtree(
-            key: const ValueKey<String>('steps'),
-            child: _buildBody(
-              context,
-              state.data![_addressController.text]!,
-            ),
-          ),
-        },
-      ),
+      builder: (_, MultipleBalanceState state) {
+        final AccountInfo? account = state.data?[_addressController.text];
+        if (state.status == MultipleBalanceStatus.success && account != null) {
+          _lastAccountInfo = account;
+        }
+        return StateSwitcher(
+          alignment: Alignment.center,
+          // A refresh must not dispose the submission listener or restart art.
+          child: _lastAccountInfo != null
+              ? KeyedSubtree(
+                  key: const ValueKey<String>('steps'),
+                  child: _buildBody(context, _lastAccountInfo!),
+                )
+              : switch (state.status) {
+                  MultipleBalanceStatus.failure => SyriusErrorWidget(
+                    state.error!,
+                    key: const ValueKey<String>('error'),
+                  ),
+                  MultipleBalanceStatus.initial ||
+                  MultipleBalanceStatus.loading => const SyriusLoadingWidget(
+                    key: ValueKey<String>('loading'),
+                  ),
+                  MultipleBalanceStatus.success => const SyriusLoadingWidget(
+                    key: ValueKey<String>('loading'),
+                  ),
+                },
+        );
+      },
     );
   }
 
@@ -104,29 +121,21 @@ class _MainPillarState extends State<CreatePillarStepperView> {
         child: ValueListenableBuilder<_Step?>(
           valueListenable: _currentStep,
           builder: (_, _Step? currentStep, _) {
-            final bool hasPillarBeenRegistered = currentStep == null;
-
-            return Stack(
-              children: <Widget>[
-                ListView(
-                  children: <Widget>[
-                    _buildMaterialStepper(
-                      accountInfo: accountInfo,
-                      currentStep: currentStep,
-                    ),
-                    if (hasPillarBeenRegistered)
-                      PillarRegisteredSuccess(
-                        onRegisterAnotherPressed:
-                            _onDeployAnotherPillarButtonPressed,
-                        onViewPillarsPressed: () {
-                          Navigator.pop(context);
-                        },
-                      ),
-                  ],
-                ),
-                if (hasPillarBeenRegistered)
-                  const PillarRegisteredSuccessAnimation(),
-              ],
+            return RegistrationRetainedFlow(
+              published: currentStep == null,
+              form: ListView(
+                children: <Widget>[
+                  _buildMaterialStepper(
+                    accountInfo: accountInfo,
+                    currentStep: currentStep,
+                  ),
+                ],
+              ),
+              receipt: PillarRegisteredSuccess(
+                confirmation: _confirmation,
+                onRegisterAnotherPressed: _onDeployAnotherPillarButtonPressed,
+                onViewPillarsPressed: () => Navigator.pop(context),
+              ),
             );
           },
         ),
@@ -216,6 +225,8 @@ class _MainPillarState extends State<CreatePillarStepperView> {
             active: currentStep == _Step.deployPillar,
             onBackPressed: _navigateToPreviousStep,
             onDeployDone: _onDeployDone,
+            onPublished: _confirmation.accept,
+            registrationRun: _registrationRun,
           ),
           stepSubtitle: context.l10n.pillarRegistered,
           stepState: getStepState(
@@ -243,15 +254,18 @@ class _MainPillarState extends State<CreatePillarStepperView> {
   }
 
   Future<void> _onDeployAnotherPillarButtonPressed() async {
+    if (!_confirmation.resetForAnother()) return;
+    _registrationRun++;
     _currentStep.value = .checkPlasma;
     _refreshPillarQsrInfo();
     _currentStep.value = _Step.values.first;
   }
 
   void _navigateToNextStep() {
-    final int currentStepIndex = _currentStep.value!.index;
+    final _Step? currentStep = _currentStep.value;
+    if (currentStep == null || currentStep == _Step.values.last) return;
 
-    _currentStep.value = _Step.values[currentStepIndex + 1];
+    _currentStep.value = _Step.values[currentStep.index + 1];
   }
 
   void _navigateToPreviousStep() {
@@ -273,6 +287,7 @@ class _MainPillarState extends State<CreatePillarStepperView> {
 
   @override
   void dispose() {
+    if (widget.confirmation == null) _confirmation.dispose();
     _qsrAmountController.dispose();
     _znnAmountController.dispose();
     _addressController.dispose();

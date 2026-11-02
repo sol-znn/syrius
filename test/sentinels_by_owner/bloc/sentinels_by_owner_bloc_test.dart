@@ -41,6 +41,7 @@ void main() {
 
       when(() => mockZenon.embedded).thenReturn(mockEmbedded);
       when(() => mockEmbedded.sentinel).thenReturn(mockSentinel);
+      when(() => sentinelInfo.owner).thenReturn(emptyAddress);
       when(() => sentinelInfo.toJson()).thenReturn(<String, dynamic>{
         'owner': emptyAddress.toString(),
         'registrationTimestamp': 1625132800,

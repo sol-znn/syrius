@@ -4,6 +4,7 @@ import 'package:zenon_syrius_wallet_flutter/blocs/blocs.dart';
 import 'package:zenon_syrius_wallet_flutter/blocs/wallet_connect/wallet_connect_pairings_bloc.dart';
 import 'package:zenon_syrius_wallet_flutter/blocs/wallet_connect/wallet_connect_sessions_bloc.dart';
 import 'package:zenon_syrius_wallet_flutter/main.dart';
+import 'package:zenon_syrius_wallet_flutter/rearchitecture/utils/extensions/buildcontext_extension.dart';
 import 'package:zenon_syrius_wallet_flutter/rearchitecture/utils/widgets/page/page_widgets.dart';
 import 'package:zenon_syrius_wallet_flutter/services/i_web3wallet_service.dart';
 import 'package:zenon_syrius_wallet_flutter/utils/app_colors.dart';
@@ -13,8 +14,9 @@ import 'package:zenon_syrius_wallet_flutter/widgets/modular_widgets/settings_wid
 import 'package:zenon_syrius_wallet_flutter/widgets/widgets.dart';
 
 /// WalletConnect pairings: the secure link a site made first, under which
-/// its sessions run. Removing one ends its sessions too.
+/// its sessions run. Disconnecting a pairing does not delete its sessions.
 class WalletConnectPairingsCard extends StatefulWidget {
+  /// Displays actual pairing records separately from active session records.
   const WalletConnectPairingsCard({super.key});
 
   @override
@@ -108,7 +110,7 @@ class _WalletConnectPairingsCardState extends State<WalletConnectPairingsCard> {
     return Align(
       alignment: Alignment.centerRight,
       child: IconButton(
-        tooltip: 'Remove pairing',
+        tooltip: context.l10n.appsSettingsDisconnectPairing,
         visualDensity: VisualDensity.compact,
         iconSize: 16,
         icon: const Icon(Icons.close, color: AppColors.faint),
@@ -137,16 +139,33 @@ class _WalletConnectPairingsCardState extends State<WalletConnectPairingsCard> {
       FormatUtils.formatDayMonthTime(expirySeconds * 1000);
 
   Future<void> _onDeactivatePairingIconPressed(PairingInfo pairingInfo) async {
+    final IWeb3WalletService service = sl<IWeb3WalletService>();
+    final WalletConnectSessionsBloc sessions = sl<WalletConnectSessionsBloc>();
+    final NotificationsBloc notifications = sl<NotificationsBloc>();
+    final String failureMessage = context.l10n.appsSettingsFailed;
+    final String disconnectLabel = context.l10n.appsSettingsDisconnectPairing;
+    bool current() =>
+        mounted &&
+        sl.isRegistered<IWeb3WalletService>() &&
+        identical(service, sl<IWeb3WalletService>());
+    if (!current() ||
+        !service.pairings.value.any(
+          (PairingInfo pairing) => identical(pairing, pairingInfo),
+        )) {
+      return;
+    }
     try {
-      await sl<IWeb3WalletService>().deactivatePairing(
+      await service.deactivatePairing(
         topic: pairingInfo.topic,
       );
+      if (!current()) return;
       _pairingsBloc.refreshResults();
-      sl<WalletConnectSessionsBloc>().refreshResults();
-    } catch (e) {
-      await sl<NotificationsBloc>().addErrorNotification(
-        e,
-        'Error while deactivating pair',
+      sessions.refreshResults();
+    } on Object {
+      if (!current()) return;
+      await notifications.addErrorNotification(
+        failureMessage,
+        disconnectLabel,
       );
     }
   }

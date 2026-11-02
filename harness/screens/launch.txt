@@ -1,0 +1,2 @@
+# prerequisite: pending P08 cold-start preparation and original launch-frame control
+assert --key startup_stage_rect

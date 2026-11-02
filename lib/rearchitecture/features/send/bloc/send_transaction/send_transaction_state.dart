@@ -1,5 +1,17 @@
 part of 'send_transaction_bloc.dart';
 
+/// The display owner of a shared sender operation.
+enum SendTransactionOrigin {
+  /// An ordinary transfer initiated from Send or its existing deep link.
+  transfer,
+
+  /// An existing contract action.
+  contract,
+
+  /// One request in the session's explicit reward collection batch.
+  collection,
+}
+
 /// Represents the possible statuses of the send payment operation.
 enum SendTransactionStatus {
   /// The initial state before any payment action has been taken.
@@ -26,6 +38,8 @@ class SendTransactionState extends Equatable {
     this.status = SendTransactionStatus.initial,
     this.data,
     this.error,
+    this.requestId,
+    this.origin = SendTransactionOrigin.transfer,
   });
 
   /// Creates a new instance from a JSON map.
@@ -43,16 +57,28 @@ class SendTransactionState extends Equatable {
   /// An object representing any error occurring during the payment operation.
   final SyriusException? error;
 
+  /// Correlates one live request without making it a durable journal entry.
+  @JsonKey(includeFromJson: false, includeToJson: false)
+  final Object? requestId;
+
+  /// Prevents a contract result clearing or notifying an unrelated Send form.
+  @JsonKey(includeFromJson: false, includeToJson: false)
+  final SendTransactionOrigin origin;
+
   /// {@macro state_copy_with}
   SendTransactionState copyWith({
     SendTransactionStatus? status,
     AccountBlockTemplate? data,
     SyriusException? error,
+    Object? requestId,
+    SendTransactionOrigin? origin,
   }) {
     return SendTransactionState(
       status: status ?? this.status,
       data: data ?? this.data,
       error: error ?? this.error,
+      requestId: requestId ?? this.requestId,
+      origin: origin ?? this.origin,
     );
   }
 
@@ -60,5 +86,5 @@ class SendTransactionState extends Equatable {
   Map<String, dynamic> toJson() => _$SendTransactionStateToJson(this);
 
   @override
-  List<Object?> get props => <Object?>[status, data, error];
+  List<Object?> get props => <Object?>[status, data, error, requestId, origin];
 }

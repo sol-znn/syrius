@@ -57,6 +57,33 @@ void main() {
       );
     });
 
+    blocTest<UpdatePillarBloc, UpdatePillarState>(
+      'maps an arbitrary publication error to failure instead of staying busy',
+      setUp: () {
+        when(
+          () => accountBlockUtils.createAccountBlock(any(), any()),
+        ).thenThrow(StateError('Unavailable original response'));
+      },
+      build: () => bloc,
+      act: (UpdatePillarBloc bloc) => bloc.add(
+        UpdatePillarRequested(
+          blockProducingAddress: emptyAddress,
+          giveBlockRewardPercentage: 1,
+          giveDelegateRewardPercentage: 1,
+          pillarName: 'pillar',
+          rewardAddress: emptyAddress,
+        ),
+      ),
+      expect: () => <Matcher>[
+        isA<UpdatePillarLoading>(),
+        isA<UpdatePillarFailure>().having(
+          (UpdatePillarFailure value) => value.exception,
+          'exception',
+          isA<FailureException>(),
+        ),
+      ],
+    );
+
     test('initial state is correct', () {
       expect(bloc.state, const UpdatePillarInitial());
     });

@@ -1,0 +1,5 @@
+# prerequisite: pending F06 reversible prepared send-confirm dialog
+# The prepared state opens confirmation only. This recipe never accepts it.
+wait --key send_confirmation_marker
+assert --key send_confirmation_cancel
+assert --key send_confirmation_accept

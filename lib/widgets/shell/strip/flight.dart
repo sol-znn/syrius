@@ -5,6 +5,7 @@ import 'package:zenon_syrius_wallet_flutter/rearchitecture/features/home/widgets
 import 'package:zenon_syrius_wallet_flutter/rearchitecture/utils/extensions/buildcontext_extension.dart';
 import 'package:zenon_syrius_wallet_flutter/rearchitecture/utils/widgets/ltr.dart';
 import 'package:zenon_syrius_wallet_flutter/utils/app_theme.dart';
+import 'package:zenon_syrius_wallet_flutter/widgets/shell/strip/status_dot.dart';
 import 'package:znn_sdk_dart/znn_sdk_dart.dart';
 
 /// A block the wallet published that no momentum has taken in yet.
@@ -14,8 +15,8 @@ class InFlightBlock {
   const InFlightBlock({
     required this.hash,
     required this.amount,
-    required this.decimals,
-    required this.symbol,
+    this.decimals,
+    this.symbol,
   });
 
   /// The published block's hash.
@@ -24,19 +25,20 @@ class InFlightBlock {
   /// What it sends, in the token's smallest unit.
   final BigInt amount;
 
-  /// The token's decimals.
-  final int decimals;
+  /// The token's known decimals, absent when metadata is unavailable.
+  final int? decimals;
 
-  /// The token's symbol.
-  final String symbol;
+  /// The token's known symbol, absent when metadata is unavailable.
+  final String? symbol;
 }
 
 /// Asks the node whether a momentum has taken the block in.
 typedef ConfirmationLookup = Future<bool> Function(Hash hash);
 
-Future<bool> _askNode(Hash hash) async =>
-    (await zenon!.ledger.getAccountBlockByHash(hash))?.confirmationDetail !=
-    null;
+Future<bool> _askNode(Hash hash) async {
+  final AccountBlock? block = await zenon!.ledger.getAccountBlockByHash(hash);
+  return block?.hash == hash && block?.confirmationDetail != null;
+}
 
 /// The sends that are waiting for their momentum, for the strip's chip.
 ///
@@ -59,24 +61,39 @@ class InFlightBlocks extends ChangeNotifier
 
   final ConfirmationLookup _lookup;
   List<InFlightBlock> _blocks = const <InFlightBlock>[];
-  bool _checking = false;
+  final Set<Hash> _confirmed = <Hash>{};
+  int _epoch = 0;
+  int? _checkingEpoch;
+  bool _disposed = false;
 
   /// The blocks in flight, oldest first.
   @override
   List<InFlightBlock> get value => _blocks;
+
+  /// Positive exact-hash evidence, separate from absence in the pending list.
+  bool hasConfirmed(Hash hash) => !_disposed && _confirmed.contains(hash);
+
+  /// Revokes node-context evidence while retaining every unresolved hash.
+  void invalidateEvidence() {
+    if (_disposed) return;
+    _epoch++;
+    _checkingEpoch = null;
+    _confirmed.clear();
+    notifyListeners();
+  }
 
   /// Records a send the node has accepted. Call it with the published
   /// block's hash, as soon as the send returns.
   void sent({
     required Hash hash,
     required BigInt amount,
-    required int decimals,
-    required String symbol,
+    int? decimals,
+    String? symbol,
   }) {
-    if (_blocks.any((InFlightBlock block) => block.hash == hash)) {
+    if (_disposed || _blocks.any((InFlightBlock block) => block.hash == hash)) {
       return;
     }
-    _blocks = <InFlightBlock>[
+    _blocks = List<InFlightBlock>.unmodifiable(<InFlightBlock>[
       ..._blocks,
       InFlightBlock(
         hash: hash,
@@ -84,25 +101,30 @@ class InFlightBlocks extends ChangeNotifier
         decimals: decimals,
         symbol: symbol,
       ),
-    ];
+    ]);
     notifyListeners();
   }
 
-  /// Takes [hash] out: a momentum has it, or it will never have one.
+  /// Takes [hash] out only when the caller has learned its exact confirmation.
   void settle(Hash hash) {
+    if (_disposed) return;
     final List<InFlightBlock> rest = <InFlightBlock>[
       for (final InFlightBlock block in _blocks)
         if (block.hash != hash) block,
     ];
     if (rest.length != _blocks.length) {
-      _blocks = rest;
+      _confirmed.add(hash);
+      _blocks = List<InFlightBlock>.unmodifiable(rest);
       notifyListeners();
     }
   }
 
-  /// Forgets every block: the wallet was locked, or the node was changed
-  /// and the new one may never have heard of them.
+  /// Starts a different tracking session or node epoch. Lock alone is not
+  /// settlement: the shell hides the chip while retaining unresolved hashes.
   void clear() {
+    if (_disposed) return;
+    _epoch++;
+    _confirmed.clear();
     if (_blocks.isNotEmpty) {
       _blocks = const <InFlightBlock>[];
       notifyListeners();
@@ -114,14 +136,20 @@ class InFlightBlocks extends ChangeNotifier
   /// A node that does not answer leaves the block where it is: "waiting" is
   /// still the truth as far as the wallet can tell.
   Future<void> check() async {
-    if (_checking || _blocks.isEmpty) {
+    if (_disposed || _checkingEpoch == _epoch || _blocks.isEmpty) {
       return;
     }
-    _checking = true;
+    final int epoch = _epoch;
+    _checkingEpoch = epoch;
     try {
       for (final InFlightBlock block in _blocks.toList()) {
+        if (_disposed || epoch != _epoch) break;
         try {
-          if (await _lookup(block.hash)) {
+          final bool confirmed = await _lookup(block.hash);
+          // The same hash may have been registered in a different node epoch
+          // while this request was outstanding. Its answer cannot settle it.
+          if (_disposed || epoch != _epoch) break;
+          if (confirmed) {
             settle(block.hash);
           }
         } on Object {
@@ -129,8 +157,16 @@ class InFlightBlocks extends ChangeNotifier
         }
       }
     } finally {
-      _checking = false;
+      if (_checkingEpoch == epoch) _checkingEpoch = null;
     }
+  }
+
+  @override
+  void dispose() {
+    _disposed = true;
+    _epoch++;
+    _checkingEpoch = null;
+    super.dispose();
   }
 }
 
@@ -158,28 +194,45 @@ class FlightChip extends StatelessWidget {
         final AppTokens tokens = AppTokens.of(context);
         final TextStyle dim = Theme.of(
           context,
-        ).textTheme.titleMedium!.copyWith(fontSize: 13);
+        ).textTheme.titleMedium!.copyWith(fontSize: 13, color: tokens.dim);
         final List<InlineSpan> what;
+        bool generic = false;
         if (blocks.length == 1) {
           final InFlightBlock block = blocks.single;
-          final (String digits, _) = splitAmount(block.amount, block.decimals);
-          final List<String> around = context.l10n
-              .stripSending(_slot)
-              .split(_slot);
-          what = <InlineSpan>[
-            TextSpan(text: around.first),
-            WidgetSpan(
-              alignment: PlaceholderAlignment.baseline,
-              baseline: TextBaseline.alphabetic,
-              child: Ltr(
-                child: Text(
-                  '$digits ${block.symbol}',
-                  style: monoStyle(dim),
+          final int? decimals = block.decimals;
+          final String? symbol = block.symbol;
+          // Malformed metadata must not allocate an unbounded power of ten.
+          // Unknown units and zero-amount contract calls still keep their hash.
+          if (block.amount <= BigInt.zero ||
+              decimals == null ||
+              decimals < 0 ||
+              decimals > 255 ||
+              symbol == null ||
+              symbol.trim().isEmpty) {
+            generic = true;
+            what = <InlineSpan>[
+              TextSpan(text: context.l10n.stripWaitingConfirmation),
+            ];
+          } else {
+            final (String digits, _) = splitAmount(block.amount, decimals);
+            final List<String> around = context.l10n
+                .stripSending(_slot)
+                .split(_slot);
+            what = <InlineSpan>[
+              TextSpan(text: around.first),
+              WidgetSpan(
+                alignment: PlaceholderAlignment.baseline,
+                baseline: TextBaseline.alphabetic,
+                child: Ltr(
+                  child: Text(
+                    '$digits $symbol',
+                    style: monoStyle(dim),
+                  ),
                 ),
               ),
-            ),
-            if (around.length > 1) TextSpan(text: around.last),
-          ];
+              if (around.length > 1) TextSpan(text: around.last),
+            ];
+          }
         } else {
           what = <InlineSpan>[
             TextSpan(text: context.l10n.stripSendingMany(blocks.length)),
@@ -189,18 +242,19 @@ class FlightChip extends StatelessWidget {
           key: const Key('strip_flight'),
           mainAxisSize: MainAxisSize.min,
           children: <Widget>[
-            RepaintBoundary(child: _LiveDot(color: tokens.qsrInk)),
-            SizedBox(width: tokens.cardGap - 2),
+            StatusDot(color: tokens.qsr),
+            SizedBox(width: tokens.statusDotSize),
             Flexible(
               child: Text.rich(
                 TextSpan(
                   style: dim,
                   children: <InlineSpan>[
                     ...what,
-                    TextSpan(
-                      text: ' · ${context.l10n.stripWaitingMomentum}',
-                      style: TextStyle(color: tokens.faint),
-                    ),
+                    if (!generic)
+                      TextSpan(
+                        text: ' · ${context.l10n.stripWaitingMomentum}',
+                        style: TextStyle(color: tokens.faint),
+                      ),
                   ],
                 ),
                 maxLines: 1,
@@ -211,50 +265,6 @@ class FlightChip extends StatelessWidget {
           ],
         );
       },
-    );
-  }
-}
-
-/// A dot that breathes for as long as it is shown: the block is still out.
-class _LiveDot extends StatefulWidget {
-  const _LiveDot({required this.color});
-
-  final Color color;
-
-  @override
-  State<_LiveDot> createState() => _LiveDotState();
-}
-
-class _LiveDotState extends State<_LiveDot>
-    with SingleTickerProviderStateMixin {
-  late final AnimationController _controller = AnimationController(
-    vsync: this,
-    duration: const Duration(milliseconds: 1200),
-  );
-
-  @override
-  void initState() {
-    super.initState();
-    _controller.repeat(reverse: true);
-  }
-
-  @override
-  void dispose() {
-    _controller.dispose();
-    super.dispose();
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return FadeTransition(
-      opacity: Tween<double>(begin: 1, end: 0.35).animate(
-        CurvedAnimation(parent: _controller, curve: Easing.standard),
-      ),
-      child: Container(
-        width: 8,
-        height: 8,
-        decoration: BoxDecoration(color: widget.color, shape: BoxShape.circle),
-      ),
     );
   }
 }

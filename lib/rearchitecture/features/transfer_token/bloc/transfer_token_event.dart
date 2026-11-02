@@ -12,17 +12,28 @@ sealed class TransferTokenEvent extends Equatable {
 /// Requests transferring ownership of a token to a new address.
 final class TransferTokenRequested extends TransferTokenEvent {
   /// Creates a [TransferTokenRequested] event.
-  const TransferTokenRequested({
-    required this.newOwnerAddress,
-    required this.token,
-  });
+  TransferTokenRequested({
+    required Address newOwnerAddress,
+    required Token token,
+    this.intent,
+  }) : _token = Map<String, dynamic>.unmodifiable(token.toJson()),
+       _newOwner = newOwnerAddress.toString();
 
   /// Address that will become the token owner.
-  final Address newOwnerAddress;
+  final String _newOwner;
+
+  /// A returned SDK address copy cannot rewrite the captured recipient.
+  Address get newOwnerAddress => Address.parse(_newOwner);
 
   /// Token whose ownership will be transferred.
-  final Token token;
+  final Map<String, dynamic> _token;
+
+  /// Mutable SDK metadata cannot change the queued original request.
+  Token get token => Token.fromJson(Map<String, dynamic>.of(_token));
+
+  /// The form's original question, captured before yielding.
+  final TokenActionIntent? intent;
 
   @override
-  List<Object?> get props => <Object?>[newOwnerAddress, token];
+  List<Object?> get props => <Object?>[_newOwner, _token, intent];
 }

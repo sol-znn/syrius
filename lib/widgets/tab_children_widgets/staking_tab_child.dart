@@ -12,10 +12,13 @@ import 'package:zenon_syrius_wallet_flutter/rearchitecture/utils/widgets/disclos
 import 'package:zenon_syrius_wallet_flutter/rearchitecture/utils/widgets/dollar_text.dart';
 import 'package:zenon_syrius_wallet_flutter/rearchitecture/utils/widgets/eye_toggle.dart';
 import 'package:zenon_syrius_wallet_flutter/rearchitecture/utils/widgets/ltr.dart';
+import 'package:zenon_syrius_wallet_flutter/rearchitecture/utils/widgets/page/empty_note.dart';
 import 'package:zenon_syrius_wallet_flutter/rearchitecture/utils/widgets/page/page_strip.dart';
 import 'package:zenon_syrius_wallet_flutter/services/price_feed.dart';
 import 'package:zenon_syrius_wallet_flutter/utils/notifiers/balance_visibility.dart';
 import 'package:zenon_syrius_wallet_flutter/utils/utils.dart';
+import 'package:zenon_syrius_wallet_flutter/utils/wallet_context_revision.dart';
+import 'package:zenon_syrius_wallet_flutter/widgets/reusable_widgets/app_lottie.dart';
 import 'package:zenon_syrius_wallet_flutter/widgets/reusable_widgets/buttons/primary_pill.dart';
 import 'package:znn_sdk_dart/znn_sdk_dart.dart';
 
@@ -25,6 +28,40 @@ const String _kChartStoreKey = 'staking.chart';
 /// The least height the list keeps when the form and the chart are both
 /// open in a short window: its title row, the column names and two rows.
 const double _kListLeast = 170;
+
+/// Bounds automatic list reads; exhaustion cannot resolve an original hash.
+const int _kStakeRowReadLimit = 6;
+
+bool _isEmptyStakingPage(BuildContext context) {
+  final InfiniteListState<StakeEntry> stakes = context
+      .watch<StakesBloc>()
+      .state;
+  final StakingState total = context.watch<StakingCubit>().state;
+  final FetchState<UncollectedReward> rewards = context
+      .watch<UncollectedStakingRewardsBloc>()
+      .state;
+  final FetchState<RewardHistoryList> history = context
+      .watch<StakingRewardsHistoryBloc>()
+      .state;
+  final bool noTotal =
+      (total.status == TimerStatus.failure &&
+          total.error is NoActiveStakingEntriesException) ||
+      (total.status == TimerStatus.success &&
+          total.data?.totalAmount == BigInt.zero);
+  final bool noHistory =
+      (history is FetchFailure<RewardHistoryList> &&
+          history.exception is NoRewardsLastWeekException) ||
+      (history is FetchPopulated<RewardHistoryList> &&
+          history.data.list.every(
+            (RewardHistoryEntry entry) => entry.qsrAmount == BigInt.zero,
+          ));
+  return noTotal &&
+      stakes.status == InfiniteListStatus.success &&
+      stakes.data!.isEmpty &&
+      rewards is FetchPopulated<UncollectedReward> &&
+      rewards.data.qsrAmount == BigInt.zero &&
+      noHistory;
+}
 
 /// Staking: a strip of what the address has staked and can collect, then
 /// its stakes. The new-stake form and the reward chart open under the
@@ -46,8 +83,9 @@ class StakingTabChild extends StatelessWidget {
       key: ValueKey<String>(selected),
       providers: <SingleChildWidget>[
         BlocProvider<StakesBloc>(
-          create: (_) => StakesBloc(zenon: zenon!)
-            ..add(InfiniteListRequested(address: Address.parse(selected))),
+          create: (_) =>
+              StakesBloc(zenon: zenon!)
+                ..add(InfiniteListRequested(address: Address.parse(selected))),
         ),
         // The list is paged, so its rows do not add up to the total; the
         // node's own total comes with this cubit's answer.
@@ -86,9 +124,80 @@ class StakingPage extends StatefulWidget {
 class _StakingPageState extends State<StakingPage> {
   final DisclosureController _form = DisclosureController();
   final DisclosureController _chart = DisclosureController();
+  final Set<String> _pendingStakeRows = <String>{};
+  int _stakeRowReadsRemaining = 0;
+  late final String? _stakeReadAddress;
+  late final int _stakeReadChain;
+  late final int _stakeReadRevision;
+  late final StakesBloc _stakeReadBloc;
+  bool _stakeReadRevoked = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _stakeReadAddress = kSelectedAddress;
+    _stakeReadChain = getChainIdentifier();
+    _stakeReadRevision = WalletContextRevision.value;
+    _stakeReadBloc = context.read<StakesBloc>();
+  }
+
+  bool get _stakeReadCurrent {
+    if (_stakeReadRevoked) return false;
+    final bool current = mounted && _stakeReadAddress != null &&
+        _stakeReadAddress == kSelectedAddress &&
+        _stakeReadChain == getChainIdentifier() &&
+        _stakeReadRevision == WalletContextRevision.value &&
+        identical(_stakeReadBloc, context.read<StakesBloc>());
+    if (!current) {
+      _stakeReadRevoked = true;
+      _pendingStakeRows.clear();
+      _stakeRowReadsRemaining = 0;
+    }
+    return current;
+  }
+
+  void _stakePublished(AccountBlockTemplate original) {
+    if (!_stakeReadCurrent || original.hash == emptyHash ||
+        original.address.toString() != _stakeReadAddress ||
+        original.chainIdentifier != _stakeReadChain ||
+        original.toAddress != stakeAddress ||
+        original.tokenStandard != znnZts ||
+        original.amount <= BigInt.zero) {
+      return;
+    }
+    // Copy the accepted hash before a mutable SDK response can change it.
+    if (_pendingStakeRows.add(original.hash.toString())) {
+      _stakeRowReadsRemaining = _kStakeRowReadLimit;
+    }
+    _observeStakeRows(_stakeReadBloc.state);
+  }
+
+  void _observeStakeRows(InfiniteListState<StakeEntry> state) {
+    if (!_stakeReadCurrent || state.status != InfiniteListStatus.success) {
+      return;
+    }
+    _pendingStakeRows.removeAll(
+      (state.data ?? const <StakeEntry>[])
+          .map((StakeEntry entry) => entry.id.toString()),
+    );
+    if (_pendingStakeRows.isEmpty) _stakeRowReadsRemaining = 0;
+  }
+
+  void _refreshPendingStakeRows() {
+    if (!_stakeReadCurrent || _pendingStakeRows.isEmpty ||
+        _stakeRowReadsRemaining == 0) {
+      return;
+    }
+    _stakeRowReadsRemaining--;
+    _refreshStakes();
+  }
+
 
   @override
   void dispose() {
+    _stakeReadRevoked = true;
+    _pendingStakeRows.clear();
+    _stakeRowReadsRemaining = 0;
     _form.dispose();
     _chart.dispose();
     super.dispose();
@@ -112,21 +221,38 @@ class _StakingPageState extends State<StakingPage> {
 
   @override
   Widget build(BuildContext context) {
-    final double gap = AppTokens.of(context).panelGap;
-    return BlocListener<StakesBloc, InfiniteListState<StakeEntry>>(
-      // The total follows the list: whatever reloads the rows (a new
-      // stake, a cancel, the refresh button) asks for the total again. The
-      // first load is not a change; the cubit asks for itself as it starts.
-      listenWhen:
-          (
+    final double gap = AppTokens.of(context).pageGap;
+    final bool empty = _isEmptyStakingPage(context);
+    return MultiBlocListener(
+      listeners: <SingleChildWidget>[
+        BlocListener<StakesBloc, InfiniteListState<StakeEntry>>(
+          // Retain the original list-to-total refresh direction.
+          listenWhen: (
             InfiniteListState<StakeEntry> before,
             InfiniteListState<StakeEntry> after,
-          ) =>
-              before.status != InfiniteListStatus.initial &&
+          ) => before.status != InfiniteListStatus.initial &&
               after.status == InfiniteListStatus.success &&
               before.data != after.data,
-      listener: (BuildContext context, _) =>
-          unawaited(context.read<StakingCubit>().fetchDataPeriodically()),
+          listener: (BuildContext context, _) =>
+              unawaited(context.read<StakingCubit>().fetchDataPeriodically()),
+        ),
+        BlocListener<StakesBloc, InfiniteListState<StakeEntry>>(
+          listener: (_, InfiniteListState<StakeEntry> state) =>
+              _observeStakeRows(state),
+        ),
+        BlocListener<NodeSyncStatusCubit, NodeSyncStatusState>(
+          listenWhen: (
+            NodeSyncStatusState before,
+            NodeSyncStatusState after,
+          ) => after.status == TimerStatus.success && after.data != null &&
+              after.data!.second.currentHeight > 0 &&
+              before.data?.second.currentHeight !=
+                  after.data!.second.currentHeight,
+          // Use the shell's existing height reads, without another timer,
+          // subscription request, publication or confirmation shortcut.
+          listener: (_, _) => _refreshPendingStakeRows(),
+        ),
+      ],
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: <Widget>[
@@ -161,6 +287,7 @@ class _StakingPageState extends State<StakingPage> {
                                 padding: EdgeInsetsDirectional.only(top: gap),
                                 child: CreateStakeCard(
                                   framed: false,
+                                  onStakePublished: _stakePublished,
                                   onStakeCreated: () {
                                     _form.close();
                                     _refreshStakes();
@@ -172,10 +299,14 @@ class _StakingPageState extends State<StakingPage> {
                               key: const Key('staking_chart'),
                               controller: _chart,
                               storeKey: _kChartStoreKey,
-                              child: Padding(
-                                padding: EdgeInsetsDirectional.only(top: gap),
-                                child: const StakingRewardsChart(),
-                              ),
+                              child: empty
+                                  ? const SizedBox.shrink()
+                                  : Padding(
+                                      padding: EdgeInsetsDirectional.only(
+                                        top: gap,
+                                      ),
+                                      child: const StakingRewardsChart(),
+                                    ),
                             ),
                           ],
                         ),
@@ -183,12 +314,54 @@ class _StakingPageState extends State<StakingPage> {
                     ),
                     SizedBox(height: gap),
                     Expanded(child: StakesCard(onRefresh: _refreshRewards)),
+                    if (empty) ...<Widget>[
+                      SizedBox(height: gap),
+                      const _EmptyRewardsLine(
+                        key: Key('staking_empty_rewards'),
+                      ),
+                    ],
                   ],
                 );
               },
             ),
           ),
         ],
+      ),
+    );
+  }
+}
+
+class _EmptyRewardsLine extends StatelessWidget {
+  const _EmptyRewardsLine({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    final AppTokens tokens = AppTokens.of(context);
+    return Panel(
+      child: Padding(
+        padding: EdgeInsetsDirectional.symmetric(
+          horizontal: tokens.cardPadding.left,
+          vertical: tokens.cardPadding.top,
+        ),
+        child: Row(
+          children: <Widget>[
+            const Opacity(
+              opacity: 0.7,
+              child: AppLottie(
+                AppLottieAsset.noData,
+                size: kEmptyNoteLineMarkSize,
+                repeat: false,
+              ),
+            ),
+            SizedBox(width: tokens.cardGap),
+            Text(context.l10n.stakingChart, style: panelTitleStyle(context)),
+            const Spacer(),
+            Text(
+              context.l10n.noItemsFound,
+              style: tokens.compactText.copyWith(color: tokens.dim),
+            ),
+          ],
+        ),
       ),
     );
   }
@@ -210,6 +383,7 @@ class _Strip extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final AppTokens tokens = AppTokens.of(context);
+    final bool empty = _isEmptyStakingPage(context);
     final StakingState staking = context.watch<StakingCubit>().state;
     final FetchState<UncollectedReward> uncollected = context
         .watch<UncollectedStakingRewardsBloc>()
@@ -289,7 +463,7 @@ class _Strip extends StatelessWidget {
                       feed: priceFeed,
                     ),
             ),
-            if (week != null)
+            if (week != null && !empty)
               StripFigure(
                 label: context.l10n.stakingLast7Days,
                 value: _StripAmount(
@@ -303,34 +477,49 @@ class _Strip extends StatelessWidget {
               ),
           ],
           actions: <Widget>[
-            KeyedSubtree(
-              key: const Key('staking_collect_button'),
-              child: StakeCollectButton(
-                enabled: toCollect != null && toCollect > BigInt.zero,
+            if (!empty)
+              KeyedSubtree(
+                key: const Key('staking_collect_button'),
+                child: StakeCollectButton(
+                  enabled: toCollect != null && toCollect > BigInt.zero,
+                ),
               ),
-            ),
-            TextButton.icon(
-              key: const Key('staking_chart_button'),
-              style: TextButton.styleFrom(
-                foregroundColor: chart.isOpen
-                    ? Theme.of(context).textTheme.bodyLarge?.color
-                    : Theme.of(context).textTheme.titleMedium?.color,
-                shape: const StadiumBorder(),
-                minimumSize: const Size(0, 32),
-                padding: const EdgeInsetsDirectional.symmetric(horizontal: 12),
-                tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+            if (!empty)
+              TextButton.icon(
+                key: const Key('staking_chart_button'),
+                style: TextButton.styleFrom(
+                  foregroundColor: chart.isOpen
+                      ? Theme.of(context).textTheme.bodyLarge?.color
+                      : Theme.of(context).textTheme.titleMedium?.color,
+                  shape: const StadiumBorder(),
+                  minimumSize: const Size(0, 32),
+                  padding: const EdgeInsetsDirectional.symmetric(
+                    horizontal: 12,
+                  ),
+                  tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                ),
+                onPressed: chart.toggle,
+                icon: const Icon(Icons.bar_chart_rounded, size: 16),
+                label: Text(context.l10n.stakingChart),
               ),
-              onPressed: chart.toggle,
-              icon: const Icon(Icons.bar_chart_rounded, size: 16),
-              label: Text(context.l10n.stakingChart),
-            ),
             // One place, two buttons: the page's main action while the
             // form is closed, and the way back out of it while it is open.
             KeyedSubtree(
               key: const Key('staking_stake_button'),
               child: form.isOpen
                   ? OutlinedButton.icon(
-                      style: cardSecondaryButtonStyle(context),
+                      style: cardSecondaryButtonStyle(context).copyWith(
+                        minimumSize: WidgetStatePropertyAll<Size>(
+                          Size(0, tokens.buttonHeight),
+                        ),
+                        padding:
+                            const WidgetStatePropertyAll<EdgeInsetsGeometry>(
+                              EdgeInsets.symmetric(horizontal: 16),
+                            ),
+                        textStyle: const WidgetStatePropertyAll<TextStyle>(
+                          kOutlinedButtonTextStyle,
+                        ),
+                      ),
                       onPressed: form.close,
                       icon: const Icon(Icons.close, size: 16),
                       label: Text(context.l10n.commonClose),

@@ -1,9 +1,10 @@
 import 'dart:async';
 
-import 'package:material_ui/material_ui.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:material_ui/material_ui.dart';
 import 'package:zenon_syrius_wallet_flutter/rearchitecture/features/create_pillar_stepper/widgets/pillar_step_parts.dart';
 import 'package:zenon_syrius_wallet_flutter/rearchitecture/features/features.dart';
+import 'package:zenon_syrius_wallet_flutter/rearchitecture/features/registration_success/registration_confirmation.dart';
 import 'package:zenon_syrius_wallet_flutter/rearchitecture/utils/utils.dart';
 import 'package:zenon_syrius_wallet_flutter/rearchitecture/utils/widgets/ltr.dart';
 import 'package:zenon_syrius_wallet_flutter/utils/utils.dart';
@@ -19,12 +20,20 @@ class DeployPillarStep extends StatefulWidget {
   const DeployPillarStep({
     required this.onDeployDone,
     this.onBackPressed,
+    this.onPublished,
+    this.registrationRun = 0,
     this.active = true,
     super.key,
   });
 
   /// Called when deployment completes.
   final VoidCallback onDeployDone;
+
+  /// Retains the original result before the legacy completion callback runs.
+  final ValueChanged<RegistrationPublication>? onPublished;
+
+  /// Changes only when the user explicitly starts another registration.
+  final int registrationRun;
 
   /// Called when the user wants to go back. No Back button when null.
   final VoidCallback? onBackPressed;
@@ -37,7 +46,7 @@ class DeployPillarStep extends StatefulWidget {
 }
 
 class _DeployPillarStepState extends State<DeployPillarStep> {
-  final GlobalKey<LoadingButtonState> _registerButtonKey = GlobalKey();
+  GlobalKey<LoadingButtonState> _registerButtonKey = GlobalKey();
 
   final TextEditingController _pillarNameController = TextEditingController();
   final TextEditingController _pillarRewardAddressController =
@@ -61,6 +70,26 @@ class _DeployPillarStepState extends State<DeployPillarStep> {
 
   // From the press until the bloc is done or has failed.
   bool _isSending = false;
+  bool _accepted = false;
+  String? _submittedName;
+  BigInt? _submittedQsrCost;
+
+  @override
+  void didUpdateWidget(DeployPillarStep oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.registrationRun != widget.registrationRun) {
+      _accepted = false;
+      _isSending = false;
+      _registerButtonKey = GlobalKey<LoadingButtonState>();
+      _submittedName = null;
+      _submittedQsrCost = null;
+      _pillarNameController.clear();
+      _pillarMomentumController.clear();
+      _pillarRewardAddressController.text = kSelectedAddress ?? '';
+      _momentumRewardPercentage.value = 0;
+      _delegateRewardPercentage.value = 0;
+    }
+  }
 
   @override
   void initState() {
@@ -148,7 +177,9 @@ class _DeployPillarStepState extends State<DeployPillarStep> {
         key: const Key('pillar_register_button'),
         child: LoadingButton(
           text: context.l10n.register,
-          onPressed: valid && !_isSending ? _onDeployPressed : null,
+          onPressed: valid && !_isSending && !_accepted
+              ? _onDeployPressed
+              : null,
           circularBorderRadius: kLoadingButtonMinSize.height / 2,
           key: _registerButtonKey,
         ),
@@ -227,15 +258,29 @@ class _DeployPillarStepState extends State<DeployPillarStep> {
   }
 
   void _onDeployStateChanged(DeployPillarState state) {
+    if (_accepted) return;
     if (state is DeployPillarDone) {
+      _accepted = true;
+      try {
+        widget.onPublished?.call(
+          RegistrationPublication(
+            accountBlock: state.accountBlock,
+            name: _submittedName,
+            qsrCost: _submittedQsrCost,
+          ),
+        );
+      } on Object {
+        // Receipt display cannot replace the accepted result in the bloc.
+      }
       _registerButtonKey.currentState?.animateReverse();
       setState(() {
         _isSending = false;
       });
-      _pillarNameController.clear();
-      _pillarRewardAddressController.clear();
-      _pillarMomentumController.clear();
-      widget.onDeployDone();
+      try {
+        widget.onDeployDone();
+      } on Object {
+        // A completion observer never reopens or retries the accepted action.
+      }
     } else if (state is DeployPillarFailure) {
       _registerButtonKey.currentState?.animateReverse();
       setState(() {
@@ -261,8 +306,17 @@ class _DeployPillarStepState extends State<DeployPillarStep> {
       _pillarMomentumError == null;
 
   void _onDeployPressed() {
-    if (_isSending) {
+    if (_isSending || _accepted || !widget.active) {
       return;
+    }
+    _submittedName = _pillarNameController.text;
+    if (widget.onPublished != null) {
+      final FetchState<CreatePillarQsrInfoData> state = context
+          .read<CreatePillarQsrInfoBloc>()
+          .state;
+      _submittedQsrCost = state is FetchPopulated<CreatePillarQsrInfoData>
+          ? state.data.cost
+          : null;
     }
     setState(() {
       _isSending = true;
@@ -294,13 +348,12 @@ class _SlotFeeRow extends StatelessWidget {
     >(
       builder: (BuildContext context, FetchState<CreatePillarQsrInfoData> s) =>
           switch (s) {
-            FetchPopulated<CreatePillarQsrInfoData>() =>
-              PillarReviewRow.amount(
-                context: context,
-                label: context.l10n.createPillarSlotFeeLabel,
-                amount: s.data.cost,
-                token: kQsrCoin,
-              ),
+            FetchPopulated<CreatePillarQsrInfoData>() => PillarReviewRow.amount(
+              context: context,
+              label: context.l10n.createPillarSlotFeeLabel,
+              amount: s.data.cost,
+              token: kQsrCoin,
+            ),
             _ => const SizedBox.shrink(),
           },
     );

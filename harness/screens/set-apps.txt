@@ -1,0 +1,14 @@
+# Prerequisite: unlocked Home in an isolated harness profile.
+# Navigation only. Do not switch the listener, connect, scan or disconnect.
+goto settings
+tap --key settings_apps
+wait --key apps_settings_page --timeout 30
+assert --key apps_settings_web_switch
+assert --key apps_settings_connected
+assert --key apps_settings_count
+assert --key apps_settings_connect
+assert --key apps_settings_details_toggle
+
+# Return only after a fully retained positive shot.
+# after-capture: goto dashboard
+# after-capture: wait --key home_hero --timeout 5

@@ -1,0 +1,14 @@
+# Prerequisite: F06 isolated token fixture with sufficient Plasma and ZNN.
+# Edits the first draft only. Continue and Issue are never pressed.
+goto tokens
+wait --key tokens_create --timeout 30
+tap --key tokens_create
+wait --key token_name_field --timeout 30
+type --key token_name_field MoonTokens
+type --key token_symbol_field MOON
+assert --key token_create_rail
+assert --key token_create_step_0
+assert --key token_create_step_1
+assert --key token_create_step_2
+assert --key token_create_step_3
+assert --key token_domain_field

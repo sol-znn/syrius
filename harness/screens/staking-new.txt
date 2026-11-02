@@ -1,0 +1,9 @@
+# Start at unlocked Home in an isolated profile with existing stakes.
+# The 300 ZNN draft is not submitted. The unlock date uses the chain duration.
+goto staking
+wait --key staking_stakes_count --timeout 30
+tap --key staking_stake_button
+wait --key create_stake_amount_field --timeout 30
+tap --key create_stake_months_6
+type --key create_stake_amount_field 300
+assert --key create_stake_submit_button

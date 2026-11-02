@@ -1,0 +1,14 @@
+# prerequisite: unlocked-home
+# Start with balances visible. No fixture or example transaction is seeded.
+# The named tooltip refuses an already-hidden starting state.
+goto dashboard
+wait --key home_hero --timeout 30
+wait --key home_activity --timeout 30
+tap "Hide balances"
+wait "Show balances" --timeout 5
+assert --key home_activity
+assert --key activity_scope
+
+# Restore the visible starting state after each fully retained theme shot.
+# after-capture: tap "Show balances"
+# after-capture: wait "Hide balances" --timeout 5

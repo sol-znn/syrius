@@ -1,5 +1,3 @@
-import 'dart:async';
-
 import 'package:bloc_test/bloc_test.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:mocktail/mocktail.dart';
@@ -67,8 +65,8 @@ void main() {
     when(() => mockZenonAddressUtils.refreshBalance()).thenAnswer((_) {});
   });
 
-  tearDown(() {
-    unawaited(sendTransactionBloc.close());
+  tearDown(() async {
+    await sendTransactionBloc.close();
   });
 
   group('fromJson/toJson', () {
@@ -195,10 +193,14 @@ void main() {
         ),
       ),
       expect: () => <SendTransactionState>[
-        const SendTransactionState(status: SendTransactionStatus.loading),
+        const SendTransactionState(
+          status: SendTransactionStatus.loading,
+          origin: SendTransactionOrigin.contract,
+        ),
         SendTransactionState(
           status: SendTransactionStatus.success,
           data: testAccBlockTemplate,
+          origin: SendTransactionOrigin.contract,
         ),
       ],
     );
@@ -224,10 +226,14 @@ void main() {
         ),
       ),
       expect: () => <SendTransactionState>[
-        const SendTransactionState(status: SendTransactionStatus.loading),
+        const SendTransactionState(
+          status: SendTransactionStatus.loading,
+          origin: SendTransactionOrigin.contract,
+        ),
         SendTransactionState(
           status: SendTransactionStatus.failure,
           error: exception,
+          origin: SendTransactionOrigin.contract,
         ),
       ],
     );

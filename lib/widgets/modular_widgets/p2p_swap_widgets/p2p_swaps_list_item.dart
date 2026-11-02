@@ -2,254 +2,326 @@ import 'package:material_ui/material_ui.dart';
 import 'package:zenon_syrius_wallet_flutter/model/p2p_swap/p2p_swap.dart';
 import 'package:zenon_syrius_wallet_flutter/rearchitecture/features/home/home.dart'
     show AmountText;
-import 'package:zenon_syrius_wallet_flutter/utils/app_colors.dart';
+import 'package:zenon_syrius_wallet_flutter/rearchitecture/utils/extensions/buildcontext_extension.dart';
+import 'package:zenon_syrius_wallet_flutter/rearchitecture/utils/widgets/ltr.dart';
+import 'package:zenon_syrius_wallet_flutter/rearchitecture/utils/widgets/row_detail.dart';
 import 'package:zenon_syrius_wallet_flutter/utils/app_theme.dart';
-import 'package:zenon_syrius_wallet_flutter/utils/color_utils.dart';
+import 'package:zenon_syrius_wallet_flutter/utils/clipboard_utils.dart';
 import 'package:zenon_syrius_wallet_flutter/utils/format_utils.dart';
-import 'package:zenon_syrius_wallet_flutter/widgets/reusable_widgets/loading_widget.dart';
-import 'package:znn_sdk_dart/znn_sdk_dart.dart';
 
-/// The shares of the swap table's columns: status, sent, received,
-/// counterparty, started. The header and every row read this one list, so
-/// they cannot drift apart.
-const List<int> kP2pSwapColumnFlex = <int>[3, 4, 4, 4, 3];
+import 'package:zenon_syrius_wallet_flutter/widgets/modular_widgets/p2p_swap_widgets/detail_row.dart';
+import 'package:zenon_syrius_wallet_flutter/widgets/modular_widgets/p2p_swap_widgets/swap_list_presenter.dart';
 
-/// The width kept at the end of a swap row for its one action.
-const double kP2pSwapActionWidth = 104;
+/// Shared column proportions for the swap header and every rendered public row.
+const List<int> kP2pSwapColumnFlex = <int>[4, 3, 3, 4, 4];
 
-/// The side padding of the swap table's header and rows.
-const double kP2pSwapRowPadding = 16;
-
-/// One swap as a table row. The row opens the swap; its last cell holds the
-/// one thing left to do with it, if anything.
+/// One public historical record, with fresh proof kept separate from its label.
 class P2pSwapsListItem extends StatelessWidget {
-  /// Creates the row of [swap].
+  /// Renders one immutable public row with exact-row action callbacks.
   const P2pSwapsListItem({
-    required this.swap,
-    required this.onTap,
+    required this.row,
+    required this.onOpen,
     required this.onDelete,
+    required this.canAct,
     super.key,
   });
 
-  /// The swap shown.
-  final P2pSwap swap;
+  /// Public history plus independently matched chain facts.
+  final SwapListRow row;
 
-  /// Opens the swap with the given id.
-  final void Function(String) onTap;
+  /// Opens this exact record after the enclosing owner rechecks it.
+  final ValueChanged<SwapListRecord> onOpen;
 
-  /// Asks to delete the swap.
-  final void Function(P2pSwap) onDelete;
+  /// Requests guarded deletion of this exact inactive record.
+  final ValueChanged<SwapListRecord> onDelete;
+
+  /// Whether the original source currently admits row actions.
+  final bool canAct;
 
   @override
   Widget build(BuildContext context) {
-    final ThemeData theme = Theme.of(context);
-    final TextStyle text = theme.textTheme.bodyMedium!.copyWith(fontSize: 13);
-    final TextStyle dim = theme.textTheme.titleMedium!.copyWith(fontSize: 13);
-    // The counterparty's amount is known once they have joined; a swap that
-    // failed never delivers it, so it is not shown there.
-    final bool showsReceived =
-        swap.state == P2pSwapState.active ||
-        swap.state == P2pSwapState.completed;
-    return InkWell(
-      mouseCursor: SystemMouseCursors.click,
-      onTap: () => onTap(swap.id),
-      child: SizedBox(
-        height: 46,
+    final AppTokens tokens = AppTokens.of(context);
+    final SwapListRecord record = row.record;
+    final TextStyle data = tokens.dataText;
+    final String? expiry = _expiry(context);
+    return RowDetail(
+      id: record.id,
+      keyPrefix: 'swap_${record.id}',
+      row: ConstrainedBox(
+        constraints: BoxConstraints(minHeight: tokens.swapRowHeight),
         child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: kP2pSwapRowPadding),
+          padding: tokens.swapCellPadding,
           child: Row(
             children: <Widget>[
               Expanded(
                 flex: kP2pSwapColumnFlex[0],
-                child: _buildStatus(text),
+                child: _buildStatus(context),
               ),
               Expanded(
                 flex: kP2pSwapColumnFlex[1],
-                child: _buildAmount(
-                  text,
-                  swap.fromAmount,
-                  swap.fromDecimals,
-                  swap.fromTokenStandard,
-                  swap.fromSymbol,
+                child: AmountText(
+                  record.fromAmount,
+                  decimals: record.fromDecimals,
+                  symbol: record.fromSymbol,
+                  style: data,
                 ),
               ),
               Expanded(
                 flex: kP2pSwapColumnFlex[2],
-                child: showsReceived
-                    ? _buildAmount(
-                        text,
-                        swap.toAmount,
-                        swap.toDecimals,
-                        swap.toTokenStandard,
-                        swap.toSymbol,
+                child: row.receiving == null
+                    ? Text(
+                        context.l10n.swapListUnknown,
+                        style: tokens.compactText.copyWith(color: tokens.dim),
                       )
-                    : Text('-', style: dim),
+                    : AmountText(
+                        row.receiving!.amount,
+                        decimals: row.receiving!.decimals,
+                        symbol: row.receiving!.symbol,
+                        style: data,
+                      ),
               ),
               Expanded(
                 flex: kP2pSwapColumnFlex[3],
-                child: _buildCounterparty(dim),
+                child: Tooltip(
+                  message: record.counterpartyAddress,
+                  child: Text(
+                    swapListShortId(record.counterpartyAddress),
+                    textDirection: TextDirection.ltr,
+                    textAlign: ltrTextAlign(context),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: data.copyWith(color: tokens.dim),
+                  ),
+                ),
               ),
               Expanded(
                 flex: kP2pSwapColumnFlex[4],
                 child: Text(
-                  _formatTime(swap.startTime * 1000),
+                  expiry ?? context.l10n.swapListUnknown,
+                  textDirection: expiry == null ? null : TextDirection.ltr,
+                  textAlign: expiry == null ? null : ltrTextAlign(context),
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
-                  style: dim,
+                  style: expiry == null
+                      ? tokens.compactText.copyWith(color: tokens.dim)
+                      : data.copyWith(color: tokens.dim),
                 ),
               ),
               SizedBox(
-                width: kP2pSwapActionWidth,
-                child: Align(
-                  alignment: Alignment.centerRight,
-                  child: _buildAction(),
-                ),
+                width: tokens.swapChevronWidth,
+                child: const RowDetailChevron(),
               ),
             ],
           ),
         ),
       ),
+      detail: _buildDetails,
     );
   }
 
-  Widget _buildStatus(TextStyle text) {
-    const double size = 16;
-    final (Widget mark, String label) = switch (swap.state) {
+  Widget _buildStatus(BuildContext context) {
+    final AppTokens tokens = AppTokens.of(context);
+    final (
+      IconData icon,
+      String label,
+      Color color,
+    ) = switch (row.record.state) {
       P2pSwapState.pending => (
-        const SyriusLoadingWidget(size: 12, strokeWidth: 1.5, padding: 2),
-        'Starting',
+        Icons.schedule,
+        context.l10n.swapListStarting,
+        tokens.qsrInk,
       ),
       P2pSwapState.active => (
-        const SyriusLoadingWidget(size: 12, strokeWidth: 1.5, padding: 2),
-        'Active',
+        Icons.schedule,
+        row.record.receiveDepositId == null
+            ? context.l10n.swapListWaiting
+            : context.l10n.swapListActive,
+        tokens.qsrInk,
       ),
       P2pSwapState.completed => (
-        const Icon(
-          Icons.check_circle_outline,
-          color: AppColors.znnColor,
-          size: size,
-        ),
-        'Completed',
+        Icons.check,
+        context.l10n.swapListCompleted,
+        tokens.znnInk,
       ),
       P2pSwapState.reclaimable => (
-        const Icon(Icons.replay, color: AppColors.warn, size: size),
-        'Reclaimable',
+        Icons.replay,
+        context.l10n.swapListReclaimable,
+        tokens.warn,
       ),
-      _ => (
-        const Icon(
-          Icons.cancel_outlined,
-          color: AppColors.errorColor,
-          size: size,
-        ),
-        'Unsuccessful',
+      P2pSwapState.unsuccessful => (
+        Icons.close,
+        context.l10n.swapListUnsuccessful,
+        tokens.dim,
+      ),
+      P2pSwapState.error => (
+        Icons.help_outline,
+        context.l10n.swapListUnknown,
+        tokens.dim,
       ),
     };
-    return Row(
-      children: <Widget>[
-        mark,
-        const SizedBox(width: 8),
-        Flexible(
-          child: Text(
-            label,
-            maxLines: 1,
-            overflow: TextOverflow.ellipsis,
-            style: text,
-          ),
-        ),
-      ],
-    );
-  }
-
-  Widget _buildAmount(
-    TextStyle text,
-    BigInt? amount,
-    int? decimals,
-    String? tokenStandard,
-    String? symbol,
-  ) {
-    if (amount == null ||
-        decimals == null ||
-        tokenStandard == null ||
-        symbol == null) {
-      return Text('-', style: text);
-    }
-    return Row(
-      children: <Widget>[
-        Flexible(
-          child: AmountText(
-            amount,
-            decimals: decimals,
-            style: text,
-            symbol: symbol,
-          ),
-        ),
-        const SizedBox(width: 6),
-        // The symbol is free text; the dot is derived from the token
-        // standard, so two tokens that share a symbol still look different.
-        Container(
-          height: 6,
-          width: 6,
-          decoration: BoxDecoration(
-            shape: BoxShape.circle,
-            color: ColorUtils.getTokenColor(
-              TokenStandard.parse(tokenStandard),
-            ),
-          ),
-        ),
-        const SizedBox(width: 12),
-      ],
-    );
-  }
-
-  Widget _buildCounterparty(TextStyle dim) {
-    final String address = swap.counterpartyAddress;
-    final String short = address.length <= 12
-        ? address
-        : '${address.substring(0, 6)}…'
-              '${address.substring(address.length - 4)}';
     return Align(
-      alignment: Alignment.centerLeft,
-      child: Tooltip(
-        message: address,
-        child: Text(
-          short,
-          maxLines: 1,
-          overflow: TextOverflow.ellipsis,
-          style: monoStyle(dim),
+      alignment: AlignmentDirectional.centerStart,
+      child: Container(
+        padding: EdgeInsetsDirectional.symmetric(
+          horizontal: tokens.inlineGap,
+          vertical: tokens.fieldLabelGap,
+        ),
+        decoration: BoxDecoration(
+          color: color.withValues(alpha: .1),
+          borderRadius: BorderRadius.circular(tokens.pillRadius),
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: <Widget>[
+            Icon(icon, color: color, size: tokens.settingsIconSize),
+            SizedBox(width: tokens.fieldLabelGap),
+            Flexible(
+              child: Text(
+                label,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: tokens.captionText.copyWith(color: color),
+              ),
+            ),
+          ],
         ),
       ),
     );
   }
 
-  Widget _buildAction() {
-    switch (swap.state) {
-      case P2pSwapState.completed:
-      case P2pSwapState.unsuccessful:
-        return IconButton(
-          tooltip: 'Delete',
-          iconSize: 18,
-          visualDensity: VisualDensity.compact,
-          mouseCursor: SystemMouseCursors.click,
-          onPressed: () => onDelete(swap),
-          icon: const Icon(Icons.delete_outline, color: AppColors.faint),
-        );
-      case P2pSwapState.reclaimable:
-        return TextButton(
-          style: TextButton.styleFrom(foregroundColor: kOnZnnColor),
-          onPressed: () => onTap(swap.id),
-          child: const Text('Reclaim'),
-        );
-      default:
-        return const SizedBox.shrink();
-    }
+  Widget _buildDetails(BuildContext context) {
+    final AppTokens tokens = AppTokens.of(context);
+    final SwapListRecord record = row.record;
+    final String? own = record.ownDepositId;
+    final String? counterparty = record.receiveDepositId;
+    final Widget left = Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      mainAxisSize: MainAxisSize.min,
+      children: <Widget>[
+        DetailRow(
+          label: context.l10n.swapListYourDepositId,
+          value: own ?? context.l10n.swapListUnknown,
+          valueToShow: own == null ? null : swapListShortId(own),
+          canBeCopied: own != null,
+          ledger: true,
+          trailing: own == null
+              ? null
+              : TextButton(
+                  key: ValueKey<String>('swap_copy_${record.id}'),
+                  onPressed: () => ClipboardUtils.copyToClipboard(own, context),
+                  child: Text(context.l10n.swapListCopyForThem),
+                ),
+        ),
+        DetailRow(
+          label: context.l10n.swapListRate,
+          value: row.rate ?? context.l10n.swapListUnknown,
+          canBeCopied: false,
+          ledger: true,
+        ),
+        DetailRow(
+          label: context.l10n.swapListStarted,
+          value: FormatUtils.formatDateTime(record.started * 1000),
+          canBeCopied: false,
+          ledger: true,
+        ),
+      ],
+    );
+    final Widget right = Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      mainAxisSize: MainAxisSize.min,
+      children: <Widget>[
+        DetailRow(
+          label: context.l10n.swapListCounterparty,
+          value: record.counterpartyAddress,
+          canBeCopied: false,
+          ledger: true,
+        ),
+        DetailRow(
+          label: context.l10n.swapListCounterpartyDepositId,
+          value: counterparty ?? context.l10n.swapListUnknown,
+          valueToShow: counterparty == null
+              ? null
+              : swapListShortId(counterparty),
+          canBeCopied: counterparty != null,
+          ledger: true,
+        ),
+        Wrap(
+          spacing: tokens.inlineGap,
+          children: <Widget>[
+            TextButton(
+              key: ValueKey<String>('swap_open_${record.id}'),
+              onPressed: canAct ? () => onOpen(record) : null,
+              child: Text(
+                record.state == P2pSwapState.reclaimable
+                    ? context.l10n.swapListReclaim
+                    : context.l10n.swapListOpen,
+              ),
+            ),
+            if (record.canDelete)
+              IconButton(
+                tooltip: context.l10n.swapListDelete,
+                onPressed: canAct ? () => onDelete(record) : null,
+                icon: Icon(Icons.delete_outline, size: tokens.railIconSize),
+              ),
+          ],
+        ),
+      ],
+    );
+    return Padding(
+      padding: tokens.swapDetailPadding,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        mainAxisSize: MainAxisSize.min,
+        children: <Widget>[
+          if (record.state == P2pSwapState.active &&
+              record.receiveDepositId == null)
+            Container(
+              margin: EdgeInsetsDirectional.only(bottom: tokens.cardGap),
+              padding: tokens.swapNoticePadding,
+              decoration: BoxDecoration(
+                color: tokens.card3,
+                borderRadius: BorderRadius.circular(tokens.compactRadius),
+              ),
+              child: Row(
+                children: <Widget>[
+                  Icon(
+                    Icons.info_outline,
+                    size: tokens.settingsIconSize,
+                    color: tokens.qsrInk,
+                  ),
+                  SizedBox(width: tokens.swapNoticeGap),
+                  Expanded(
+                    child: Text(
+                      context.l10n.swapListWaitingNotice,
+                      style: tokens.compactText,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: <Widget>[
+              Expanded(child: left),
+              SizedBox(width: tokens.swapDetailColumnGap),
+              Expanded(child: right),
+            ],
+          ),
+        ],
+      ),
+    );
   }
 
-  String _formatTime(int transactionMillis) {
-    final int currentMillis = DateTime.now().millisecondsSinceEpoch;
-    if (currentMillis - transactionMillis <=
-        const Duration(days: 1).inMilliseconds) {
-      return FormatUtils.formatDataShort(currentMillis - transactionMillis);
-    }
-    return FormatUtils.formatDateTime(transactionMillis);
+  String? _expiry(BuildContext context) {
+    final int? expiration = row.currentExpiration;
+    final int? time = row.chainTime;
+    if (expiration == null || time == null) return null;
+    if (expiration <= time) return context.l10n.swapListExpired;
+    return FormatUtils.formatDataShort((expiration - time) * 1000);
   }
 }
+
+/// Copies always retain the exact original identifier behind this short label.
+String swapListShortId(String value) => value.length <= 14
+    ? value
+    : '${value.substring(0, 6)}…${value.substring(value.length - 4)}';

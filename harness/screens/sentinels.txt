@@ -1,0 +1,15 @@
+# Start at unlocked Home in the isolated harness profile.
+# This populated screen requires a harness-only F06 sentinel fixture or a
+# sentinel registered on the isolated lab. Empty or unavailable data refuses
+# this capture instead of substituting mockup ownership or reward amounts.
+# The recipe never registers, collects or disassembles a sentinel.
+goto pillars
+wait --key nodes_tab_sentinels --timeout 30
+tap --key nodes_tab_sentinels
+wait --key nodes_sentinels_strip --timeout 30
+assert --key nodes_sentinels_strip
+wait --key sentinels_loaded --timeout 30
+wait --key nodes_sentinel_active --timeout 30
+assert --key sentinels_loaded
+assert --key nodes_sentinel_active
+assert --key nodes_sentinel_owner_address

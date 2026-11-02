@@ -460,6 +460,77 @@ void main() {
   });
 
   group('a controller', () {
+    for (final bool keepAlive in <bool>[false, true]) {
+      testWidgets(
+        'a closing body rejects input and semantics immediately, '
+        'keepAlive $keepAlive',
+        (WidgetTester tester) async {
+          final DisclosureController controller = DisclosureController(
+            open: true,
+          );
+          final FocusNode action = FocusNode();
+          addTearDown(controller.dispose);
+          addTearDown(action.dispose);
+          final SemanticsHandle semantics = tester.ensureSemantics();
+          try {
+            int presses = 0;
+            await tester.pumpWidget(
+              _host(
+                _stacked(
+                  Disclosure.bare(
+                    key: _disclosure,
+                    controller: controller,
+                    keepAlive: keepAlive,
+                    child: SizedBox(
+                      key: _body,
+                      height: _bodyHeight,
+                      child: TextButton(
+                        focusNode: action,
+                        onPressed: () => presses++,
+                        child: const Text('Confirm stake'),
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+            );
+            action.requestFocus();
+            await tester.pump();
+            expect(action.hasFocus, isTrue);
+            expect(find.semantics.byLabel('Confirm stake'), findsOne);
+
+            controller.close();
+            await tester.pump();
+            // No time has passed: the whole button is still painted, but the
+            // closing state must not accept another financial action.
+            expect(_height(tester, _disclosure), _bodyHeight);
+            expect(find.byKey(_body), findsOneWidget);
+            expect(action.hasFocus, isFalse);
+            expect(action.canRequestFocus, isFalse);
+            expect(find.semantics.byLabel('Confirm stake'), findsNothing);
+            await tester.tapAt(tester.getCenter(find.byKey(_body)));
+            await tester.pump(const Duration(milliseconds: 120));
+            expect(_height(tester, _disclosure), greaterThan(0));
+            expect(_height(tester, _disclosure), lessThan(_bodyHeight));
+            expect(find.semantics.byLabel('Confirm stake'), findsNothing);
+            await tester.tapAt(tester.getCenter(find.byKey(_body)));
+            await tester.pump();
+            expect(presses, 0);
+
+            controller.open();
+            await tester.pumpAndSettle();
+            expect(action.canRequestFocus, isTrue);
+            expect(find.semantics.byLabel('Confirm stake'), findsOne);
+            await tester.tap(find.text('Confirm stake'));
+            await tester.pumpAndSettle();
+            expect(presses, 1);
+          } finally {
+            semantics.dispose();
+          }
+        },
+      );
+    }
+
     testWidgets('opens and closes a bare disclosure, which has no header', (
       WidgetTester tester,
     ) async {

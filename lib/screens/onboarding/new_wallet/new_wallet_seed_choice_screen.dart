@@ -1,6 +1,5 @@
-import 'package:material_ui/material_ui.dart';
 import 'package:flutter_svg/flutter_svg.dart';
-import 'package:hive_ce/hive_ce.dart';
+import 'package:material_ui/material_ui.dart';
 import 'package:provider/provider.dart';
 import 'package:zenon_syrius_wallet_flutter/screens/onboarding/onboarding_scaffold.dart';
 import 'package:zenon_syrius_wallet_flutter/screens/screens.dart';
@@ -9,9 +8,13 @@ import 'package:zenon_syrius_wallet_flutter/widgets/reusable_widgets/modals/moda
 import 'package:zenon_syrius_wallet_flutter/widgets/widgets.dart';
 import 'package:znn_sdk_dart/znn_sdk_dart.dart';
 
+/// Shows a new seed without changing stored wallet membership.
 class NewWalletSeedChoiceScreen extends StatefulWidget {
-  const NewWalletSeedChoiceScreen({super.key, this.export});
-  final bool? export;
+  /// Ordinary entry returns to the previous route when Back is selected.
+  const NewWalletSeedChoiceScreen({super.key, this.export = false});
+
+  /// Export entry returns to the existing access route after backing out.
+  final bool export;
 
   @override
   State<NewWalletSeedChoiceScreen> createState() =>
@@ -31,7 +34,6 @@ class _NewWalletSeedChoiceScreenState extends State<NewWalletSeedChoiceScreen> {
   @override
   void initState() {
     super.initState();
-    _openHiveAddressesBox();
     _generatedSeed24 = Mnemonic.generateMnemonic(256).split(' ');
     _generatedSeed12 = Mnemonic.generateMnemonic(128).split(' ');
   }
@@ -82,7 +84,7 @@ class _NewWalletSeedChoiceScreenState extends State<NewWalletSeedChoiceScreen> {
   }
 
   void _onBackPressed() {
-    if (widget.export!) {
+    if (widget.export) {
       Navigator.popUntil(
         context,
         ModalRoute.withName(AccessWalletScreen.route),
@@ -90,18 +92,6 @@ class _NewWalletSeedChoiceScreenState extends State<NewWalletSeedChoiceScreen> {
     } else {
       Navigator.pop(context);
     }
-  }
-
-  void _openHiveAddressesBox() {
-    Hive.boxExists(kAddressesBox).then(
-      (bool addressesBoxExists) {
-        if (addressesBoxExists) {
-          Hive.openBox(
-            kAddressesBox,
-          ).then((Box addressesBox) => addressesBox.clear());
-        }
-      },
-    );
   }
 
   SeedGrid _getSeedGrid() {
@@ -140,7 +130,7 @@ class _NewWalletSeedChoiceScreenState extends State<NewWalletSeedChoiceScreen> {
 
   Widget _getBackUpSeedContainer() {
     return Consumer<ValueNotifier<List<String>>>(
-      builder: (_, ValueNotifier<List<String>> exportedSeed, __) {
+      builder: (_, ValueNotifier<List<String>> exportedSeed, _) {
         final bool exported = _isSeedExported(exportedSeed.value);
         return OutlinedButton.icon(
           style: secondaryButtonStyle(context).copyWith(

@@ -39,6 +39,9 @@ void main() {
       reward = MockUncollectedReward();
       exception = FailureException();
 
+      when(() => reward.address).thenReturn(emptyAddress);
+      when(() => reward.znnAmount).thenReturn(BigInt.one);
+      when(() => reward.qsrAmount).thenReturn(BigInt.one);
       when(() => mockZenon.embedded).thenReturn(mockEmbedded);
       when(() => mockEmbedded.sentinel).thenReturn(mockSentinel);
       when(() => reward.toJson()).thenReturn(<String, dynamic>{
@@ -72,8 +75,9 @@ void main() {
     blocTest<UncollectedSentinelRewardsBloc, FetchState<UncollectedReward>>(
       'emits failure when getUncollectedReward throws',
       setUp: () {
-        when(() => mockSentinel.getUncollectedReward(any()))
-            .thenThrow(exception);
+        when(
+          () => mockSentinel.getUncollectedReward(any()),
+        ).thenThrow(exception);
       },
       build: () => bloc,
       act: (UncollectedSentinelRewardsBloc bloc) =>

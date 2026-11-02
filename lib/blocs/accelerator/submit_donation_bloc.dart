@@ -1,43 +1,20 @@
-import 'package:zenon_syrius_wallet_flutter/blocs/blocs.dart';
-import 'package:zenon_syrius_wallet_flutter/main.dart';
-import 'package:zenon_syrius_wallet_flutter/utils/account_block_utils.dart';
-import 'package:zenon_syrius_wallet_flutter/utils/plasma_purpose.dart';
-import 'package:zenon_syrius_wallet_flutter/utils/zts_utils.dart';
-import 'package:znn_sdk_dart/znn_sdk_dart.dart';
+import 'package:zenon_syrius_wallet_flutter/blocs/accelerator/accelerator_action_bloc.dart';
+import 'package:zenon_syrius_wallet_flutter/widgets/modular_widgets/accelerator_widgets/accelerator_action_controller.dart';
 
-class SubmitDonationBloc extends BaseBloc<AccountBlockTemplate?> {
-  Future<void> submitDonation(BigInt znnAmount, BigInt qsrAmount) async {
-    try {
-      addEvent(null);
-      if (znnAmount > BigInt.zero) {
-        await _sendDonationBlock(zenon!.embedded.accelerator.donate(
-          znnAmount,
-          kZnnCoin.tokenStandard,
-        ),);
-      }
-      if (qsrAmount > BigInt.zero) {
-        await _sendDonationBlock(zenon!.embedded.accelerator.donate(
-          qsrAmount,
-          kQsrCoin.tokenStandard,
-        ),);
-      }
-    } catch (e, stackTrace) {
-      addError(e, stackTrace);
-    }
-  }
+/// Compatibility observer for an explicit donation in exact native units.
+class SubmitDonationBloc extends AcceleratorActionBloc {
+  /// Retains the original injected or captured action capabilities.
+  SubmitDonationBloc({super.source, super.controller});
 
-  Future<void> _sendDonationBlock(
-      AccountBlockTemplate transactionParams,) async {
-    await AccountBlockUtils().createAccountBlock(
-      transactionParams,
-      PlasmaPurpose.donateToAccelerator.message,
-    ).then(
-      (AccountBlockTemplate block) {
-        sl.get<AcceleratorBalanceBloc>().getAcceleratorBalance();
-        addEvent(block);
-      },
-    ).onError(
-      addError,
-    );
-  }
+  /// Submits the original coin amounts without retrying an uncertain transfer.
+  Future<AcceleratorActionOutcome> submitDonation(
+    BigInt znnAmount,
+    BigInt qsrAmount,
+  ) => run(
+    AcceleratorActionRequest(
+      kind: AcceleratorActionKind.donate,
+      znn: znnAmount,
+      qsr: qsrAmount,
+    ),
+  );
 }

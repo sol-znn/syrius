@@ -1,0 +1,15 @@
+# prerequisite: unlocked-home
+# Reads the complete current source and actual fund. This scenario does not
+# donate, create, vote, sign or submit a transaction.
+goto accelerator
+wait --key accelerator_strip --timeout 30
+wait --key accelerator_list --timeout 30
+wait --key accelerator_filter_voting --timeout 30
+assert --key accelerator_search
+tap --key accelerator_filter_active
+tap --key accelerator_filter_mine
+tap --key accelerator_filter_all
+tap --key accelerator_filter_voting
+assert --key accelerator_filter_voting
+# after-capture: goto dashboard
+# after-capture: wait --key home_hero --timeout 5

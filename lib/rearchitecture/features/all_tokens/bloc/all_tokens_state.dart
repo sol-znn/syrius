@@ -69,11 +69,15 @@ final class AllTokensFailure extends AllTokensState {
 /// Populated state containing every token available on the network.
 final class AllTokensPopulated extends AllTokensState {
   /// Creates a populated token state.
-  const AllTokensPopulated({required this.data});
+  const AllTokensPopulated({required this.data, this._context});
 
   /// The available all tokens.
   final List<Token> data;
+  final TokenReadContext? _context;
+
+  /// Serialized and unbound states cannot authorize live token actions.
+  bool get isCurrent => _context?.isCurrent ?? false;
 
   @override
-  List<Object?> get props => <Object?>[data];
+  List<Object?> get props => <Object?>[data, _context];
 }

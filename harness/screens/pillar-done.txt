@@ -1,0 +1,6 @@
+# prerequisite: pending F06 reversible confirmed pillar registration preparation
+# Requires the genuine isolated registration route, its original accepted block
+# and positive confirmation of that exact hash on its captured account and chain.
+# No screenshot or elapsed delay may substitute for this confirmation marker.
+wait --key pillar_registration_confirmed --timeout 60
+assert --key pillar_registration_confirmed

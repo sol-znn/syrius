@@ -2,6 +2,7 @@ import 'dart:ui' show ImageFilter;
 
 import 'package:flutter/foundation.dart';
 import 'package:material_ui/material_ui.dart';
+import 'package:zenon_syrius_wallet_flutter/utils/app_theme.dart';
 
 /// The blur behind a dialog at rest, in logical pixels. The mockup's overlay
 /// is `backdrop-filter: blur(6px)`, and a CSS blur radius is a sigma.
@@ -101,6 +102,70 @@ class FrostedBarrier extends StatelessWidget {
   }
 }
 
+/// A glass surface whose filter is clipped to the card it paints.
+///
+/// Dialogs, panels, menus and entry cards share this treatment. The caller
+/// supplies its radius and blur when they differ from an ordinary dialog.
+///
+/// Set [grouped] only for non-overlapping surfaces over the same backdrop,
+/// inside one [BackdropGroup]. Overlapping filters, such as a dialog and its
+/// full-window barrier, must keep separate backdrop keys or their overlap
+/// would receive only one of the filters.
+class FrostedSurface extends StatelessWidget {
+  /// Creates a bounded glass surface around [child].
+  const FrostedSurface({
+    required this.child,
+    this.sigma,
+    this.tint,
+    this.borderRadius,
+    this.grouped = false,
+    super.key,
+  }) : assert(
+         sigma == null || (sigma >= 0 && sigma < double.infinity),
+         'Blur must be finite and nonnegative.',
+       );
+
+  /// The content laid over the glass.
+  final Widget child;
+
+  /// Blur at rest. Null takes the dialog blur token.
+  final double? sigma;
+
+  /// The surface colour, including its glass opacity.
+  final Color? tint;
+
+  /// The boundary of the filter. Null takes the dialog radius token.
+  final BorderRadiusGeometry? borderRadius;
+
+  /// Whether to share the nearest [BackdropGroup]'s backdrop input.
+  final bool grouped;
+
+  @override
+  Widget build(BuildContext context) {
+    final AppTokens tokens = AppTokens.of(context);
+    final double sigma = this.sigma ?? tokens.dialogBlur;
+    final ImageFilter filter = ImageFilter.blur(sigmaX: sigma, sigmaY: sigma);
+    final Widget surface = ColoredBox(
+      color: tint ?? tokens.glass,
+      child: child,
+    );
+    return ClipRRect(
+      borderRadius: borderRadius ?? BorderRadius.circular(tokens.dialogRadius),
+      child: grouped
+          ? BackdropFilter.grouped(
+              enabled: sigma > 0,
+              filter: filter,
+              child: surface,
+            )
+          : BackdropFilter(
+              enabled: sigma > 0,
+              filter: filter,
+              child: surface,
+            ),
+    );
+  }
+}
+
 /// A dialog route whose barrier is a [FrostedBarrier] that follows the
 /// route's own animation, in and out.
 ///
@@ -116,7 +181,7 @@ class FrostedDialogRoute<T> extends RawDialogRoute<T> {
     required super.pageBuilder,
     super.barrierDismissible,
     super.barrierLabel,
-    Color? barrierColor,
+    super.barrierColor = null,
     this.sigma = kFrostSigma,
     super.transitionDuration,
     super.transitionBuilder,
@@ -125,12 +190,22 @@ class FrostedDialogRoute<T> extends RawDialogRoute<T> {
     super.anchorPoint,
     super.traversalEdgeBehavior,
     super.fullscreenDialog,
-  }) : super(barrierColor: barrierColor);
+  });
 
   /// The blur at rest.
   final double sigma;
 
   bool _holding = false;
+
+  @override
+  AnimationController createAnimationController() => AnimationController(
+    vsync: navigator!,
+    duration: transitionDuration,
+    reverseDuration: reverseTransitionDuration,
+    // The route owns the barrier's clock. Preserve its duration just as the
+    // dialog's rise does, regardless of the system animation-effects flag.
+    animationBehavior: AnimationBehavior.preserve,
+  );
 
   void _release() {
     if (_holding) {

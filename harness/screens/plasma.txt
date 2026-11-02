@@ -1,0 +1,10 @@
+# prerequisite: unlocked-home
+# The strip and rows use the selected account's genuine chain responses.
+goto plasma
+key escape
+key escape
+wait --key plasma_strip --timeout 30
+wait --key plasma_fused_list --timeout 30
+assert --key plasma_screen
+# after-capture: goto dashboard
+# after-capture: wait --key home_hero --timeout 5

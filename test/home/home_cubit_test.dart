@@ -6,26 +6,26 @@ import 'package:zenon_syrius_wallet_flutter/rearchitecture/features/home/widgets
 import 'package:znn_sdk_dart/znn_sdk_dart.dart';
 
 UncollectedReward _reward(int znn, int qsr) => UncollectedReward.fromJson(
-      <String, dynamic>{
-        'address': 'z1qq9n7fpaqd8lpcljandzmx4xtku9w4ftwyg0mq',
-        'znnAmount': '$znn',
-        'qsrAmount': '$qsr',
-      },
-    );
+  <String, dynamic>{
+    'address': 'z1qq9n7fpaqd8lpcljandzmx4xtku9w4ftwyg0mq',
+    'znnAmount': '$znn',
+    'qsrAmount': '$qsr',
+  },
+);
 
 HomeSnapshot _snapshot({int plasma = 84000, int znn = 1}) => HomeSnapshot(
-      znn: BigInt.from(znn),
-      qsr: BigInt.zero,
-      tokens: const <BalanceInfoListItem>[],
-      currentPlasma: plasma,
-      maxPlasma: 100000,
-      fusedQsr: BigInt.zero,
-      rewards: <String, UncollectedReward>{
-        'Delegation': _reward(5, 0),
-        'Sentinel': _reward(0, 0),
-        'Staking': _reward(0, 7),
-      },
-    );
+  znn: BigInt.from(znn),
+  qsr: BigInt.zero,
+  tokens: const <BalanceInfoListItem>[],
+  currentPlasma: plasma,
+  maxPlasma: 100000,
+  fusedQsr: BigInt.zero,
+  rewards: <String, UncollectedReward>{
+    'Delegation': _reward(5, 0),
+    'Sentinel': _reward(0, 0),
+    'Staking': _reward(0, 7),
+  },
+);
 
 void main() {
   group('HomeCubit', () {
@@ -53,6 +53,46 @@ void main() {
       expect(cubit.state.snapshot, _snapshot());
       await cubit.close();
     });
+
+    test(
+      'concurrent refreshes share one read and closed refreshes do nothing',
+      () async {
+        final Completer<HomeSnapshot> pending = Completer<HomeSnapshot>();
+        int calls = 0;
+        final HomeCubit cubit = HomeCubit(
+          read: () {
+            calls++;
+            return pending.future;
+          },
+        );
+        final Future<void> first = cubit.refresh();
+        expect(cubit.refresh(), same(first));
+        expect(calls, 1);
+        pending.complete(_snapshot());
+        await first;
+        await cubit.close();
+        await cubit.refresh();
+        expect(calls, 1);
+      },
+    );
+
+    test(
+      'an equal fresh read still delivers its exact snapshot to the view',
+      () async {
+        final HomeSnapshot original = _snapshot();
+        final HomeSnapshot fresh = _snapshot();
+        int calls = 0;
+        final HomeCubit cubit = HomeCubit(
+          read: () async => calls++ == 0 ? original : fresh,
+        );
+        await cubit.refresh();
+        expect(cubit.state.snapshot, same(original));
+        await cubit.refresh();
+        expect(cubit.state.snapshot, same(fresh));
+        expect(cubit.state.readRevision, 2);
+        await cubit.close();
+      },
+    );
 
     test('reads again after the interval and stops when closed', () async {
       int calls = 0;
@@ -85,7 +125,7 @@ void main() {
 
   group('HomeSnapshot', () {
     test('counts the sends the plasma pays for', () {
-      expect(_snapshot(plasma: 84000).sendsCovered, 4);
+      expect(_snapshot().sendsCovered, 4);
       expect(_snapshot(plasma: 20999).sendsCovered, 0);
       expect(_snapshot(plasma: 0).sendsCovered, 0);
     });
@@ -97,7 +137,10 @@ void main() {
 
   group('splitAmount', () {
     test('groups thousands and quiets trailing zeros without rounding', () {
-      expect(splitAmount(BigInt.parse('120450000000'), 8), ('1,204.5', '0000000'));
+      expect(splitAmount(BigInt.parse('120450000000'), 8), (
+        '1,204.5',
+        '0000000',
+      ));
       expect(splitAmount(BigInt.parse('100000000'), 8), ('1', '.00000000'));
       expect(splitAmount(BigInt.parse('1'), 8), ('0.00000001', ''));
       expect(splitAmount(BigInt.zero, 8), ('0', '.00000000'));

@@ -1,19 +1,23 @@
 import 'dart:async';
 
 import 'package:material_ui/material_ui.dart';
-import 'package:stacked/stacked.dart';
-import 'package:zenon_syrius_wallet_flutter/blocs/blocs.dart';
-import 'package:zenon_syrius_wallet_flutter/rearchitecture/utils/widgets/page/page_widgets.dart';
-import 'package:zenon_syrius_wallet_flutter/utils/app_colors.dart';
-import 'package:zenon_syrius_wallet_flutter/widgets/widgets.dart';
+import 'package:url_launcher/url_launcher.dart';
+import 'package:zenon_syrius_wallet_flutter/blocs/refresh_bloc_mixin.dart';
+import 'package:zenon_syrius_wallet_flutter/screens/stepper_screen.dart';
+import 'package:zenon_syrius_wallet_flutter/utils/explorer_links.dart';
+import 'package:zenon_syrius_wallet_flutter/utils/global.dart';
+import 'package:zenon_syrius_wallet_flutter/utils/wallet_context_revision.dart';
+import 'package:zenon_syrius_wallet_flutter/widgets/modular_widgets/accelerator_widgets/accelerator_action_binding.dart';
+import 'package:zenon_syrius_wallet_flutter/widgets/modular_widgets/accelerator_widgets/accelerator_list_presenter.dart';
+import 'package:zenon_syrius_wallet_flutter/widgets/modular_widgets/accelerator_widgets/accelerator_project_presenter.dart';
+import 'package:zenon_syrius_wallet_flutter/widgets/modular_widgets/accelerator_widgets/accelerator_project_view.dart';
+import 'package:zenon_syrius_wallet_flutter/widgets/modular_widgets/accelerator_widgets/phase_creation_stepper.dart';
+import 'package:zenon_syrius_wallet_flutter/widgets/modular_widgets/accelerator_widgets/update_phase_stepper.dart';
 import 'package:znn_sdk_dart/znn_sdk_dart.dart';
 
-/// One Accelerator project: its head on top, its phases filling the rest.
-///
-/// The same page rules as a rail page: a fixed row for what the project is
-/// and how much it has been paid, a filling row for the list.
+/// Existing detail route. Its original source is never rebound after an await.
 class ProjectDetailsScreen extends StatefulWidget {
-  /// Creates the page of [project].
+  /// Opens the exact original project or a supplied phase's parent project.
   const ProjectDetailsScreen({
     required this.project,
     required this.pillarInfo,
@@ -21,121 +25,142 @@ class ProjectDetailsScreen extends StatefulWidget {
     super.key,
   });
 
-  /// Opens the notifications page from a stepper.
-  final VoidCallback onStepperNotificationSeeMorePressed;
-
-  /// The project, as the list had it; the page reloads it.
+  /// Original project or phase selecting the exact parent hash for fresh reads.
   final AcceleratorProject project;
 
-  /// The Pillar the selected address owns, if any.
+  /// Legacy Pillar context; current ownership is independently read.
   final PillarInfo? pillarInfo;
 
+  /// Original notification-details navigation callback.
+  final VoidCallback onStepperNotificationSeeMorePressed;
   @override
   State<ProjectDetailsScreen> createState() => _ProjectDetailsScreenState();
 }
 
-class _ProjectDetailsScreenState extends State<ProjectDetailsScreen> {
+class _ProjectDetailsScreenState extends State<ProjectDetailsScreen>
+    with RefreshBlocMixin {
+  late final AcceleratorProjectPresenter _presenter;
+  AcceleratorActionBinding? _source;
+  String? _explorer;
+  bool _invalidated = false;
+
   @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      body: SafeArea(
-        child: Padding(
-          padding: const EdgeInsets.fromLTRB(18, 10, 18, 18),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: <Widget>[
-              _buildTopBar(),
-              NotificationWidget(
-                onSeeMorePressed: widget.onStepperNotificationSeeMorePressed,
-              ),
-              const SizedBox(height: 10),
-              Expanded(child: _buildStreamBuilder()),
-            ],
-          ),
+  void initState() {
+    super.initState();
+    final AcceleratorProject original = widget.project;
+    final String id = original is Phase
+        ? original.projectId.toString()
+        : original.id.toString();
+    _presenter = AcceleratorProjectPresenter(projectId: id);
+    _explorer = ExplorerLinks.transaction(
+      id,
+      chainId: kNodeChainId,
+    )?.toString();
+    try {
+      _source = AcceleratorActionBinding.capture();
+    } on Object {
+      _invalidated = true;
+    }
+    WalletContextRevision.changes.addListener(_invalidate);
+    listenToWsRestart(_refresh);
+    final AcceleratorActionBinding? source = _source;
+    if (source != null) unawaited(_presenter.load(source));
+  }
+
+  void _invalidate() {
+    _invalidated = true;
+    _presenter.invalidate();
+  }
+
+  bool get _onPage =>
+      mounted &&
+      (ModalRoute.of(context)?.isCurrent ?? true) &&
+      TickerMode.valuesOf(context).enabled;
+  bool get _current => !_invalidated && (_source?.isCurrent ?? false);
+
+  void _refresh() {
+    final AcceleratorActionBinding? source = _source;
+    if (!_current || source == null) return;
+    unawaited(_presenter.refresh(source));
+  }
+
+  void _openPhase(Project original, {Phase? phase}) {
+    final AcceleratorActionBinding? source = _source;
+    if (!_onPage ||
+        !_current ||
+        source == null ||
+        original.id.toString() != _presenter.projectId ||
+        original.owner.toString() != source.ownerAddress) {
+      return;
+    }
+    final Project project = AcceleratorListProject.fromProject(
+      original,
+    ).toProject();
+    Phase? selected;
+    if (phase != null) {
+      for (final Phase value in project.phases) {
+        if (value.id == phase.id) selected = value;
+      }
+      if (selected == null) return;
+    }
+    final Widget stepper = selected == null
+        ? PhaseCreationStepper(project, source: source)
+        : UpdatePhaseStepper(selected, project, source: source);
+    Navigator.of(context).push<void>(
+      MaterialPageRoute<void>(
+        builder: (BuildContext context) => StepperScreen(
+          stepper: stepper,
+          onStepperNotificationSeeMorePressed:
+              widget.onStepperNotificationSeeMorePressed,
         ),
       ),
     );
   }
 
-  Widget _buildTopBar() {
-    return SizedBox(
-      height: 48,
-      child: Row(
-        children: <Widget>[
-          IconButton(
-            key: const Key('project_details_back'),
-            tooltip: 'Back',
-            mouseCursor: SystemMouseCursors.click,
-            onPressed: () => Navigator.pop(context),
-            icon: const Icon(Icons.arrow_back),
-          ),
-          const SizedBox(width: 8),
-          Expanded(
-            child: Text(
-              widget.project.name,
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-              style: Theme.of(context).textTheme.headlineSmall!.copyWith(
-                fontSize: 20,
-                fontWeight: FontWeight.w500,
-              ),
-            ),
-          ),
-        ],
-      ),
-    );
+  Future<void> _openUrl(String text) async {
+    if (!_onPage || !_current) return;
+    final Uri? parsed = Uri.tryParse(text);
+    if (parsed == null) return;
+    final Uri? exact = parsed.scheme.isEmpty
+        ? Uri.tryParse('https://$text')
+        : parsed;
+    if (exact == null ||
+        (exact.scheme != 'https' && exact.scheme != 'http') ||
+        exact.host.isEmpty) {
+      return;
+    }
+    // The exact URI is captured before launch. A failed external observer
+    // cannot notify a replacement wallet or change an original publication.
+    try {
+      await launchUrl(exact);
+    } on Object {
+      return;
+    }
   }
 
-  Widget _buildLayout(
-    Project project,
-    RefreshProjectBloc refreshProjectViewModel,
-  ) {
-    return PageGrid(
-      rows: <PageRow>[
-        PageRow.fixed(172, <PageCell>[PageCell(ProjectsStats(project))]),
-        PageRow.fill(<PageCell>[
-          PageCell(
-            PhaseList(
-              widget.pillarInfo,
-              project,
-              () => refreshProjectViewModel.refreshProject(project.id),
-              onStepperNotificationSeeMorePressed:
-                  widget.onStepperNotificationSeeMorePressed,
-            ),
-          ),
-        ]),
-      ],
-    );
+  @override
+  void dispose() {
+    _invalidated = true;
+    WalletContextRevision.changes.removeListener(_invalidate);
+    cancelStreamSubscription();
+    _presenter.dispose();
+    super.dispose();
   }
 
-  Widget _buildStreamBuilder() {
-    return ViewModelBuilder<RefreshProjectBloc>.reactive(
-      onViewModelReady: (RefreshProjectBloc model) {
-        unawaited(model.refreshProject(widget.project.id));
+  @override
+  Widget build(BuildContext context) => Scaffold(
+    body: AcceleratorProjectView(
+      presenter: _presenter,
+      title: widget.project.name,
+      explorer: _explorer,
+      onBack: () {
+        if (_onPage) Navigator.of(context).pop();
       },
-      builder: (_, RefreshProjectBloc model, _) => StreamBuilder<Project?>(
-        stream: model.stream,
-        builder: (_, AsyncSnapshot<Project?> snapshot) {
-          if (snapshot.hasError) {
-            return RepaintBoundary(child: SyriusErrorWidget(snapshot.error!));
-          }
-          if (snapshot.connectionState == ConnectionState.active &&
-              snapshot.hasData) {
-            return _buildLayout(snapshot.data!, model);
-          }
-          return const Center(
-            child: SizedBox(
-              width: 18,
-              height: 18,
-              child: CircularProgressIndicator(
-                strokeWidth: 1.5,
-                color: AppColors.znnColor,
-              ),
-            ),
-          );
-        },
-      ),
-      viewModelBuilder: RefreshProjectBloc.new,
-    );
-  }
+      onRefresh: _refresh,
+      onCreatePhase: _openPhase,
+      onUpdatePhase: (Project project, Phase phase) =>
+          _openPhase(project, phase: phase),
+      onOpenUrl: _openUrl,
+    ),
+  );
 }

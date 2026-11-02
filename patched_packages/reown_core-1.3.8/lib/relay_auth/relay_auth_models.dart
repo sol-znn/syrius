@@ -69,12 +69,8 @@ class JWTSigned extends JWTData {
 class JWTDecoded extends JWTSigned {
   List<int> data;
 
-  JWTDecoded(
-    this.data,
-    List<int> signature,
-    JWTPayload payload, {
-    JWTHeader? header,
-  }) : super(signature, payload, header: header);
+  JWTDecoded(this.data, List<int> signature, JWTPayload payload, {super.header})
+    : super(signature, payload);
 }
 
 class IssuerDecodeError {

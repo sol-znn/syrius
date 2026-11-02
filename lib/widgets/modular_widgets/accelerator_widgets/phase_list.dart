@@ -1,101 +1,100 @@
 import 'package:material_ui/material_ui.dart';
-import 'package:zenon_syrius_wallet_flutter/rearchitecture/features/refresh_button/view/refresh_button.dart';
+import 'package:zenon_syrius_wallet_flutter/rearchitecture/utils/extensions/buildcontext_extension.dart';
 import 'package:zenon_syrius_wallet_flutter/rearchitecture/utils/widgets/page/page_widgets.dart';
 import 'package:zenon_syrius_wallet_flutter/screens/stepper_screen.dart';
-import 'package:zenon_syrius_wallet_flutter/utils/global.dart';
+import 'package:zenon_syrius_wallet_flutter/widgets/modular_widgets/accelerator_widgets/accelerator_action_controller.dart';
+import 'package:zenon_syrius_wallet_flutter/widgets/modular_widgets/accelerator_widgets/accelerator_list_presenter.dart';
 import 'package:zenon_syrius_wallet_flutter/widgets/modular_widgets/accelerator_widgets/accelerator_parts.dart';
 import 'package:zenon_syrius_wallet_flutter/widgets/modular_widgets/accelerator_widgets/accelerator_project_list.dart';
 import 'package:zenon_syrius_wallet_flutter/widgets/modular_widgets/accelerator_widgets/phase_creation_stepper.dart';
 import 'package:znn_sdk_dart/znn_sdk_dart.dart';
 
-/// A project's phases, newest first, as the list that fills its page.
-///
-/// The owner creates the next phase from the panel's title row. This
-/// replaces the separate create-phase card: the button sits with the list
-/// it adds to.
+/// Compatibility phase panel. A supplied original source owns its actions.
 class PhaseList extends StatelessWidget {
-  /// Creates the phases of [project].
+  /// Displays copied phase facts and actions bound to the supplied source.
   const PhaseList(
     this.pillarInfo,
     this.project,
     this.onRefreshButtonPressed, {
     required this.onStepperNotificationSeeMorePressed,
+    this.source,
     super.key,
   });
 
-  /// The Pillar the selected address owns; it can vote on phases.
+  /// Legacy caller's Pillar context; never substitutes for fresh ownership.
   final PillarInfo? pillarInfo;
 
-  /// The project whose phases are listed.
+  /// The original project whose phase membership this panel displays.
   final Project project;
 
-  /// Reloads the project.
+  /// Legacy refresh callback retained for compatible callers.
   final VoidCallback onRefreshButtonPressed;
 
-  /// Opens the notifications page from a stepper.
+  /// The original notification-details navigation callback.
   final VoidCallback onStepperNotificationSeeMorePressed;
+
+  /// The captured action capability, absent when creation cannot be admitted.
+  final AcceleratorActionSource? source;
 
   @override
   Widget build(BuildContext context) {
-    final bool isOwner = project.owner.toString() == kSelectedAddress;
+    final AcceleratorActionSource? origin = source;
+    final List<String> ids = project.phaseIds
+        .map((Hash id) => id.toString())
+        .toList();
+    Phase? latest;
+    for (final Phase phase in project.phases) {
+      if (ids.isNotEmpty && phase.id.toString() == ids.last) latest = phase;
+    }
+    final bool canCreate =
+        origin != null &&
+        origin.isCurrent &&
+        project.owner.toString() == origin.ownerAddress &&
+        project.status == AcceleratorProjectStatus.active &&
+        ids.length == project.phases.length &&
+        ids.toSet().length == ids.length &&
+        (ids.isEmpty || latest?.status == AcceleratorProjectStatus.paid);
     return Panel(
-      title: 'Phases',
+      title: context.l10n.acceleratorPhases,
       actions: <Widget>[
-        RefreshButton(onPressed: onRefreshButtonPressed),
-        if (isOwner) ...<Widget>[
-          const SizedBox(width: 6),
-          Tooltip(
-            message: _canCreatePhase()
-                ? ''
-                : 'Possible once the project is accepted and its last phase '
-                      'is paid',
-            child: OutlinedButton.icon(
-              key: const Key('acc_create_phase'),
-              style: accCompactPrimaryStyle(),
-              onPressed: _canCreatePhase()
-                  ? () => _openPhaseCreation(context)
-                  : null,
-              icon: const Icon(Icons.add, size: 16),
-              label: const Text('Create phase'),
-            ),
-          ),
-          const SizedBox(width: 8),
-        ],
-      ],
-      child: project.phases.isEmpty
-          ? Center(
-              child: Text(
-                'None yet',
-                style: Theme.of(
-                  context,
-                ).textTheme.titleMedium!.copyWith(fontSize: 14),
-              ),
-            )
-          : AcceleratorProjectList(
-              pillarInfo,
-              project.phases.reversed.toList(),
-              projects: project,
-              onStepperNotificationSeeMorePressed:
-                  onStepperNotificationSeeMorePressed,
-            ),
-    );
-  }
-
-  void _openPhaseCreation(BuildContext context) {
-    Navigator.push(
-      context,
-      MaterialPageRoute<void>(
-        builder: (BuildContext context) => StepperScreen(
-          stepper: PhaseCreationStepper(project),
-          onStepperNotificationSeeMorePressed:
-              onStepperNotificationSeeMorePressed,
+        OutlinedButton(
+          key: const Key('acc_create_phase'),
+          style: accCompactQuietStyle(context),
+          onPressed: canCreate
+              ? () {
+                  if (!origin.isCurrent ||
+                      !(ModalRoute.of(context)?.isCurrent ?? true) ||
+                      !TickerMode.valuesOf(context).enabled) {
+                    return;
+                  }
+                  final Project copy = AcceleratorListProject.fromProject(
+                    project,
+                  ).toProject();
+                  final Widget stepper = PhaseCreationStepper(
+                    copy,
+                    source: origin,
+                  );
+                  Navigator.of(context).push<void>(
+                    MaterialPageRoute<void>(
+                      builder: (BuildContext context) => StepperScreen(
+                        stepper: stepper,
+                        onStepperNotificationSeeMorePressed:
+                            onStepperNotificationSeeMorePressed,
+                      ),
+                    ),
+                  );
+                }
+              : null,
+          child: Text(context.l10n.acceleratorCreatePhase),
         ),
+      ],
+      child: AcceleratorProjectList(
+        null,
+        project.phases,
+        projects: project,
+        onStepperNotificationSeeMorePressed:
+            onStepperNotificationSeeMorePressed,
       ),
     );
   }
-
-  bool _canCreatePhase() =>
-      project.status == AcceleratorProjectStatus.active &&
-      (project.phases.isEmpty ||
-          project.phases.last.status == AcceleratorProjectStatus.paid);
 }

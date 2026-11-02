@@ -21,15 +21,18 @@ final class DeployPillarInitial extends DeployPillarState {
 /// Failure state emitted when deployment fails.
 final class DeployPillarFailure extends DeployPillarState {
   /// Creates a new [DeployPillarFailure] state.
-  const DeployPillarFailure({required this._exception});
+  const DeployPillarFailure({required this._exception, this.error});
 
   final SyriusException _exception;
 
   /// The error that caused the deployment operation to fail.
   SyriusException get exception => _exception;
 
+  /// The original preparation or publication error before display mapping.
+  final Object? error;
+
   @override
-  List<Object> get props => <Object>[_exception];
+  List<Object> get props => <Object>[_exception, ?error];
 }
 
 /// Success state emitted when deployment finishes.

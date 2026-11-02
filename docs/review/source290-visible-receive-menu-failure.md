@@ -1,0 +1,11 @@
+# Source290 visible Receive menu and missing agent selector
+
+Recorded 2026-11-01 10:13 UTC. Original source `00694daf956446f2399757edcaccdea20dc97b0e`, tree `46d9af230a63111dd220f8d5e1781efee7b61acd`, [run 41295139442](https://github.com/edgepillar/syrius/actions/runs/41295139442), job 124814302439, attempt one.
+
+The complete unforced Dart command exits one after 230.234 seconds, with 784 passes, one failure, one error event and zero skips. Its 398,864-byte output has SHA-256 `716e8394e039bf80e2f8188f1d2ee8c08d5295908a1cc40e91fae8b0ce745964`. Selected analysis has zero errors, warnings or infos. All 928 Python controls complete with three original skips; fourteen asset observations and original startup/refusal controls remain qualified. No native wallet or node executes and no artifact is produced.
+
+The actual Transfer/Receive widget case uses an explicit Windows theme. The QSR token-option assertion and the QSR widget's hit-testable assertion return. The first six original agent commands return. The seventh, `tap QSR --exact`, then fails at `agent.dart:3135`, bound by the finite projection and exact source to `transfer_page_test.dart:447`. The original refusal is `nothing matches`. This establishes a reachable-widget/agent-selector discrepancy in this mocked component. Which inherited geometry or label field caused it remains NOT_ESTABLISHED.
+
+The original [Source289 wrapper failure](source289-receive-agent-diagnostic-failure.md) remains preserved. [Source288's original native failure](source288-receive-selection-failure.md) still has an unestablished native cause, required-wallet forced cleanup and zero admitted PNGs. None of these original runs is retried or reclassified. Source290's prepared Settings native controller is not dispatched because its complete focused gate fails.
+
+Source291 proposes a bounded overlay paint-context correction and a new real portal regression. Both the original Receive counterexample and its final selection/payload assertions remain byte-unchanged. A passing candidate would qualify the current component behavior, not reconstruct the original native runtime. Main acceptance remains 72/80 rows, 26 available literal outputs, 68 missing and zero of 94 accepted matches. Native101 Send and Native103 Token confirmation/effect stay UNKNOWN; Native104 is not admitted.

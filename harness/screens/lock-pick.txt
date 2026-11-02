@@ -1,0 +1,5 @@
+# prerequisite: pending F06/N04 reversible lock preparation and explicit wallet catalog fixture
+# Production retains only the actual current wallet. The missing service cannot open this menu.
+# Pure tests draw synthetic rows; no native catalog fixture or capture is established.
+lock
+assert --key lock_wallet_picker_menu

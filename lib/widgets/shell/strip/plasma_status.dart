@@ -6,12 +6,9 @@ import 'package:zenon_syrius_wallet_flutter/blocs/blocs.dart';
 import 'package:zenon_syrius_wallet_flutter/main.dart';
 import 'package:zenon_syrius_wallet_flutter/rearchitecture/utils/extensions/buildcontext_extension.dart';
 import 'package:zenon_syrius_wallet_flutter/rearchitecture/utils/widgets/ltr.dart';
-import 'package:zenon_syrius_wallet_flutter/rearchitecture/utils/widgets/plasma_glow.dart';
-import 'package:zenon_syrius_wallet_flutter/rearchitecture/utils/widgets/plasma_well.dart';
 import 'package:zenon_syrius_wallet_flutter/utils/app_theme.dart';
 import 'package:zenon_syrius_wallet_flutter/widgets/reusable_widgets/app_lottie.dart';
 import 'package:zenon_syrius_wallet_flutter/widgets/shell/strip/priority_row.dart';
-import 'package:znn_sdk_dart/znn_sdk_dart.dart';
 
 /// Time that only goes forward, read as the time since some fixed moment.
 ///
@@ -46,6 +43,7 @@ class PlasmaTimes {
 
   /// Records one finished generation.
   void add(Duration took) {
+    if (took <= Duration.zero) return;
     _recent.add(took);
     if (_recent.length > kept) {
       _recent.removeAt(0);
@@ -70,21 +68,15 @@ class PlasmaTimes {
 
 /// The plasma mark. While the wallet generates plasma (proof of work for a
 /// block) it is the original bolt tracing its outline, with the seconds so
-/// far and how long it usually takes; otherwise the glow, held still.
-///
-/// The glow's shader paints its halo opaque out to the edge of its square,
-/// so the box showed as a dark blue square on the strip. The mask fades the
-/// halo out before the inscribed circle, which leaves the bolt (the middle
-/// 57%) untouched and the corners empty. In the light theme the well sets it
-/// on the dark ground it was drawn for, a disc 38 px across, so the mask's
-/// fade (it ends 18 px out) ends a pixel inside the disc's edge.
+/// far and how long it usually takes. Idle work adds no strip decoration,
+/// matching the mockup; the Plasma page owns the larger glow.
 class GenerationStatus extends StatefulWidget {
   /// Creates the plasma mark. Everything is the wallet's own when left out.
   const GenerationStatus({this.status, this.uptime, this.times, super.key});
 
   /// Says when a generation starts and ends; the wallet's
   /// [PowGeneratingStatusBloc] when null.
-  final Stream<PowStatus>? status;
+  final Stream<PowGenerationState>? status;
 
   /// The clock the seconds are counted on.
   final Uptime? uptime;
@@ -98,12 +90,15 @@ class GenerationStatus extends StatefulWidget {
 }
 
 class _GenerationStatusState extends State<GenerationStatus> {
-  StreamSubscription<PowStatus>? _subscription;
+  StreamSubscription<PowGenerationState>? _subscription;
   Timer? _ticker;
   Duration? _startedAt;
+  PowWorkToken? _activeWork;
+  PowWorkToken? _joinedWork;
   int _seconds = 0;
-  bool _joinedMidway = false;
   bool _recorded = true;
+  bool _lowerBound = false;
+  int _epoch = 0;
 
   Uptime get _now => widget.uptime ?? _uptime;
 
@@ -118,54 +113,96 @@ class _GenerationStatusState extends State<GenerationStatus> {
   @override
   void didUpdateWidget(GenerationStatus oldWidget) {
     super.didUpdateWidget(oldWidget);
-    if (oldWidget.status != widget.status) {
+    if (oldWidget.status != widget.status ||
+        oldWidget.uptime != widget.uptime ||
+        oldWidget.times != widget.times) {
       unawaited(_subscription?.cancel());
       _listen();
     }
   }
 
   void _listen() {
-    final Stream<PowStatus> stream =
+    final int epoch = ++_epoch;
+    _ticker?.cancel();
+    _ticker = null;
+    _startedAt = null;
+    _activeWork = null;
+    _seconds = 0;
+    _lowerBound = false;
+    _recorded = false;
+    final Stream<PowGenerationState> stream =
         widget.status ?? sl.get<PowGeneratingStatusBloc>().stream;
     // The bloc repeats its last event to a new listener. A strip built
-    // while a generation runs can only count from when it was built, so
-    // that generation is shown and not recorded: it would enter the record
-    // shorter than it was.
-    _joinedMidway =
-        stream is ValueStream<PowStatus> &&
-        stream.valueOrNull == PowStatus.generating;
+    // while generation runs can only count a lower bound from when it joined.
+    // That generation is not a typical-time sample: it would be too short.
+    final PowGenerationState? replay = stream is ValueStream<PowGenerationState>
+        ? stream.valueOrNull
+        : null;
+    _joinedWork = (replay?.isGenerating ?? false) ? replay!.work : null;
     _subscription = stream.listen(
-      _onStatus,
-      // The bloc carries no errors of its own; one from a stream handed in
-      // must not end the wallet's zone.
-      onError: (Object _) {},
+      (PowGenerationState status) {
+        if (mounted && epoch == _epoch) _onStatus(status);
+      },
+      // An unavailable source cannot supply a complete generation interval.
+      onError: (Object _) {
+        if (mounted && epoch == _epoch) {
+          _joinedWork = null;
+          _finish(completed: false);
+        }
+      },
+      onDone: () {
+        if (mounted && epoch == _epoch) _finish(completed: false);
+      },
     );
   }
 
-  void _onStatus(PowStatus status) {
-    if (status == PowStatus.generating) {
-      if (_startedAt != null) {
+  void _onStatus(PowGenerationState status) {
+    final PowWorkToken? work = status.work;
+    if (status.isGenerating && work != null) {
+      if (_startedAt != null && identical(_activeWork, work)) {
         return;
       }
-      _recorded = !_joinedMidway;
-      _joinedMidway = false;
+      _finish(completed: false);
+      _lowerBound = identical(_joinedWork, work);
+      _recorded = !_lowerBound;
+      _joinedWork = null;
       setState(() {
+        _activeWork = work;
         _startedAt = _now();
         _seconds = 0;
       });
-      _ticker = Timer.periodic(const Duration(seconds: 1), (_) => _tick());
+      final int epoch = _epoch;
+      _ticker = Timer.periodic(const Duration(seconds: 1), (_) {
+        if (mounted && epoch == _epoch) _tick();
+      });
       return;
     }
-    _joinedMidway = false;
+    _joinedWork = null;
+    if (status.phase == PowGenerationPhase.idle) {
+      _finish(completed: false);
+    } else if (status.phase == PowGenerationPhase.completed &&
+        identical(_activeWork, work)) {
+      _finish(completed: true);
+    }
+  }
+
+  void _finish({required bool completed}) {
+    _ticker?.cancel();
+    _ticker = null;
     final Duration? startedAt = _startedAt;
+    _activeWork = null;
     if (startedAt == null) {
       return;
     }
-    if (_recorded) {
+    if (completed && _recorded) {
       _times.add(_now() - startedAt);
     }
-    _ticker?.cancel();
-    setState(() => _startedAt = null);
+    _recorded = false;
+    setState(() {
+      _startedAt = null;
+      _lowerBound = false;
+      _seconds = 0;
+    });
   }
 
   void _tick() {
@@ -173,7 +210,8 @@ class _GenerationStatusState extends State<GenerationStatus> {
     if (startedAt == null) {
       return;
     }
-    final int seconds = (_now() - startedAt).inSeconds;
+    final int elapsed = (_now() - startedAt).inSeconds;
+    final int seconds = elapsed < 0 ? 0 : elapsed;
     if (seconds != _seconds) {
       setState(() => _seconds = seconds);
     }
@@ -181,6 +219,7 @@ class _GenerationStatusState extends State<GenerationStatus> {
 
   @override
   void dispose() {
+    _epoch++;
     unawaited(_subscription?.cancel());
     _ticker?.cancel();
     super.dispose();
@@ -189,35 +228,17 @@ class _GenerationStatusState extends State<GenerationStatus> {
   @override
   Widget build(BuildContext context) {
     if (_startedAt == null) {
-      return Tooltip(
-        message: context.l10n.stripPlasmaIdle,
-        // Outside the mask, or the mask would fade the disc too.
-        child: PlasmaWell(
-          overhang: 1,
-          child: ShaderMask(
-            blendMode: BlendMode.dstIn,
-            shaderCallback: (Rect bounds) => const RadialGradient(
-              colors: <Color>[Color(0xFFFFFFFF), Color(0x00FFFFFF)],
-              stops: <double>[0.6, 1],
-            ).createShader(bounds),
-            child: const PlasmaGlow(
-              key: Key('strip_plasma'),
-              size: 36,
-              active: false,
-            ),
-          ),
-        ),
-      );
+      return const SizedBox.shrink();
     }
     final AppTokens tokens = AppTokens.of(context);
     final TextStyle dim = Theme.of(
       context,
-    ).textTheme.titleMedium!.copyWith(fontSize: 13);
+    ).textTheme.titleMedium!.copyWith(fontSize: 13, color: tokens.dim);
     final Duration? typical = _times.typical;
     // The label gives way before the seconds do, and the typical time
     // before either: on a narrow strip the bolt and its count are the news.
     return PriorityRow(
-      gap: tokens.cardGap - 2,
+      gap: tokens.statusDotSize,
       fill: false,
       children: <Prioritized>[
         const Prioritized(
@@ -246,7 +267,9 @@ class _GenerationStatusState extends State<GenerationStatus> {
           priority: 1,
           child: Ltr(
             child: Text(
-              context.l10n.stripSeconds(_seconds),
+              _lowerBound
+                  ? context.l10n.stripSecondsAtLeast(_seconds)
+                  : context.l10n.stripSeconds(_seconds),
               key: const Key('strip_plasma_elapsed'),
               style: monoStyle(dim),
             ),

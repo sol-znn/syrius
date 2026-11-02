@@ -1,4 +1,5 @@
 import 'package:flutter/rendering.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:lottie/lottie.dart';
 import 'package:material_ui/material_ui.dart';
@@ -61,6 +62,13 @@ PageStrip _three({VoidCallback? onTap}) => PageStrip(
   actions: <Widget>[_button('Stake')],
 );
 
+TextStyle _paintedStyle(WidgetTester tester, String text) => tester
+    .widget<RichText>(
+      find.descendant(of: find.text(text), matching: find.byType(RichText)),
+    )
+    .text
+    .style!;
+
 void main() {
   tearDown(AppLottie.debugClear);
 
@@ -76,11 +84,12 @@ void main() {
       final Rect action = tester.getRect(find.byKey(_action));
 
       expect(lead.size, const Size.square(kStripLeadSize));
-      expect(lead.left, strip.left + 16);
+      expect(lead.left, strip.left + 18);
+      expect(lead.top, strip.top + 12);
       expect(lead.right, lessThan(first.left));
       expect(first.right, lessThan(second.left));
       expect(second.right, lessThan(action.left));
-      expect(action.right, strip.right - 16);
+      expect(action.right, strip.right - 18);
       // The label over the value, the dollar amount after it.
       final Rect value = tester.getRect(find.text('3.214 ZNN'));
       expect(second.bottom, lessThanOrEqualTo(value.top));
@@ -98,11 +107,11 @@ void main() {
       final Rect second = tester.getRect(find.text('TO COLLECT'));
       final Rect action = tester.getRect(find.byKey(_action));
 
-      expect(lead.right, strip.right - 16);
+      expect(lead.right, strip.right - 18);
       expect(lead.left, greaterThan(first.right));
       expect(first.left, greaterThan(second.right));
       expect(second.left, greaterThan(action.right));
-      expect(action.left, strip.left + 16);
+      expect(action.left, strip.left + 18);
       // The chevron follows the figure and points on, which is leftwards.
       expect(find.byIcon(Icons.chevron_left), findsOneWidget);
       expect(
@@ -231,6 +240,97 @@ void main() {
       semantics.dispose();
     });
 
+    testWidgets('a figure can be reached and activated from the keyboard', (
+      WidgetTester tester,
+    ) async {
+      int taps = 0;
+      await tester.pumpWidget(_host(_page(_three(onTap: () => taps++))));
+      final Rect before = tester.getRect(find.text('YOUR PILLAR'));
+
+      await tester.sendKeyEvent(LogicalKeyboardKey.tab);
+      await tester.pump();
+      final Border ring = Border.all(
+        color: AppTokens.dark.focusRing,
+        width: 2,
+      );
+      expect(
+        find.byWidgetPredicate(
+          (Widget widget) =>
+              widget is DecoratedBox &&
+              widget.decoration is BoxDecoration &&
+              (widget.decoration as BoxDecoration).border == ring,
+        ),
+        findsOneWidget,
+      );
+      expect(tester.getRect(find.text('YOUR PILLAR')), before);
+      await tester.sendKeyEvent(LogicalKeyboardKey.enter);
+      await tester.pump();
+      expect(taps, 1);
+      expect(tester.takeException(), isNull);
+    });
+
+    testWidgets('actions retain their width and the mockup gap', (
+      WidgetTester tester,
+    ) async {
+      const Key first = Key('first_action');
+      const Key second = Key('second_action');
+      await tester.pumpWidget(
+        _host(
+          _page(
+            const PageStrip(
+              key: _strip,
+              figures: <StripFigure>[
+                StripFigure(label: 'Active', value: Text('1')),
+              ],
+              actions: <Widget>[
+                SizedBox(key: first, width: 90, height: 38),
+                SizedBox(key: second, width: 110, height: 38),
+              ],
+            ),
+          ),
+        ),
+      );
+      final Rect start = tester.getRect(find.byKey(first));
+      final Rect end = tester.getRect(find.byKey(second));
+      expect(start.width, 90);
+      expect(end.width, 110);
+      expect(end.left - start.right, 8);
+      expect(end.right, tester.getRect(find.byKey(_strip)).right - 18);
+      expect(tester.takeException(), isNull);
+    });
+
+    testWidgets('an updated amount is exact on its first frame', (
+      WidgetTester tester,
+    ) async {
+      final ValueNotifier<String> amount = ValueNotifier<String>(
+        '1,234,567.12345678 ZNN',
+      );
+      addTearDown(amount.dispose);
+      await tester.pumpWidget(
+        _host(
+          ValueListenableBuilder<String>(
+            valueListenable: amount,
+            builder: (BuildContext context, String value, Widget? child) =>
+                _page(
+                  PageStrip(
+                    figures: <StripFigure>[
+                      StripFigure(label: 'Staked', value: Text(value)),
+                    ],
+                  ),
+                ),
+          ),
+        ),
+      );
+
+      amount.value = '1,234,567.12345679 ZNN';
+      await tester.pump();
+      expect(find.text('1,234,567.12345678 ZNN'), findsNothing);
+      expect(find.text(amount.value), findsOneWidget);
+      await tester.pump(const Duration(milliseconds: 160));
+      expect(find.text(amount.value), findsOneWidget);
+      expect(tester.takeException(), isNull);
+    });
+
     testWidgets('takes the card colour and radius of each theme', (
       WidgetTester tester,
     ) async {
@@ -248,11 +348,26 @@ void main() {
               )
               .first,
         );
-        expect(surface.color, theme.colorScheme.primary);
+        final AppTokens tokens = theme.extension<AppTokens>()!;
+        expect(surface.color, tokens.card);
         expect(
           surface.borderRadius,
-          BorderRadius.circular(theme.extension<AppTokens>()!.cardRadius),
+          BorderRadius.circular(tokens.cardRadius),
         );
+        final TextStyle value = _paintedStyle(tester, '3.214 ZNN');
+        final TextStyle dollars = _paintedStyle(tester, r'$1.99');
+        for (final TextStyle style in <TextStyle>[value, dollars]) {
+          expect(style.fontFamily, kMonoFontFamily);
+          expect(
+            style.fontFeatures,
+            contains(const FontFeature.tabularFigures()),
+          );
+        }
+        expect(value.fontSize, 19);
+        expect(value.fontWeight, FontWeight.w400);
+        expect(value.color, tokens.foreground);
+        expect(dollars.fontSize, 13);
+        expect(dollars.color, tokens.faint);
       }
     });
   });
@@ -282,7 +397,7 @@ void main() {
       expect(mark.size, const Size.square(kEmptyNoteMarkSize));
       expect(mark.center.dx, note.center.dx);
       expect(text.center.dx, moreOrLessEquals(note.center.dx, epsilon: 0.5));
-      expect(mark.bottom, lessThan(text.top));
+      expect(text.top - mark.bottom, 12);
       expect(text.bottom, lessThan(action.top));
       // The three as a block sit in the middle of the height.
       expect(
@@ -361,6 +476,34 @@ void main() {
       );
       expect(tester.takeException(), isNull);
       expect(tester.getSize(find.byKey(_note)).width, 120);
+    });
+
+    testWidgets('list and line copy use their own size in both themes', (
+      WidgetTester tester,
+    ) async {
+      for (final ThemeData theme in <ThemeData>[
+        AppTheme.darkTheme,
+        AppTheme.lightTheme,
+      ]) {
+        final AppTokens tokens = theme.extension<AppTokens>()!;
+        for (final bool line in <bool>[false, true]) {
+          await tester.pumpWidget(
+            _host(
+              line
+                  ? const EmptyNote.line(text: 'None yet')
+                  : const EmptyNote(text: 'None yet'),
+              theme: theme,
+            ),
+          );
+          // ThemeData itself interpolates when this host switches themes.
+          await tester.pumpAndSettle();
+          final TextStyle style = _paintedStyle(tester, 'None yet');
+          expect(style.fontFamily, kSansFontFamily);
+          expect(style.fontSize, line ? 13 : 14);
+          expect(style.color, tokens.dim);
+          expect(tester.takeException(), isNull);
+        }
+      }
     });
   });
 }

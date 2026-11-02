@@ -1,257 +1,544 @@
-import 'dart:math' as math;
+import 'dart:async';
 
 import 'package:material_ui/material_ui.dart';
-import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:zenon_syrius_wallet_flutter/rearchitecture/features/card_parts/card_parts.dart';
-import 'package:zenon_syrius_wallet_flutter/rearchitecture/features/features.dart';
+import 'package:zenon_syrius_wallet_flutter/rearchitecture/features/home/widgets/amount_text.dart';
+import 'package:zenon_syrius_wallet_flutter/rearchitecture/features/plasma_owner/plasma_owner_controller.dart';
+import 'package:zenon_syrius_wallet_flutter/rearchitecture/features/plasma_owner/plasma_session.dart';
 import 'package:zenon_syrius_wallet_flutter/rearchitecture/utils/utils.dart';
+import 'package:zenon_syrius_wallet_flutter/rearchitecture/utils/widgets/eye_toggle.dart';
+import 'package:zenon_syrius_wallet_flutter/rearchitecture/utils/widgets/page/empty_note.dart';
 import 'package:zenon_syrius_wallet_flutter/utils/utils.dart';
-import 'package:zenon_syrius_wallet_flutter/widgets/reusable_widgets/error_widget.dart';
+import 'package:zenon_syrius_wallet_flutter/widgets/reusable_widgets/modals/frosted_route.dart';
+import 'package:zenon_syrius_wallet_flutter/widgets/reusable_widgets/modals/modal_chrome.dart';
+import 'package:zenon_syrius_wallet_flutter/widgets/widgets.dart';
 import 'package:znn_sdk_dart/znn_sdk_dart.dart';
 
-typedef _FusedState = InfiniteListState<FusionEntryWrapper>;
+/// One paginated owned list. Beneficiary Plasma is a separate source.
+class FusedPlasmaCard extends StatefulWidget {
+  /// Creates one owned list with shared admission and an exact frozen question.
+  const FusedPlasmaCard({
+    required this.owner,
+    required this.captureSession,
+    required this.isCurrent,
+    this.onSubmitted,
+    super.key,
+  });
 
-/// The QSR the selected address has fused, one line per fusion, each with
-/// its Cancel button, locked and counting down until it can be pressed.
-class FusedPlasmaCard extends StatelessWidget {
-  /// Creates a fused Plasma list card.
-  const FusedPlasmaCard({this.onFusionCancelled, super.key});
+  /// Retains the original owner's rows, selection and per-hash results.
+  final PlasmaOwnerController owner;
 
-  /// Called after a cancel was published. The fusion is gone only once the
-  /// plasma contract has received the cancel, so whoever passes this keeps
-  /// reloading until it is; without it the card reloads once.
-  final VoidCallback? onFusionCancelled;
+  /// Captures current account and transport authority before the question.
+  final PlasmaSession? Function() captureSession;
+
+  /// Whether this original page can still authorize preparation.
+  final bool Function() isCurrent;
+
+  /// Requests an owner refresh after at least one exact accepted submission.
+  final VoidCallback? onSubmitted;
+
+  @override
+  State<FusedPlasmaCard> createState() => _FusedPlasmaCardState();
+}
+
+class _FusedPlasmaCardState extends State<FusedPlasmaCard> {
+  final ScrollController _scroll = ScrollController();
+  Route<bool>? _questionRoute;
+  bool _visible = true;
+  int _visibilityEpoch = 0;
+
+  bool get _current => mounted && _visible && widget.isCurrent();
+
+  @override
+  void initState() {
+    super.initState();
+    _scroll.addListener(_onScroll);
+  }
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    final bool visible = TickerMode.valuesOf(context).enabled;
+    if (_visible && !visible) _visibilityEpoch++;
+    _visible = visible;
+  }
+
+  @override
+  void dispose() {
+    _scroll.dispose();
+    final Route<bool>? route = _questionRoute;
+    if (route != null) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (route.isActive) route.navigator?.removeRoute(route);
+      });
+    }
+    super.dispose();
+  }
+
+  void _onScroll() {
+    if (_scroll.position.extentAfter < _scroll.position.viewportDimension) {
+      unawaited(widget.owner.loadMore());
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
-    return Panel(
-      title: 'Fused',
-      actions: <Widget>[
-        RefreshButton(onPressed: () => _refreshFusedPlasma(context)),
-      ],
-      child: _FollowsSelectedAddress(
-        child: BlocBuilder<FusedPlasmaBloc, _FusedState>(
-          builder: (_, _FusedState state) {
-            return StateSwitcher(
-              child: switch (state.status) {
-                InfiniteListStatus.initial => const _Loading(
-                  key: ValueKey<String>('loading'),
+    final PlasmaOwnerController owner = widget.owner;
+    return ListenableBuilder(
+      listenable: Listenable.merge(<Listenable>[owner, owner.sender.busy]),
+      builder: (BuildContext context, _) {
+        final AppTokens tokens = AppTokens.of(context);
+        final PlasmaOwnerRead? read = owner.displayRead;
+        final List<PlasmaFusion> entries = read?.entries ?? <PlasmaFusion>[];
+        final bool enabled =
+            _current &&
+            !owner.busy &&
+            !owner.questioning &&
+            !owner.sender.busy.value;
+        final PlasmaCancellationBatch? batch = owner.lastBatch;
+        return Panel(
+          key: const Key('plasma_fused_list'),
+          heading: Padding(
+            padding: EdgeInsetsDirectional.only(start: tokens.cardGap),
+            child: Row(
+              children: <Widget>[
+                Text(
+                  context.l10n.plasmaPageFused,
+                  style: panelTitleStyle(context),
                 ),
-                InfiniteListStatus.failure => CardNote.error(
-                  state.error!,
-                  key: const ValueKey<String>('failure'),
-                ),
-                // The table would say "None yet" itself, but under the
-                // table's key: the first fusion would then appear with no
-                // fade, and the last one cancelled leave with none.
-                InfiniteListStatus.success when state.data!.isEmpty =>
-                  SyriusErrorWidget(
-                    context.l10n.noItemsFound,
-                    key: const ValueKey<String>('empty'),
+                SizedBox(width: tokens.tabCountGap),
+                if (read != null)
+                  Text(
+                    '${read.count}',
+                    key: const Key('plasma_fused_count'),
+                    style: tokens.ledgerText,
                   ),
-                InfiniteListStatus.success => _Populated(
-                  key: const ValueKey<String>('table'),
-                  hasReachedMax: state.hasReachedMax,
-                  fusionEntries: state.data!,
-                  onCancelled:
-                      onFusionCancelled ?? () => _refreshFusedPlasma(context),
+              ],
+            ),
+          ),
+          actions: <Widget>[
+            if (owner.selected.isNotEmpty) ...<Widget>[
+              Text(
+                context.l10n.plasmaPageSelected(owner.selected.length),
+                style: tokens.dollarText,
+              ),
+              SizedBox(width: tokens.cardGap),
+              OutlinedButton(
+                key: const Key('plasma_cancel_selected'),
+                style: _cancelButtonStyle(context),
+                onPressed: enabled ? () => unawaited(_confirm()) : null,
+                child: Text(
+                  context.l10n.plasmaPageCancelFuses(owner.selected.length),
                 ),
-              },
-            );
-          },
+              ),
+            ] else
+              Text(
+                batch == null
+                    ? context.l10n.plasmaPageSelectHint
+                    : context.l10n.plasmaPageCancelFusesDone(
+                        batch.submitted,
+                        batch.intent.entries.length,
+                      ),
+                key: const Key('plasma_batch_summary'),
+                style: tokens.dollarText,
+              ),
+          ],
+          child: ListEntrance(
+            itemKeys: <LocalKey>[
+              for (final PlasmaFusion entry in entries)
+                ValueKey<String>(entry.hash),
+            ],
+            child: switch (owner.status) {
+              PlasmaOwnerStatus.failure when read == null => Center(
+                child: Text(
+                  context.l10n.plasmaPageUnknown,
+                  style: tokens.bodyText,
+                ),
+              ),
+              _ when read == null => const Padding(
+                padding: kCardBodyPadding,
+                child: SkeletonRows(),
+              ),
+              _ when entries.isEmpty => Center(
+                child: EmptyNote.line(text: context.l10n.noItemsFound),
+              ),
+              _ => Column(
+                children: <Widget>[
+                  Padding(
+                    padding: tokens.pillarHeadingPadding,
+                    child: _columns(
+                      check: const SizedBox.shrink(),
+                      amount: Text(
+                        context.l10n.amount.toUpperCase(),
+                        style: tokens.ledgerText,
+                      ),
+                      beneficiary: Text(
+                        context.l10n.beneficiaryAddress.toUpperCase(),
+                        style: tokens.ledgerText,
+                      ),
+                      expires: Text(
+                        context.l10n.expiration.toUpperCase(),
+                        style: tokens.ledgerText,
+                      ),
+                      action: SizedBox(width: tokens.plasmaCheckboxWidth * 2),
+                    ),
+                  ),
+                  const Divider(),
+                  Expanded(
+                    child: ListView.separated(
+                      key: const Key('plasma_fused_rows'),
+                      controller: _scroll,
+                      itemCount: entries.length + (read.hasMore ? 1 : 0),
+                      separatorBuilder: (_, _) => const Divider(),
+                      itemBuilder: (BuildContext context, int index) {
+                        if (index == entries.length) {
+                          return TextButton(
+                            key: const Key('plasma_fused_more'),
+                            onPressed: owner.moreLoading
+                                ? null
+                                : () => unawaited(owner.loadMore()),
+                            child: owner.moreLoading
+                                ? const SyriusLoadingWidget(size: 16)
+                                : Text(context.l10n.commonShowMore),
+                          );
+                        }
+                        final PlasmaFusion entry = entries[index];
+                        return ListEntranceItem(
+                          key: ValueKey<String>(entry.hash),
+                          child: _buildRow(entry, read),
+                        );
+                      },
+                    ),
+                  ),
+                ],
+              ),
+            },
+          ),
+        );
+      },
+    );
+  }
+
+  Widget _columns({
+    required Widget check,
+    required Widget amount,
+    required Widget beneficiary,
+    required Widget expires,
+    required Widget action,
+  }) => Row(
+    children: <Widget>[
+      SizedBox(width: AppTokens.of(context).plasmaCheckboxWidth, child: check),
+      Expanded(flex: 2, child: amount),
+      Expanded(flex: 4, child: beneficiary),
+      Expanded(flex: 3, child: expires),
+      action,
+    ],
+  );
+
+  Widget _buildRow(PlasmaFusion entry, PlasmaOwnerRead read) {
+    final AppTokens tokens = AppTokens.of(context);
+    final PlasmaOwnerController owner = widget.owner;
+    final bool eligible = widget.isCurrent() && owner.canSelect(entry);
+    return Container(
+      key: ValueKey<String>('plasma_row_${entry.hash}'),
+      color: owner.selected.contains(entry.hash) ? tokens.card2 : tokens.card,
+      padding: tokens.pillarCellPadding,
+      child: _columns(
+        check: Checkbox(
+          key: ValueKey<String>('plasma_select_${entry.hash}'),
+          value: owner.selected.contains(entry.hash),
+          onChanged: eligible
+              ? (bool? selected) =>
+                    owner.select(entry, selected: selected ?? false)
+              : null,
+        ),
+        amount: Tooltip(
+          message: entry.hash,
+          child: ValueFlash(
+            value: entry.amount,
+            color: tokens.qsrInk,
+            child: HiddenAmount(
+              style: tokens.dataText,
+              child: AmountText(
+                entry.amount,
+                decimals: coinDecimals,
+                style: tokens.dataText,
+                symbol: 'QSR',
+              ),
+            ),
+          ),
+        ),
+        beneficiary: _Beneficiary(address: entry.beneficiary),
+        expires: Align(
+          alignment: AlignmentDirectional.centerStart,
+          child: _Expiry(
+            entry: entry,
+            read: read,
+            current: owner.read != null,
+            outcome: owner.displayOutcome(entry.hash),
+          ),
+        ),
+        action: SizedBox(
+          width: tokens.plasmaCheckboxWidth * 2,
+          child: Tooltip(
+            message: entry.hash,
+            child: OutlinedButton(
+              key: ValueKey<String>('plasma_cancel_${entry.hash}'),
+              style: _cancelButtonStyle(context),
+              onPressed: eligible
+                  ? () => unawaited(_confirm(entry.hash))
+                  : null,
+              child: Text(context.l10n.cancel),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  Future<void> _confirm([String? hash]) async {
+    if (!_current) return;
+    final int visibilityEpoch = _visibilityEpoch;
+    final bool Function() pageIsCurrent = widget.isCurrent;
+    // Returning to this mounted page cannot revive its original question.
+    bool stillCurrent() =>
+        mounted &&
+        _visible &&
+        visibilityEpoch == _visibilityEpoch &&
+        pageIsCurrent();
+    final PlasmaSession? session = widget.captureSession();
+    if (session == null) return;
+    final PlasmaOwnerController owner = widget.owner;
+    final PlasmaCancelIntent? intent = owner.beginCancellation(
+      session: session,
+      hash: hash,
+      isCurrent: stillCurrent,
+    );
+    if (intent == null) return;
+    try {
+      final bool? confirmed = await _ask(intent);
+      if (!(confirmed ?? false) || !stillCurrent()) return;
+      final PlasmaCancellationBatch? batch = await owner.cancel(intent);
+      if (!stillCurrent() || !session.isCurrent || batch == null) return;
+      if (batch.submitted > 0) widget.onSubmitted?.call();
+    } finally {
+      owner.finishQuestion(intent);
+    }
+  }
+
+  Future<bool?> _ask(PlasmaCancelIntent intent) {
+    bool settled = false;
+    Widget buildDialog(BuildContext dialogContext) {
+      final ModalRoute<bool>? route = ModalRoute.of<bool>(dialogContext);
+      _questionRoute = route;
+      void answer({required bool accepted}) {
+        if (settled ||
+            !mounted ||
+            !dialogContext.mounted ||
+            route == null ||
+            !route.isCurrent) {
+          return;
+        }
+        if (accepted && (!intent.session.isCurrent || !intent.isCurrent())) {
+          return;
+        }
+        settled = true;
+        Navigator.of(dialogContext).pop(accepted);
+      }
+
+      final AppTokens tokens = AppTokens.of(dialogContext);
+      return DialogCard(
+        key: const Key('plasma_cancel_confirmation'),
+        title: dialogContext.l10n.plasmaPageCancelFuses(intent.entries.length),
+        body: ConstrainedBox(
+          constraints: BoxConstraints(
+            maxHeight: MediaQuery.sizeOf(dialogContext).height / 2,
+          ),
+          child: SingleChildScrollView(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: <Widget>[
+                Text(
+                  dialogContext.l10n.plasmaPageCancelFusesConfirm(
+                    intent.entries.length,
+                    cardAmount(intent.total, coinDecimals, 'QSR'),
+                  ),
+                ),
+                for (final PlasmaFusion entry in intent.entries)
+                  Row(
+                    children: <Widget>[
+                      Expanded(
+                        child: SelectableText(
+                          entry.hash,
+                          textDirection: TextDirection.ltr,
+                          style: tokens.dataText,
+                        ),
+                      ),
+                      CopyToClipboardButton(
+                        entry.hash,
+                        tooltip: dialogContext.l10n.plasmaPageCopyFusion,
+                        iconSize: tokens.heroCopyIconSize,
+                      ),
+                    ],
+                  ),
+              ],
+            ),
+          ),
+        ),
+        actions: <Widget>[
+          TextButton(
+            key: const Key('plasma_cancel_decline'),
+            style: quietButtonStyle(dialogContext),
+            onPressed: () => answer(accepted: false),
+            child: Text(dialogContext.l10n.commonNo),
+          ),
+          OutlinedButton(
+            key: const Key('plasma_cancel_accept'),
+            onPressed: () => answer(accepted: true),
+            child: Text(dialogContext.l10n.commonYes),
+          ),
+        ],
+      );
+    }
+
+    final NavigatorState navigator = Navigator.of(context, rootNavigator: true);
+    final CapturedThemes themes = InheritedTheme.capture(
+      from: context,
+      to: navigator.context,
+    );
+    final FrostedDialogRoute<bool> route = FrostedDialogRoute<bool>(
+      barrierDismissible: false,
+      barrierLabel: MaterialLocalizations.of(context).modalBarrierDismissLabel,
+      traversalEdgeBehavior: TraversalEdgeBehavior.closedLoop,
+      transitionDuration: const Duration(milliseconds: 150),
+      transitionBuilder:
+          (
+            BuildContext context,
+            Animation<double> animation,
+            Animation<double> secondary,
+            Widget child,
+          ) => FadeTransition(
+            opacity: animation.drive(CurveTween(curve: Curves.easeOut)),
+            child: child,
+          ),
+      pageBuilder:
+          (
+            BuildContext context,
+            Animation<double> animation,
+            Animation<double> secondary,
+          ) => themes.wrap(SafeArea(child: Builder(builder: buildDialog))),
+    );
+    // Store the exact route before its first build so early disposal owns it.
+    _questionRoute = route;
+    return navigator.push<bool>(route);
+  }
+}
+
+class _Beneficiary extends StatelessWidget {
+  const _Beneficiary({required this.address});
+  final String address;
+
+  @override
+  Widget build(BuildContext context) {
+    final AppTokens tokens = AppTokens.of(context);
+    final String? label = kAddressLabelMap[address];
+    return Tooltip(
+      message: address,
+      child: Row(
+        children: <Widget>[
+          Flexible(
+            child: Text(
+              label ?? Address.parse(address).toShortString(),
+              style: label == null ? tokens.dataText : tokens.bodyText,
+              textDirection: label == null ? TextDirection.ltr : null,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+            ),
+          ),
+          CopyToClipboardButton(address, iconSize: tokens.heroCopyIconSize),
+        ],
+      ),
+    );
+  }
+}
+
+class _Expiry extends StatelessWidget {
+  const _Expiry({
+    required this.entry,
+    required this.read,
+    required this.current,
+    required this.outcome,
+  });
+  final PlasmaFusion entry;
+  final PlasmaOwnerRead read;
+  final bool current;
+  final PlasmaCancellationOutcome? outcome;
+
+  @override
+  Widget build(BuildContext context) {
+    final AppTokens tokens = AppTokens.of(context);
+    final bool eligible = entry.eligibleAt(read.frontierHeight);
+    final PlasmaCancellationStatus? status = outcome?.status;
+    final String label = switch (status) {
+      PlasmaCancellationStatus.submitted => context.l10n.plasmaPageSubmitted,
+      PlasmaCancellationStatus.publishing => context.l10n.plasmaPageSubmitting,
+      PlasmaCancellationStatus.unknown ||
+      PlasmaCancellationStatus.refused => context.l10n.plasmaPageUnknown,
+      null when !current => context.l10n.plasmaPageUnknown,
+      null when eligible => context.l10n.plasmaPageCancelable,
+      null => FormatUtils.formatDuration(
+        context.l10n,
+        kIntervalBetweenMomentums *
+            (entry.expirationHeight - read.frontierHeight + 1),
+      ),
+    };
+    final bool unknown =
+        status == PlasmaCancellationStatus.unknown ||
+        status == PlasmaCancellationStatus.refused ||
+        (status == null && !current);
+    final Color color = unknown
+        ? tokens.warn
+        : eligible && status == null
+        ? tokens.znnInk
+        : tokens.qsrInk;
+    return DecoratedBox(
+      decoration: BoxDecoration(
+        color: color.withValues(alpha: .12),
+        borderRadius: BorderRadius.circular(tokens.pillRadius),
+      ),
+      child: Padding(
+        padding: tokens.keyboardHintPadding,
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: <Widget>[
+            Icon(
+              status == null && !eligible
+                  ? Icons.lock_outline
+                  : unknown
+                  ? Icons.help_outline
+                  : Icons.check,
+              size: tokens.heroCopyIconSize,
+              color: color,
+            ),
+            SizedBox(width: tokens.heroBalanceRunGap),
+            Text(label, style: tokens.dollarText.copyWith(color: color)),
+          ],
         ),
       ),
     );
   }
 }
 
-/// Reloads the list when another address is selected.
-///
-/// The bloc belongs to the page and is made once, for the address selected
-/// then, and the wallet's address switch reloads only the app-wide lists; so
-/// after a switch the card went on showing the last address's fusions until
-/// Refresh was pressed.
-class _FollowsSelectedAddress extends StatefulWidget {
-  const _FollowsSelectedAddress({required this.child});
-
-  final Widget child;
-
-  @override
-  State<_FollowsSelectedAddress> createState() =>
-      _FollowsSelectedAddressState();
-}
-
-class _FollowsSelectedAddressState extends State<_FollowsSelectedAddress> {
-  late final SelectedAddressNotifier _notifier = context
-      .read<SelectedAddressNotifier>();
-  String? _address = kSelectedAddress;
-
-  @override
-  void initState() {
-    super.initState();
-    _notifier.addListener(_onSelected);
-  }
-
-  @override
-  void dispose() {
-    _notifier.removeListener(_onSelected);
-    super.dispose();
-  }
-
-  void _onSelected() {
-    if (kSelectedAddress == _address) return;
-    _address = kSelectedAddress;
-    _refreshFusedPlasma(context);
-  }
-
-  @override
-  Widget build(BuildContext context) => widget.child;
-}
-
-/// The table's head, and a row with a Cancel button in it, as the table
-/// lays them out; the loading bars are spaced by them.
-const double _kHeadHeight = 40;
-const double _kRowHeight = 32 + kInfiniteTableHorizontalPadding;
-const double _kSkeletonBar = 12;
-
-/// The list while it loads: a bar where each of the first rows will be,
-/// under the space the column names take, so the rows arrive where the bars
-/// stood.
-class _Loading extends StatelessWidget {
-  const _Loading({super.key});
-
-  @override
-  Widget build(BuildContext context) {
-    // A short card shows fewer bars instead of overflowing.
-    return const SingleChildScrollView(
-      physics: NeverScrollableScrollPhysics(),
-      padding: EdgeInsets.fromLTRB(
-        kInfiniteTableHorizontalPadding,
-        _kHeadHeight + 1 + (_kRowHeight - _kSkeletonBar) / 2,
-        kInfiniteTableHorizontalPadding,
-        0,
+ButtonStyle _cancelButtonStyle(BuildContext context) =>
+    cardSecondaryButtonStyle(context).copyWith(
+      minimumSize: WidgetStatePropertyAll<Size>(
+        Size(0, AppTokens.of(context).smallButtonHeight),
       ),
-      child: SkeletonRows(gap: _kRowHeight + 1 - _kSkeletonBar),
-    );
-  }
-}
-
-class _Populated extends StatelessWidget {
-  const _Populated({
-    required this.hasReachedMax,
-    required this.fusionEntries,
-    required this.onCancelled,
-    super.key,
-  });
-
-  final bool hasReachedMax;
-  final List<FusionEntryWrapper> fusionEntries;
-  final VoidCallback onCancelled;
-
-  @override
-  Widget build(BuildContext context) {
-    final AppTokens tokens = AppTokens.of(context);
-    return SizedBox.expand(
-      child: InfiniteScrollTable<FusionEntryWrapper>(
-        itemKeyGenerator: (FusionEntryWrapper fusionEntryWrapper) =>
-            ValueKey<String>(fusionEntryWrapper.fusionEntry.id.toString()),
-        items: fusionEntries,
-        hasReachedMax: hasReachedMax,
-        columns: const <InfiniteScrollTableColumnType>[
-          .amount,
-          .beneficiaryAddress,
-          .expiration,
-        ],
-        generateRowCells: (FusionEntryWrapper fusionEntryWrapper) => <Widget>[
-          InfiniteScrollTableCell(
-            // Aligned, so the flash is as wide as the amount and not as the
-            // column.
-            child: Align(
-              alignment: Alignment.centerLeft,
-              child: ValueFlash(
-                // Keyed by the fusion: a row that comes to show another
-                // fusion (another address, a cancel above it) is not a
-                // change of this one.
-                key: ValueKey<String>(
-                  fusionEntryWrapper.fusionEntry.id.toString(),
-                ),
-                value: fusionEntryWrapper.fusionEntry.qsrAmount,
-                color: tokens.qsrInk,
-                child: AmountText(
-                  fusionEntryWrapper.fusionEntry.qsrAmount,
-                  decimals: kQsrCoin.decimals,
-                  style: cardValueStyle(context),
-                  symbol: kQsrCoin.symbol,
-                  symbolColor: tokens.qsrInk,
-                ),
-              ),
-            ),
-          ),
-          InfiniteScrollTableCell.textFromAddress(
-            address: fusionEntryWrapper.fusionEntry.beneficiary,
-            flex: 3,
-          ),
-          InfiniteScrollTableCell(
-            child: Center(
-              child: _Expiration(
-                entry: fusionEntryWrapper,
-                onCancelled: onCancelled,
-              ),
-            ),
-          ),
-        ],
-        onScrollReachedBottom: () {
-          context.read<FusedPlasmaBloc>().add(
-            InfiniteListMoreRequested(
-              address: Address.parse(kSelectedAddress!),
-            ),
-          );
-        },
+      padding: const WidgetStatePropertyAll<EdgeInsetsGeometry>(
+        EdgeInsets.symmetric(horizontal: 10),
+      ),
+      textStyle: WidgetStatePropertyAll<TextStyle>(
+        kTextButtonTextStyle.copyWith(fontSize: 12),
       ),
     );
-  }
-}
-
-/// The last cell of a fusion: its Cancel button, locked and counting down
-/// until the fusion can be cancelled.
-class _Expiration extends StatelessWidget {
-  const _Expiration({required this.entry, required this.onCancelled});
-
-  final FusionEntryWrapper entry;
-  final VoidCallback onCancelled;
-
-  @override
-  Widget build(BuildContext context) {
-    final FusionEntry fusionEntry = entry.fusionEntry;
-    return CancelPlasmaButton(
-      plasmaHash: fusionEntry.id,
-      amount: fusionEntry.qsrAmount,
-      unlocksIn: entry.isRevocable ? null : _unlocksIn(context, fusionEntry),
-      // Nobody pressed anything: reload behind the rows, as a refresh would
-      // swap the whole table for loading bars.
-      onUnlocked: () => context.read<FusedPlasmaBloc>().add(
-        InfiniteListRequested(address: Address.parse(kSelectedAddress!)),
-      ),
-      onCancelled: onCancelled,
-    );
-  }
-
-  Duration _unlocksIn(BuildContext context, FusionEntry fusionEntry) {
-    final int lastMomentumHeight =
-        context.read<FusedPlasmaBloc>().lastMomentumHeight ?? 0;
-    // A fusion can be cancelled from the momentum after its expiration
-    // height, so one that is not there yet always has a momentum to wait:
-    // a countdown of nothing would ask for a refresh over and over.
-    final int momentumsLeft = math.max(
-      fusionEntry.expirationHeight - lastMomentumHeight + 1,
-      1,
-    );
-    return kIntervalBetweenMomentums * momentumsLeft;
-  }
-}
-
-void _refreshFusedPlasma(BuildContext context) {
-  context.read<FusedPlasmaBloc>().add(
-    InfiniteListRefreshRequested(address: Address.parse(kSelectedAddress!)),
-  );
-}

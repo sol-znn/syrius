@@ -1,0 +1,19 @@
+# prerequisite: unlocked-home
+# Use an isolated harness profile.
+# This capture navigates only. It never changes a node or starts an update.
+goto settings
+tap --key settings_node
+wait --key node_settings_page --timeout 30
+scroll -1000000
+assert --key node_settings_nodes
+assert --key node_settings_count
+wait --key node_settings_add --ready --timeout 5
+assert --key node_settings_add
+assert --key node_settings_chain_toggle
+assert --key node_settings_peers_toggle
+scroll --key node_settings_peers_toggle 300
+assert --key node_settings_sporks_gate
+
+# Return only after a fully retained positive shot.
+# after-capture: goto dashboard
+# after-capture: wait --key home_hero --timeout 5

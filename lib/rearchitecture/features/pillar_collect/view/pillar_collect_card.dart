@@ -1,16 +1,12 @@
-import 'dart:async';
-
-import 'package:material_ui/material_ui.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:material_ui/material_ui.dart';
 import 'package:provider/single_child_widget.dart';
-import 'package:zenon_syrius_wallet_flutter/blocs/blocs.dart';
 import 'package:zenon_syrius_wallet_flutter/main.dart';
-import 'package:zenon_syrius_wallet_flutter/model/model.dart';
 import 'package:zenon_syrius_wallet_flutter/rearchitecture/features/card_parts/card_parts.dart';
 import 'package:zenon_syrius_wallet_flutter/rearchitecture/features/features.dart';
+import 'package:zenon_syrius_wallet_flutter/rearchitecture/features/node_owner/node_collect_button.dart';
 import 'package:zenon_syrius_wallet_flutter/rearchitecture/utils/utils.dart';
 import 'package:zenon_syrius_wallet_flutter/utils/utils.dart';
-import 'package:zenon_syrius_wallet_flutter/widgets/widgets.dart';
 import 'package:znn_sdk_dart/znn_sdk_dart.dart';
 
 /// Provides what [PillarCollect] needs: the selected address's uncollected
@@ -20,10 +16,13 @@ import 'package:znn_sdk_dart/znn_sdk_dart.dart';
 /// card's refresh button reaches the uncollected amount too.
 class PillarCollectScope extends StatelessWidget {
   /// Creates the scope around [child].
-  const PillarCollectScope({required this.child, super.key});
+  const PillarCollectScope({required this.child, this.sender, super.key});
 
   /// The rewards card.
   final Widget child;
+
+  /// Nodes shares the shell's existing admission instead of creating another.
+  final SendTransactionBloc? sender;
 
   @override
   Widget build(BuildContext context) {
@@ -35,9 +34,12 @@ class PillarCollectScope extends StatelessWidget {
               FetchRequestData(address: Address.parse(kSelectedAddress!)),
             ),
         ),
-        BlocProvider<SendTransactionBloc>(
-          create: (_) => SendTransactionBloc(),
-        ),
+        if (sender case final SendTransactionBloc value)
+          BlocProvider<SendTransactionBloc>.value(value: value)
+        else
+          BlocProvider<SendTransactionBloc>(
+            create: (_) => SendTransactionBloc(),
+          ),
       ],
       child: child,
     );
@@ -84,102 +86,33 @@ class PillarCollect extends StatelessWidget {
               ),
             },
           ],
-          button: _CollectButton(enabled: znn > BigInt.zero),
+          button: NodeCollectButton(
+            enabled:
+                state is FetchPopulated<UncollectedReward> &&
+                (state.data.znnAmount > BigInt.zero ||
+                    state.data.qsrAmount > BigInt.zero),
+            source: NodeRewardSource.pillar,
+          ),
         );
       },
     );
   }
 }
 
-class _CollectButton extends StatefulWidget {
-  const _CollectButton({required this.enabled});
+/// The existing collection action for the compact Nodes strip.
+///
+/// It shares the same owned result and refresh path as [PillarCollect], so a
+/// strip does not introduce a second implementation of collection.
+class PillarCollectAction extends StatelessWidget {
+  /// Creates the action under a [PillarCollectScope].
+  const PillarCollectAction({required this.enabled, super.key});
 
+  /// True only when a known reward contains an amount to collect.
   final bool enabled;
 
   @override
-  State<_CollectButton> createState() => _CollectButtonState();
-}
-
-class _CollectButtonState extends State<_CollectButton> {
-  final GlobalKey<LoadingButtonState> _collectButtonKey = GlobalKey();
-
-  @override
-  Widget build(BuildContext context) {
-    return BlocListener<SendTransactionBloc, SendTransactionState>(
-      listener: (_, SendTransactionState state) =>
-          _onTransactionStateChanged(state),
-      child: LoadingButton.stepper(
-        key: _collectButtonKey,
-        text: context.l10n.collect,
-        onPressed: widget.enabled
-            ? () => _onCollectPressed(
-                bloc: context.read<SendTransactionBloc>(),
-              )
-            : null,
-      ),
-    );
-  }
-
-  void _onTransactionStateChanged(SendTransactionState state) {
-    if (state.status == SendTransactionStatus.loading) {
-      _collectButtonKey.currentState?.animateForward();
-    } else if (state.status == SendTransactionStatus.success) {
-      _collectButtonKey.currentState?.animateReverse();
-      _sendConfirmationNotification(block: state.data!);
-      _refreshRewardsAfterDelay();
-    } else if (state.status == SendTransactionStatus.failure) {
-      _collectButtonKey.currentState?.animateReverse();
-      unawaited(
-        NotificationUtils.sendNotificationError(
-          state.error!,
-          context.l10n.errorCollectingPillarRewards,
-        ),
-      );
-    }
-  }
-
-  void _refreshRewardsAfterDelay() {
-    Future<void>.delayed(
-      kDelayAfterAccountBlockCreationCall,
-      () {
-        if (mounted) {
-          final Address address = Address.parse(kSelectedAddress!);
-          context.read<UncollectedPillarRewardsBloc>().add(
-            FetchRequestData(address: address),
-          );
-          context.read<PillarRewardsHistoryBloc>().add(
-            FetchRequestData(address: address),
-          );
-        }
-      },
-    );
-  }
-
-  void _onCollectPressed({required SendTransactionBloc bloc}) {
-    bloc.add(
-      SendTransactionInitiateFromBlock(
-        block: zenon!.embedded.pillar.collectReward(),
-        fromAddress: kSelectedAddress!,
-        reasonForGeneratingPlasma:
-            context.l10n.plasmaPurposeCollectPillarRewards,
-      ),
-    );
-  }
-
-  void _sendConfirmationNotification({
-    required AccountBlockTemplate block,
-  }) {
-    final String title = context.l10n.pillarRewardsBlockCreated;
-
-    unawaited(
-      sl.get<NotificationsBloc>().addNotification(
-        WalletNotification(
-          title: title,
-          timestamp: DateTime.now().millisecondsSinceEpoch,
-          details: context.l10n.hashValue(block.hash.toString()),
-          type: NotificationType.paymentSent,
-        ),
-      ),
-    );
-  }
+  Widget build(BuildContext context) => NodeCollectButton(
+    enabled: enabled,
+    source: NodeRewardSource.pillar,
+  );
 }

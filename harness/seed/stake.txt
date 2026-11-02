@@ -1,0 +1,12 @@
+# seed: stake
+# prerequisite: isolated-chain-321-checkpoint
+goto staking
+wait --key staking_stake_button --timeout 30
+tap --key staking_stake_button
+wait --key create_stake_amount_field --timeout 30
+tap --key create_stake_months_6
+type --key create_stake_amount_field 300
+assert --key create_stake_submit_button
+publish --key create_stake_submit_button
+wait --key staking_stakes_count --timeout 30
+assert --key staking_stakes_count

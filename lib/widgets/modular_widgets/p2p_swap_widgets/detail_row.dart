@@ -1,66 +1,91 @@
 import 'package:material_ui/material_ui.dart';
+import 'package:zenon_syrius_wallet_flutter/rearchitecture/utils/widgets/ltr.dart';
+import 'package:zenon_syrius_wallet_flutter/rearchitecture/utils/widgets/page/page_widgets.dart';
 import 'package:zenon_syrius_wallet_flutter/utils/app_theme.dart';
 import 'package:zenon_syrius_wallet_flutter/widgets/reusable_widgets/buttons/copy_to_clipboard_button.dart';
 
-/// One line of a swap's details: a label, and its value in mono.
-///
-/// Every value here is an id, an address, a hash or a countdown, so the
-/// value is always mono and the copy button copies [value] in full even when
-/// [valueToShow] is a shortened form of it.
+/// A public identifier or amount. Unlock material must never be passed here.
 class DetailRow extends StatelessWidget {
-  /// Creates a detail line.
+  /// Displays one public value with optional truncation and full-value copying.
   const DetailRow({
     required this.label,
     required this.value,
     this.valueToShow,
     this.prefixWidget,
     this.canBeCopied = true,
+    this.ledger = false,
+    this.trailing,
     super.key,
   });
 
-  /// What the value is.
+  /// Localized description of the public value.
   final String label;
 
-  /// The full value; what the copy button copies.
+  /// Full tooltip and clipboard value; never pass unlock material here.
   final String value;
 
-  /// A shorter form of [value] to show in its place.
+  /// Optional shortened visible value, preserving [value] for copying.
   final String? valueToShow;
 
-  /// A mark shown before the value.
+  /// Optional leading public mark or token icon.
   final Widget? prefixWidget;
 
-  /// Whether the line ends in a copy button.
+  /// Whether the full public value has an explicit copy action.
   final bool canBeCopied;
+
+  /// Whether to use the compact ledger-label treatment.
+  final bool ledger;
+
+  /// Optional trailing action owned by the enclosing flow.
+  final Widget? trailing;
 
   @override
   Widget build(BuildContext context) {
-    final TextStyle dim = Theme.of(
-      context,
-    ).textTheme.titleMedium!.copyWith(fontSize: 13);
-    return SizedBox(
-      height: 32,
+    final AppTokens tokens = AppTokens.of(context);
+    return Padding(
+      padding: EdgeInsetsDirectional.symmetric(
+        vertical: tokens.swapDetailRowGap / 2,
+      ),
       child: Row(
         children: <Widget>[
-          Text(label, style: dim),
-          const SizedBox(width: 12),
+          SizedBox(
+            width: ledger
+                ? tokens.swapDetailLabelWidth
+                : tokens.tokenCreateReviewLabelWidth,
+            child: Text(
+              ledger && usesLatinScript(context) ? label.toUpperCase() : label,
+              style: ledger
+                  ? ledgerLabelStyle(context)
+                  : tokens.compactText.copyWith(color: tokens.dim),
+            ),
+          ),
+          SizedBox(width: tokens.inlineGap),
           Expanded(
             child: Row(
-              mainAxisAlignment: MainAxisAlignment.end,
               children: <Widget>[
                 if (prefixWidget != null) ...<Widget>[
                   prefixWidget!,
-                  const SizedBox(width: 6),
+                  SizedBox(width: tokens.fieldLabelGap),
                 ],
                 Flexible(
-                  child: Text(
-                    valueToShow ?? value,
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: monoStyle(dim),
+                  child: Tooltip(
+                    message: value,
+                    child: Text(
+                      valueToShow ?? value,
+                      maxLines: 1,
+                      textDirection: ltrUnlessRtl(valueToShow ?? value),
+                      textAlign: ltrTextAlign(context),
+                      overflow: TextOverflow.ellipsis,
+                      style: tokens.dataText.copyWith(color: tokens.dim),
+                    ),
                   ),
                 ),
-                if (canBeCopied) CopyToClipboardButton(value, iconSize: 14),
+                if (canBeCopied)
+                  CopyToClipboardButton(
+                    value,
+                    iconSize: tokens.heroCopyIconSize,
+                  ),
+                ?trailing,
               ],
             ),
           ),

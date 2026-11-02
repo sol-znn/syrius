@@ -104,6 +104,12 @@ abstract class AppLocalizations {
     Locale('zh'),
   ];
 
+  /// Tooltip for a drawn feature whose backing service is not built.
+  ///
+  /// In en, this message translates to:
+  /// **'Not yet'**
+  String get notYet;
+
   /// No description provided for @activePillars.
   ///
   /// In en, this message translates to:
@@ -3115,6 +3121,24 @@ abstract class AppLocalizations {
   /// **'Close'**
   String get commonClose;
 
+  /// Tooltip of the button that minimizes the original application window.
+  ///
+  /// In en, this message translates to:
+  /// **'Minimize'**
+  String get windowMinimize;
+
+  /// Tooltip of the button that maximizes the original application window.
+  ///
+  /// In en, this message translates to:
+  /// **'Maximize'**
+  String get windowMaximize;
+
+  /// Tooltip of the button that restores a maximized application window.
+  ///
+  /// In en, this message translates to:
+  /// **'Restore'**
+  String get windowRestore;
+
   /// Button on the notification banner that removes the banner. A verb.
   ///
   /// In en, this message translates to:
@@ -3226,7 +3250,7 @@ abstract class AppLocalizations {
   /// Shown under the field of the Go to palette when no page's name contains what was typed.
   ///
   /// In en, this message translates to:
-  /// **'No page by that name'**
+  /// **'None yet'**
   String get goToPaletteEmpty;
 
   /// Tooltip on the Asset cell of a transaction row when the transaction's token is not known. A token standard is a token's identifier on the network.
@@ -3554,10 +3578,10 @@ abstract class AppLocalizations {
   /// Label, a noun, of the small button in the strip at the top of the Staking page that shows or hides the chart of the last seven days of staking rewards.
   ///
   /// In en, this message translates to:
-  /// **'Chart'**
+  /// **'Rewards'**
   String get stakingChart;
 
-  /// Label of a figure in the strip at the top of the Plasma page: the QSR the selected address has fused, for itself or for other addresses, summed over the list under the strip. The amount stands under it.
+  /// Label of the SDK-reported complete owner aggregate of QSR fused by the selected address, for itself or other beneficiaries. A loaded-page sum is not this total.
   ///
   /// In en, this message translates to:
   /// **'Fused by you'**
@@ -3596,8 +3620,4645 @@ abstract class AppLocalizations {
   /// Shown above the list of fusions on the Plasma page when cancelling several stopped at one that failed: how many of the ticked fusions were cancelled before it, out of how many were ticked.
   ///
   /// In en, this message translates to:
-  /// **'{done} of {total} cancelled'**
+  /// **'{done} of {total} submitted'**
   String plasmaPageCancelFusesDone(int done, int total);
+
+  /// No description provided for @railHome.
+  ///
+  /// In en, this message translates to:
+  /// **'Home'**
+  String get railHome;
+
+  /// No description provided for @railStaking.
+  ///
+  /// In en, this message translates to:
+  /// **'Staking'**
+  String get railStaking;
+
+  /// No description provided for @railNodes.
+  ///
+  /// In en, this message translates to:
+  /// **'Nodes'**
+  String get railNodes;
+
+  /// No description provided for @railSwap.
+  ///
+  /// In en, this message translates to:
+  /// **'Swap'**
+  String get railSwap;
+
+  /// No description provided for @railAccelerator.
+  ///
+  /// In en, this message translates to:
+  /// **'Accelerator'**
+  String get railAccelerator;
+
+  /// No description provided for @railNotifications.
+  ///
+  /// In en, this message translates to:
+  /// **'Notifications'**
+  String get railNotifications;
+
+  /// No description provided for @railSettings.
+  ///
+  /// In en, this message translates to:
+  /// **'Settings'**
+  String get railSettings;
+
+  /// No description provided for @railLock.
+  ///
+  /// In en, this message translates to:
+  /// **'Lock'**
+  String get railLock;
+
+  /// No description provided for @railLocked.
+  ///
+  /// In en, this message translates to:
+  /// **'Locked'**
+  String get railLocked;
+
+  /// No description provided for @railUnseen.
+  ///
+  /// In en, this message translates to:
+  /// **'Unseen'**
+  String get railUnseen;
+
+  /// No description provided for @settingsSectionAddresses.
+  ///
+  /// In en, this message translates to:
+  /// **'Addresses'**
+  String get settingsSectionAddresses;
+
+  /// No description provided for @settingsSectionNode.
+  ///
+  /// In en, this message translates to:
+  /// **'Node'**
+  String get settingsSectionNode;
+
+  /// No description provided for @settingsSectionSecurity.
+  ///
+  /// In en, this message translates to:
+  /// **'Security'**
+  String get settingsSectionSecurity;
+
+  /// No description provided for @settingsSectionDisplay.
+  ///
+  /// In en, this message translates to:
+  /// **'Display'**
+  String get settingsSectionDisplay;
+
+  /// No description provided for @settingsSectionWallet.
+  ///
+  /// In en, this message translates to:
+  /// **'Wallet'**
+  String get settingsSectionWallet;
+
+  /// No description provided for @settingsSectionApps.
+  ///
+  /// In en, this message translates to:
+  /// **'Apps'**
+  String get settingsSectionApps;
+
+  /// No description provided for @settingsSectionAbout.
+  ///
+  /// In en, this message translates to:
+  /// **'About'**
+  String get settingsSectionAbout;
+
+  /// No description provided for @stakingStarted.
+  ///
+  /// In en, this message translates to:
+  /// **'Started'**
+  String get stakingStarted;
+
+  /// No description provided for @stakingUnlocks.
+  ///
+  /// In en, this message translates to:
+  /// **'Unlocks'**
+  String get stakingUnlocks;
+
+  /// No description provided for @stakingUnlocked.
+  ///
+  /// In en, this message translates to:
+  /// **'Unlocked'**
+  String get stakingUnlocked;
+
+  /// No description provided for @stakingCancelWithdraw.
+  ///
+  /// In en, this message translates to:
+  /// **'Cancel and withdraw'**
+  String get stakingCancelWithdraw;
+
+  /// No description provided for @stakingNewStake.
+  ///
+  /// In en, this message translates to:
+  /// **'New stake'**
+  String get stakingNewStake;
+
+  /// Primary staking action with the exact entered ZNN amount.
+  ///
+  /// In en, this message translates to:
+  /// **'Stake {amount} ZNN'**
+  String stakingStakeAmount(String amount);
+
+  /// The exact spendable ZNN balance after the staking amount.
+  ///
+  /// In en, this message translates to:
+  /// **'of {amount} ZNN'**
+  String stakingAmountOf(String amount);
+
+  /// No description provided for @stakingStartedDaysAgo.
+  ///
+  /// In en, this message translates to:
+  /// **'{count} d ago'**
+  String stakingStartedDaysAgo(int count);
+
+  /// No description provided for @stakingStartedMonthsAgo.
+  ///
+  /// In en, this message translates to:
+  /// **'{count} mo ago'**
+  String stakingStartedMonthsAgo(int count);
+
+  /// No description provided for @stakingUnlockMonthsDays.
+  ///
+  /// In en, this message translates to:
+  /// **'{months} mo {days} d'**
+  String stakingUnlockMonthsDays(int months, int days);
+
+  /// No description provided for @displayTheme.
+  ///
+  /// In en, this message translates to:
+  /// **'Theme'**
+  String get displayTheme;
+
+  /// No description provided for @displayTextSize.
+  ///
+  /// In en, this message translates to:
+  /// **'Text size'**
+  String get displayTextSize;
+
+  /// No description provided for @displayLanguage.
+  ///
+  /// In en, this message translates to:
+  /// **'Language'**
+  String get displayLanguage;
+
+  /// No description provided for @displayMenu.
+  ///
+  /// In en, this message translates to:
+  /// **'Menu'**
+  String get displayMenu;
+
+  /// No description provided for @displayMenuHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Icons only, labels on hover'**
+  String get displayMenuHint;
+
+  /// No description provided for @displayIcons.
+  ///
+  /// In en, this message translates to:
+  /// **'Icons'**
+  String get displayIcons;
+
+  /// No description provided for @displayLabels.
+  ///
+  /// In en, this message translates to:
+  /// **'Labels'**
+  String get displayLabels;
+
+  /// No description provided for @displayHideBalances.
+  ///
+  /// In en, this message translates to:
+  /// **'Hide balances'**
+  String get displayHideBalances;
+
+  /// No description provided for @displayHideBalancesHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Also the eye on Home'**
+  String get displayHideBalancesHint;
+
+  /// No description provided for @displayDollarValues.
+  ///
+  /// In en, this message translates to:
+  /// **'Dollar values'**
+  String get displayDollarValues;
+
+  /// No description provided for @displayDollarValuesHint.
+  ///
+  /// In en, this message translates to:
+  /// **'ZNN and QSR at CoinGecko\'s price, asked once a minute while a value is on screen. Mainnet\'s price on every chain.'**
+  String get displayDollarValuesHint;
+
+  /// No description provided for @displayExplorer.
+  ///
+  /// In en, this message translates to:
+  /// **'Explorer'**
+  String get displayExplorer;
+
+  /// No description provided for @displayExplorerHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Links follow the chain. None off chain 1.'**
+  String get displayExplorerHint;
+
+  /// No description provided for @displaySystem.
+  ///
+  /// In en, this message translates to:
+  /// **'System'**
+  String get displaySystem;
+
+  /// No description provided for @displayDark.
+  ///
+  /// In en, this message translates to:
+  /// **'Dark'**
+  String get displayDark;
+
+  /// No description provided for @displayLight.
+  ///
+  /// In en, this message translates to:
+  /// **'Light'**
+  String get displayLight;
+
+  /// No description provided for @displaySmall.
+  ///
+  /// In en, this message translates to:
+  /// **'Small'**
+  String get displaySmall;
+
+  /// No description provided for @displayDefault.
+  ///
+  /// In en, this message translates to:
+  /// **'Default'**
+  String get displayDefault;
+
+  /// No description provided for @displayLarge.
+  ///
+  /// In en, this message translates to:
+  /// **'Large'**
+  String get displayLarge;
+
+  /// No description provided for @displayHuge.
+  ///
+  /// In en, this message translates to:
+  /// **'Huge'**
+  String get displayHuge;
+
+  /// No description provided for @displaySaveFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'Could not save {setting}'**
+  String displaySaveFailed(String setting);
+
+  /// No description provided for @transferZap.
+  ///
+  /// In en, this message translates to:
+  /// **'Zap'**
+  String get transferZap;
+
+  /// No description provided for @transferToReceive.
+  ///
+  /// In en, this message translates to:
+  /// **'To receive'**
+  String get transferToReceive;
+
+  /// No description provided for @transferReceiving.
+  ///
+  /// In en, this message translates to:
+  /// **'Receiving'**
+  String get transferReceiving;
+
+  /// No description provided for @transferAutoReceiveOn.
+  ///
+  /// In en, this message translates to:
+  /// **'Auto-receive on'**
+  String get transferAutoReceiveOn;
+
+  /// No description provided for @transferAutoReceiveOff.
+  ///
+  /// In en, this message translates to:
+  /// **'Auto-receive off'**
+  String get transferAutoReceiveOff;
+
+  /// No description provided for @nodesDelegatedTo.
+  ///
+  /// In en, this message translates to:
+  /// **'Delegated to'**
+  String get nodesDelegatedTo;
+
+  /// No description provided for @nodesWeight.
+  ///
+  /// In en, this message translates to:
+  /// **'weight'**
+  String get nodesWeight;
+
+  /// No description provided for @nodesChange.
+  ///
+  /// In en, this message translates to:
+  /// **'Change'**
+  String get nodesChange;
+
+  /// No description provided for @nodesDelegate.
+  ///
+  /// In en, this message translates to:
+  /// **'Delegate'**
+  String get nodesDelegate;
+
+  /// No description provided for @nodesUndelegate.
+  ///
+  /// In en, this message translates to:
+  /// **'Undelegate'**
+  String get nodesUndelegate;
+
+  /// No description provided for @nodesRewards.
+  ///
+  /// In en, this message translates to:
+  /// **'Rewards'**
+  String get nodesRewards;
+
+  /// No description provided for @nodesMore.
+  ///
+  /// In en, this message translates to:
+  /// **'More'**
+  String get nodesMore;
+
+  /// No description provided for @nodesYourPillar.
+  ///
+  /// In en, this message translates to:
+  /// **'Your pillar'**
+  String get nodesYourPillar;
+
+  /// No description provided for @nodesYourSentinel.
+  ///
+  /// In en, this message translates to:
+  /// **'Your sentinel'**
+  String get nodesYourSentinel;
+
+  /// No description provided for @nodesToCollect.
+  ///
+  /// In en, this message translates to:
+  /// **'To collect'**
+  String get nodesToCollect;
+
+  /// No description provided for @nodesNoneYet.
+  ///
+  /// In en, this message translates to:
+  /// **'None yet'**
+  String get nodesNoneYet;
+
+  /// No description provided for @stripNode.
+  ///
+  /// In en, this message translates to:
+  /// **'Node'**
+  String get stripNode;
+
+  /// No description provided for @stripChain.
+  ///
+  /// In en, this message translates to:
+  /// **'Chain'**
+  String get stripChain;
+
+  /// No description provided for @stripMomentumHeight.
+  ///
+  /// In en, this message translates to:
+  /// **'Momentum height: {height}'**
+  String stripMomentumHeight(int height);
+
+  /// No description provided for @stripDisconnected.
+  ///
+  /// In en, this message translates to:
+  /// **'Disconnected'**
+  String get stripDisconnected;
+
+  /// No description provided for @stripConnecting.
+  ///
+  /// In en, this message translates to:
+  /// **'Connecting'**
+  String get stripConnecting;
+
+  /// No description provided for @stripSynced.
+  ///
+  /// In en, this message translates to:
+  /// **'Connected and in sync'**
+  String get stripSynced;
+
+  /// No description provided for @stripSyncing.
+  ///
+  /// In en, this message translates to:
+  /// **'Syncing, momentum {current} of {target}'**
+  String stripSyncing(int current, int target);
+
+  /// No description provided for @stripWaitingConfirmation.
+  ///
+  /// In en, this message translates to:
+  /// **'Waiting for a momentum'**
+  String get stripWaitingConfirmation;
+
+  /// No description provided for @stripSecondsAtLeast.
+  ///
+  /// In en, this message translates to:
+  /// **'≥{seconds} s'**
+  String stripSecondsAtLeast(int seconds);
+
+  /// No description provided for @nodesUndelegateConfirm.
+  ///
+  /// In en, this message translates to:
+  /// **'Undelegate from {pillarName}?'**
+  String nodesUndelegateConfirm(String pillarName);
+
+  /// No description provided for @homeCopyAddress.
+  ///
+  /// In en, this message translates to:
+  /// **'Copy address'**
+  String get homeCopyAddress;
+
+  /// No description provided for @homeSwitchAddress.
+  ///
+  /// In en, this message translates to:
+  /// **'Switch address'**
+  String get homeSwitchAddress;
+
+  /// No description provided for @homeShowBalances.
+  ///
+  /// In en, this message translates to:
+  /// **'Show balances'**
+  String get homeShowBalances;
+
+  /// No description provided for @homeLoading.
+  ///
+  /// In en, this message translates to:
+  /// **'Loading'**
+  String get homeLoading;
+
+  /// No description provided for @homeNodeNotAnswering.
+  ///
+  /// In en, this message translates to:
+  /// **'Node not answering'**
+  String get homeNodeNotAnswering;
+
+  /// No description provided for @homePlasmaHigh.
+  ///
+  /// In en, this message translates to:
+  /// **'High'**
+  String get homePlasmaHigh;
+
+  /// No description provided for @homePlasmaMedium.
+  ///
+  /// In en, this message translates to:
+  /// **'Medium'**
+  String get homePlasmaMedium;
+
+  /// No description provided for @homePlasmaLow.
+  ///
+  /// In en, this message translates to:
+  /// **'Low'**
+  String get homePlasmaLow;
+
+  /// No description provided for @homePlasmaNone.
+  ///
+  /// In en, this message translates to:
+  /// **'None'**
+  String get homePlasmaNone;
+
+  /// No description provided for @homeToCollect.
+  ///
+  /// In en, this message translates to:
+  /// **'To collect'**
+  String get homeToCollect;
+
+  /// No description provided for @homeCollectAll.
+  ///
+  /// In en, this message translates to:
+  /// **'Collect all'**
+  String get homeCollectAll;
+
+  /// No description provided for @homeNoneYet.
+  ///
+  /// In en, this message translates to:
+  /// **'None yet'**
+  String get homeNoneYet;
+
+  /// No description provided for @homePending.
+  ///
+  /// In en, this message translates to:
+  /// **'Pending'**
+  String get homePending;
+
+  /// No description provided for @homePendingMomentum.
+  ///
+  /// In en, this message translates to:
+  /// **'momentum'**
+  String get homePendingMomentum;
+
+  /// No description provided for @homeAmountUnknown.
+  ///
+  /// In en, this message translates to:
+  /// **'Unknown'**
+  String get homeAmountUnknown;
+
+  /// No description provided for @homeCollectionUncertain.
+  ///
+  /// In en, this message translates to:
+  /// **'Collection outcome unknown'**
+  String get homeCollectionUncertain;
+
+  /// No description provided for @homePlasmaNeedsWork.
+  ///
+  /// In en, this message translates to:
+  /// **'Sends need proof of work'**
+  String get homePlasmaNeedsWork;
+
+  /// No description provided for @homePlasmaSends.
+  ///
+  /// In en, this message translates to:
+  /// **'{count, plural, =1{Enough for 1 send} other{Enough for about {count} sends}}'**
+  String homePlasmaSends(int count);
+
+  /// No description provided for @bellNeedsYou.
+  ///
+  /// In en, this message translates to:
+  /// **'Needs you'**
+  String get bellNeedsYou;
+
+  /// No description provided for @bellToday.
+  ///
+  /// In en, this message translates to:
+  /// **'Today'**
+  String get bellToday;
+
+  /// No description provided for @bellYesterday.
+  ///
+  /// In en, this message translates to:
+  /// **'Yesterday'**
+  String get bellYesterday;
+
+  /// No description provided for @bellClear.
+  ///
+  /// In en, this message translates to:
+  /// **'Clear'**
+  String get bellClear;
+
+  /// No description provided for @bellNoneYet.
+  ///
+  /// In en, this message translates to:
+  /// **'None yet'**
+  String get bellNoneYet;
+
+  /// No description provided for @bellApprove.
+  ///
+  /// In en, this message translates to:
+  /// **'Approve'**
+  String get bellApprove;
+
+  /// No description provided for @bellDecline.
+  ///
+  /// In en, this message translates to:
+  /// **'Decline'**
+  String get bellDecline;
+
+  /// No description provided for @bellRemove.
+  ///
+  /// In en, this message translates to:
+  /// **'Remove'**
+  String get bellRemove;
+
+  /// No description provided for @bellRequested.
+  ///
+  /// In en, this message translates to:
+  /// **'Requested'**
+  String get bellRequested;
+
+  /// No description provided for @bellRequired.
+  ///
+  /// In en, this message translates to:
+  /// **'Required'**
+  String get bellRequired;
+
+  /// No description provided for @bellOptional.
+  ///
+  /// In en, this message translates to:
+  /// **'Optional'**
+  String get bellOptional;
+
+  /// No description provided for @bellApproved.
+  ///
+  /// In en, this message translates to:
+  /// **'To approve'**
+  String get bellApproved;
+
+  /// No description provided for @bellAccounts.
+  ///
+  /// In en, this message translates to:
+  /// **'Accounts'**
+  String get bellAccounts;
+
+  /// No description provided for @bellChains.
+  ///
+  /// In en, this message translates to:
+  /// **'Chains'**
+  String get bellChains;
+
+  /// No description provided for @bellMethods.
+  ///
+  /// In en, this message translates to:
+  /// **'Methods'**
+  String get bellMethods;
+
+  /// No description provided for @bellEvents.
+  ///
+  /// In en, this message translates to:
+  /// **'Events'**
+  String get bellEvents;
+
+  /// No description provided for @bellUnavailable.
+  ///
+  /// In en, this message translates to:
+  /// **'Request unavailable'**
+  String get bellUnavailable;
+
+  /// No description provided for @bellApprovalFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'Connection failed. Check Apps.'**
+  String get bellApprovalFailed;
+
+  /// No description provided for @bellHistoryFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'Notifications unavailable'**
+  String get bellHistoryFailed;
+
+  /// No description provided for @bellExpand.
+  ///
+  /// In en, this message translates to:
+  /// **'Show events'**
+  String get bellExpand;
+
+  /// No description provided for @bellCollapse.
+  ///
+  /// In en, this message translates to:
+  /// **'Hide events'**
+  String get bellCollapse;
+
+  /// No description provided for @bellBlockPublished.
+  ///
+  /// In en, this message translates to:
+  /// **'Block published'**
+  String get bellBlockPublished;
+
+  /// No description provided for @bellFoldCount.
+  ///
+  /// In en, this message translates to:
+  /// **'× {count}'**
+  String bellFoldCount(int count);
+
+  /// No description provided for @bellConnectRequest.
+  ///
+  /// In en, this message translates to:
+  /// **'Asks to connect.'**
+  String get bellConnectRequest;
+
+  /// No description provided for @bellResolving.
+  ///
+  /// In en, this message translates to:
+  /// **'Waiting'**
+  String get bellResolving;
+
+  /// No description provided for @bellNow.
+  ///
+  /// In en, this message translates to:
+  /// **'now'**
+  String get bellNow;
+
+  /// No description provided for @bellMinutesAgo.
+  ///
+  /// In en, this message translates to:
+  /// **'{count} min'**
+  String bellMinutesAgo(int count);
+
+  /// No description provided for @bellHoursAgo.
+  ///
+  /// In en, this message translates to:
+  /// **'{count} h'**
+  String bellHoursAgo(int count);
+
+  /// No description provided for @bellDaysAgo.
+  ///
+  /// In en, this message translates to:
+  /// **'{count} d'**
+  String bellDaysAgo(int count);
+
+  /// No description provided for @goToPalettePages.
+  ///
+  /// In en, this message translates to:
+  /// **'Pages'**
+  String get goToPalettePages;
+
+  /// No description provided for @goToPaletteActions.
+  ///
+  /// In en, this message translates to:
+  /// **'Actions'**
+  String get goToPaletteActions;
+
+  /// No description provided for @goToPaletteAddresses.
+  ///
+  /// In en, this message translates to:
+  /// **'Addresses'**
+  String get goToPaletteAddresses;
+
+  /// No description provided for @goToPaletteMove.
+  ///
+  /// In en, this message translates to:
+  /// **'move'**
+  String get goToPaletteMove;
+
+  /// No description provided for @goToPaletteOpen.
+  ///
+  /// In en, this message translates to:
+  /// **'open'**
+  String get goToPaletteOpen;
+
+  /// No description provided for @goToPaletteShortcuts.
+  ///
+  /// In en, this message translates to:
+  /// **'{first} to {last} pages · {lock} lock · {refresh} refresh'**
+  String goToPaletteShortcuts(
+    String first,
+    String last,
+    String lock,
+    String refresh,
+  );
+
+  /// No description provided for @goToPaletteSendTo.
+  ///
+  /// In en, this message translates to:
+  /// **'Send to {name}'**
+  String goToPaletteSendTo(String name);
+
+  /// No description provided for @goToPaletteDelegate.
+  ///
+  /// In en, this message translates to:
+  /// **'Delegation'**
+  String get goToPaletteDelegate;
+
+  /// No description provided for @goToPaletteDeleteCache.
+  ///
+  /// In en, this message translates to:
+  /// **'Delete cache'**
+  String get goToPaletteDeleteCache;
+
+  /// No description provided for @goToPaletteDelegateAction.
+  ///
+  /// In en, this message translates to:
+  /// **'Delegate to a pillar'**
+  String get goToPaletteDelegateAction;
+
+  /// No description provided for @goToPaletteSendToHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Send to'**
+  String get goToPaletteSendToHint;
+
+  /// No description provided for @goToPaletteDeleteCacheConfirm.
+  ///
+  /// In en, this message translates to:
+  /// **'Delete cached data and close Syrius?'**
+  String get goToPaletteDeleteCacheConfirm;
+
+  /// No description provided for @commonRefresh.
+  ///
+  /// In en, this message translates to:
+  /// **'Refresh'**
+  String get commonRefresh;
+
+  /// No description provided for @publicationSessionChanged.
+  ///
+  /// In en, this message translates to:
+  /// **'Wallet or node changed. Review and try again.'**
+  String get publicationSessionChanged;
+
+  /// No description provided for @stripWalletUpdates.
+  ///
+  /// In en, this message translates to:
+  /// **'Wallet updates'**
+  String get stripWalletUpdates;
+
+  /// No description provided for @stripUpdateAvailable.
+  ///
+  /// In en, this message translates to:
+  /// **'Syrius {version} is out'**
+  String stripUpdateAvailable(String version);
+
+  /// No description provided for @activityTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Activity'**
+  String get activityTitle;
+
+  /// No description provided for @activityReceived.
+  ///
+  /// In en, this message translates to:
+  /// **'Received'**
+  String get activityReceived;
+
+  /// No description provided for @activityDelegated.
+  ///
+  /// In en, this message translates to:
+  /// **'Delegated'**
+  String get activityDelegated;
+
+  /// No description provided for @activityFused.
+  ///
+  /// In en, this message translates to:
+  /// **'Fused'**
+  String get activityFused;
+
+  /// No description provided for @activityReward.
+  ///
+  /// In en, this message translates to:
+  /// **'Reward'**
+  String get activityReward;
+
+  /// No description provided for @activityStaked.
+  ///
+  /// In en, this message translates to:
+  /// **'Staked'**
+  String get activityStaked;
+
+  /// No description provided for @activityMessage.
+  ///
+  /// In en, this message translates to:
+  /// **'Message'**
+  String get activityMessage;
+
+  /// No description provided for @activityNow.
+  ///
+  /// In en, this message translates to:
+  /// **'Now'**
+  String get activityNow;
+
+  /// No description provided for @activityMinutes.
+  ///
+  /// In en, this message translates to:
+  /// **'{count} min'**
+  String activityMinutes(int count);
+
+  /// No description provided for @activityHours.
+  ///
+  /// In en, this message translates to:
+  /// **'{count} h'**
+  String activityHours(int count);
+
+  /// No description provided for @activityDays.
+  ///
+  /// In en, this message translates to:
+  /// **'{count} d'**
+  String activityDays(int count);
+
+  /// No description provided for @activityUnitsUnavailable.
+  ///
+  /// In en, this message translates to:
+  /// **'Units unavailable'**
+  String get activityUnitsUnavailable;
+
+  /// No description provided for @activityExplorer.
+  ///
+  /// In en, this message translates to:
+  /// **'Open in explorer'**
+  String get activityExplorer;
+
+  /// No description provided for @activitySelectedAddress.
+  ///
+  /// In en, this message translates to:
+  /// **'Selected address'**
+  String get activitySelectedAddress;
+
+  /// No description provided for @activityUnavailable.
+  ///
+  /// In en, this message translates to:
+  /// **'Activity unavailable'**
+  String get activityUnavailable;
+
+  /// No description provided for @lockUnlock.
+  ///
+  /// In en, this message translates to:
+  /// **'Unlock'**
+  String get lockUnlock;
+
+  /// No description provided for @lockOpening.
+  ///
+  /// In en, this message translates to:
+  /// **'Opening the wallet'**
+  String get lockOpening;
+
+  /// No description provided for @lockAddWallet.
+  ///
+  /// In en, this message translates to:
+  /// **'Add a wallet'**
+  String get lockAddWallet;
+
+  /// No description provided for @lockForgotPassword.
+  ///
+  /// In en, this message translates to:
+  /// **'Forgot the password'**
+  String get lockForgotPassword;
+
+  /// No description provided for @lockShowPassword.
+  ///
+  /// In en, this message translates to:
+  /// **'Show password'**
+  String get lockShowPassword;
+
+  /// No description provided for @lockHidePassword.
+  ///
+  /// In en, this message translates to:
+  /// **'Hide password'**
+  String get lockHidePassword;
+
+  /// No description provided for @lockAttemptSaveFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'Unlock state was not saved. Restart Syrius.'**
+  String get lockAttemptSaveFailed;
+
+  /// No description provided for @lockTriesLeft.
+  ///
+  /// In en, this message translates to:
+  /// **'{count, plural, one{1 try left. The wallet resets at the limit.} other{{count} tries left. The wallet resets at the limit.}}'**
+  String lockTriesLeft(int count);
+
+  /// No description provided for @sendRecent.
+  ///
+  /// In en, this message translates to:
+  /// **'Recent'**
+  String get sendRecent;
+
+  /// No description provided for @sendAddressBook.
+  ///
+  /// In en, this message translates to:
+  /// **'Address book'**
+  String get sendAddressBook;
+
+  /// No description provided for @sendSearchContacts.
+  ///
+  /// In en, this message translates to:
+  /// **'Search contacts'**
+  String get sendSearchContacts;
+
+  /// No description provided for @sendClearRecipient.
+  ///
+  /// In en, this message translates to:
+  /// **'Clear recipient'**
+  String get sendClearRecipient;
+
+  /// No description provided for @sendAvailable.
+  ///
+  /// In en, this message translates to:
+  /// **'Available'**
+  String get sendAvailable;
+
+  /// No description provided for @sendEnterAddress.
+  ///
+  /// In en, this message translates to:
+  /// **'Enter an address'**
+  String get sendEnterAddress;
+
+  /// No description provided for @sendEnterAmount.
+  ///
+  /// In en, this message translates to:
+  /// **'Enter an amount'**
+  String get sendEnterAmount;
+
+  /// No description provided for @sendNotEnough.
+  ///
+  /// In en, this message translates to:
+  /// **'Not enough {symbol}'**
+  String sendNotEnough(String symbol);
+
+  /// No description provided for @sendAmount.
+  ///
+  /// In en, this message translates to:
+  /// **'Send {amount} {symbol}'**
+  String sendAmount(String amount, String symbol);
+
+  /// No description provided for @sendWaitingForNode.
+  ///
+  /// In en, this message translates to:
+  /// **'Waiting for the node'**
+  String get sendWaitingForNode;
+
+  /// No description provided for @sendCheckAddress.
+  ///
+  /// In en, this message translates to:
+  /// **'Check the full address'**
+  String get sendCheckAddress;
+
+  /// No description provided for @sendLooksLike.
+  ///
+  /// In en, this message translates to:
+  /// **'Looks like {name}'**
+  String sendLooksLike(String name);
+
+  /// No description provided for @sendLookAlikeDetail.
+  ///
+  /// In en, this message translates to:
+  /// **'The ends match a known address. Check the full address.'**
+  String get sendLookAlikeDetail;
+
+  /// No description provided for @sendKnownAddress.
+  ///
+  /// In en, this message translates to:
+  /// **'Known address'**
+  String get sendKnownAddress;
+
+  /// No description provided for @sendTypedAddress.
+  ///
+  /// In en, this message translates to:
+  /// **'Typed address'**
+  String get sendTypedAddress;
+
+  /// No description provided for @sendUseKnown.
+  ///
+  /// In en, this message translates to:
+  /// **'Use {name}'**
+  String sendUseKnown(String name);
+
+  /// No description provided for @sendUseTypedAnyway.
+  ///
+  /// In en, this message translates to:
+  /// **'Use typed address'**
+  String get sendUseTypedAnyway;
+
+  /// No description provided for @sendFirstTimeRecipient.
+  ///
+  /// In en, this message translates to:
+  /// **'First send recorded here'**
+  String get sendFirstTimeRecipient;
+
+  /// No description provided for @sendLastSent.
+  ///
+  /// In en, this message translates to:
+  /// **'{name} · Last sent {time}'**
+  String sendLastSent(String name, String time);
+
+  /// No description provided for @sendNodeBehind.
+  ///
+  /// In en, this message translates to:
+  /// **'Node is {count} momentums behind'**
+  String sendNodeBehind(int count);
+
+  /// No description provided for @sendWaitForSync.
+  ///
+  /// In en, this message translates to:
+  /// **'Wait for sync'**
+  String get sendWaitForSync;
+
+  /// No description provided for @sendContactsUnavailable.
+  ///
+  /// In en, this message translates to:
+  /// **'Address book unavailable. Check the full address.'**
+  String get sendContactsUnavailable;
+
+  /// No description provided for @sendConfirmTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Send {amount} {symbol}?'**
+  String sendConfirmTitle(String amount, String symbol);
+
+  /// No description provided for @sendConfirmTo.
+  ///
+  /// In en, this message translates to:
+  /// **'To'**
+  String get sendConfirmTo;
+
+  /// No description provided for @sendConfirmFrom.
+  ///
+  /// In en, this message translates to:
+  /// **'From'**
+  String get sendConfirmFrom;
+
+  /// No description provided for @sendPlasmaPending.
+  ///
+  /// In en, this message translates to:
+  /// **'Checked when sending'**
+  String get sendPlasmaPending;
+
+  /// No description provided for @sendHardwareConfirm.
+  ///
+  /// In en, this message translates to:
+  /// **'Confirm on your device after Send.'**
+  String get sendHardwareConfirm;
+
+  /// No description provided for @sendOutcomeUnavailable.
+  ///
+  /// In en, this message translates to:
+  /// **'Send outcome unavailable'**
+  String get sendOutcomeUnavailable;
+
+  /// No description provided for @sendOutcomeUncertain.
+  ///
+  /// In en, this message translates to:
+  /// **'Check Activity before sending again.'**
+  String get sendOutcomeUncertain;
+
+  /// No description provided for @receiveCopyAddress.
+  ///
+  /// In en, this message translates to:
+  /// **'Copy address'**
+  String get receiveCopyAddress;
+
+  /// No description provided for @receiveShowQr.
+  ///
+  /// In en, this message translates to:
+  /// **'Show QR'**
+  String get receiveShowQr;
+
+  /// No description provided for @receiveHideQr.
+  ///
+  /// In en, this message translates to:
+  /// **'Hide QR'**
+  String get receiveHideQr;
+
+  /// No description provided for @receiveRequestAmount.
+  ///
+  /// In en, this message translates to:
+  /// **'Request an amount'**
+  String get receiveRequestAmount;
+
+  /// No description provided for @receiveShareImage.
+  ///
+  /// In en, this message translates to:
+  /// **'Share image'**
+  String get receiveShareImage;
+
+  /// No description provided for @receiveInvalidAmount.
+  ///
+  /// In en, this message translates to:
+  /// **'Enter a positive amount within this token\'s precision'**
+  String get receiveInvalidAmount;
+
+  /// No description provided for @receiveExportFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'The QR image could not be exported'**
+  String get receiveExportFailed;
+
+  /// No description provided for @receiveCopyFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'Could not copy address. Try again.'**
+  String get receiveCopyFailed;
+
+  /// No description provided for @zapRandomAlien.
+  ///
+  /// In en, this message translates to:
+  /// **'A random alien'**
+  String get zapRandomAlien;
+
+  /// No description provided for @zapCandidatesUnavailable.
+  ///
+  /// In en, this message translates to:
+  /// **'Recipients unavailable'**
+  String get zapCandidatesUnavailable;
+
+  /// No description provided for @zapPickAnother.
+  ///
+  /// In en, this message translates to:
+  /// **'Pick another'**
+  String get zapPickAnother;
+
+  /// No description provided for @zapCopyRecipient.
+  ///
+  /// In en, this message translates to:
+  /// **'Copy recipient'**
+  String get zapCopyRecipient;
+
+  /// No description provided for @zapDefaultMessage.
+  ///
+  /// In en, this message translates to:
+  /// **'You got zapped. Have a great day, alien.'**
+  String get zapDefaultMessage;
+
+  /// No description provided for @zapBytes.
+  ///
+  /// In en, this message translates to:
+  /// **'{used}/140'**
+  String zapBytes(int used);
+
+  /// No description provided for @zapMessageTooLong.
+  ///
+  /// In en, this message translates to:
+  /// **'Use at most 140 bytes'**
+  String get zapMessageTooLong;
+
+  /// No description provided for @zapOneBlock.
+  ///
+  /// In en, this message translates to:
+  /// **'One block'**
+  String get zapOneBlock;
+
+  /// No description provided for @zapTwoBlocks.
+  ///
+  /// In en, this message translates to:
+  /// **'Two blocks, one per coin'**
+  String get zapTwoBlocks;
+
+  /// No description provided for @zapBlockPerCoin.
+  ///
+  /// In en, this message translates to:
+  /// **'One block per coin'**
+  String get zapBlockPerCoin;
+
+  /// No description provided for @zapNodeNotice.
+  ///
+  /// In en, this message translates to:
+  /// **'Your node can steer the pick. A hardware wallet confirms each block.'**
+  String get zapNodeNotice;
+
+  /// No description provided for @zapAmountLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'{symbol} amount'**
+  String zapAmountLabel(String symbol);
+
+  /// No description provided for @zapActionBoth.
+  ///
+  /// In en, this message translates to:
+  /// **'Zap {znn} ZNN + {qsr} QSR'**
+  String zapActionBoth(String znn, String qsr);
+
+  /// No description provided for @zapActionSingle.
+  ///
+  /// In en, this message translates to:
+  /// **'Zap {amount} {symbol}'**
+  String zapActionSingle(String amount, String symbol);
+
+  /// No description provided for @pillarsSearchLoaded.
+  ///
+  /// In en, this message translates to:
+  /// **'Search loaded rows'**
+  String get pillarsSearchLoaded;
+
+  /// No description provided for @pillarsSortLoaded.
+  ///
+  /// In en, this message translates to:
+  /// **'Sort loaded rows'**
+  String get pillarsSortLoaded;
+
+  /// No description provided for @pillarsLoadMore.
+  ///
+  /// In en, this message translates to:
+  /// **'Load more'**
+  String get pillarsLoadMore;
+
+  /// No description provided for @pillarsNoMatches.
+  ///
+  /// In en, this message translates to:
+  /// **'No matches'**
+  String get pillarsNoMatches;
+
+  /// No description provided for @pillarsShares.
+  ///
+  /// In en, this message translates to:
+  /// **'Shares'**
+  String get pillarsShares;
+
+  /// No description provided for @pillarsAprEstimate.
+  ///
+  /// In en, this message translates to:
+  /// **'APR est.'**
+  String get pillarsAprEstimate;
+
+  /// No description provided for @pillarsSortProduction.
+  ///
+  /// In en, this message translates to:
+  /// **'Uptime'**
+  String get pillarsSortProduction;
+
+  /// No description provided for @pillarsYours.
+  ///
+  /// In en, this message translates to:
+  /// **'Yours'**
+  String get pillarsYours;
+
+  /// No description provided for @pillarsDelegated.
+  ///
+  /// In en, this message translates to:
+  /// **'Delegated'**
+  String get pillarsDelegated;
+
+  /// No description provided for @pillarsReward.
+  ///
+  /// In en, this message translates to:
+  /// **'Reward'**
+  String get pillarsReward;
+
+  /// No description provided for @pillarsRegistered.
+  ///
+  /// In en, this message translates to:
+  /// **'Registered'**
+  String get pillarsRegistered;
+
+  /// No description provided for @pillarsUnavailable.
+  ///
+  /// In en, this message translates to:
+  /// **'Unavailable'**
+  String get pillarsUnavailable;
+
+  /// No description provided for @pillarsMomentums.
+  ///
+  /// In en, this message translates to:
+  /// **'Momentums'**
+  String get pillarsMomentums;
+
+  /// No description provided for @pillarsMomentumsValue.
+  ///
+  /// In en, this message translates to:
+  /// **'{produced} of {expected} expected'**
+  String pillarsMomentumsValue(String produced, String expected);
+
+  /// No description provided for @pillarOwnerLocked.
+  ///
+  /// In en, this message translates to:
+  /// **'Locked'**
+  String get pillarOwnerLocked;
+
+  /// No description provided for @pillarOwnerDeposited.
+  ///
+  /// In en, this message translates to:
+  /// **'Deposited'**
+  String get pillarOwnerDeposited;
+
+  /// No description provided for @pillarOwnerSlotCost.
+  ///
+  /// In en, this message translates to:
+  /// **'Registration cost'**
+  String get pillarOwnerSlotCost;
+
+  /// No description provided for @pillarOwnerProducer.
+  ///
+  /// In en, this message translates to:
+  /// **'Producer'**
+  String get pillarOwnerProducer;
+
+  /// No description provided for @pillarOwnerReward.
+  ///
+  /// In en, this message translates to:
+  /// **'Reward'**
+  String get pillarOwnerReward;
+
+  /// No description provided for @pillarOwnerRevocable.
+  ///
+  /// In en, this message translates to:
+  /// **'Revocable'**
+  String get pillarOwnerRevocable;
+
+  /// No description provided for @pillarOwnerSharing.
+  ///
+  /// In en, this message translates to:
+  /// **'Sharing'**
+  String get pillarOwnerSharing;
+
+  /// No description provided for @pillarOwnerMomentums.
+  ///
+  /// In en, this message translates to:
+  /// **'Momentums'**
+  String get pillarOwnerMomentums;
+
+  /// No description provided for @pillarOwnerShares.
+  ///
+  /// In en, this message translates to:
+  /// **'{momentum}% block · {delegate}% delegate'**
+  String pillarOwnerShares(int momentum, int delegate);
+
+  /// No description provided for @pillarOwnerProduction.
+  ///
+  /// In en, this message translates to:
+  /// **'{produced} of {expected}'**
+  String pillarOwnerProduction(int produced, int expected);
+
+  /// No description provided for @pillarOwnerDepositQsr.
+  ///
+  /// In en, this message translates to:
+  /// **'Deposit QSR'**
+  String get pillarOwnerDepositQsr;
+
+  /// No description provided for @pillarOwnerWithdrawQsr.
+  ///
+  /// In en, this message translates to:
+  /// **'Withdraw QSR'**
+  String get pillarOwnerWithdrawQsr;
+
+  /// No description provided for @pillarOwnerDisassemble.
+  ///
+  /// In en, this message translates to:
+  /// **'Disassemble'**
+  String get pillarOwnerDisassemble;
+
+  /// No description provided for @pillarOwnerUnavailable.
+  ///
+  /// In en, this message translates to:
+  /// **'Unavailable'**
+  String get pillarOwnerUnavailable;
+
+  /// No description provided for @pillarOwnerRevokeQuestion.
+  ///
+  /// In en, this message translates to:
+  /// **'Disassemble {name}?'**
+  String pillarOwnerRevokeQuestion(String name);
+
+  /// No description provided for @pillarOwnerRevokeFinalTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Confirm disassembly'**
+  String get pillarOwnerRevokeFinalTitle;
+
+  /// No description provided for @pillarOwnerRevokeConsequence.
+  ///
+  /// In en, this message translates to:
+  /// **'This removes {name} as a pillar.'**
+  String pillarOwnerRevokeConsequence(String name);
+
+  /// No description provided for @nodesOwner.
+  ///
+  /// In en, this message translates to:
+  /// **'Owner'**
+  String get nodesOwner;
+
+  /// No description provided for @nodesRegistered.
+  ///
+  /// In en, this message translates to:
+  /// **'Registered'**
+  String get nodesRegistered;
+
+  /// No description provided for @nodesRevocable.
+  ///
+  /// In en, this message translates to:
+  /// **'Revocable'**
+  String get nodesRevocable;
+
+  /// No description provided for @nodesStatus.
+  ///
+  /// In en, this message translates to:
+  /// **'Status'**
+  String get nodesStatus;
+
+  /// No description provided for @nodesActive.
+  ///
+  /// In en, this message translates to:
+  /// **'Active'**
+  String get nodesActive;
+
+  /// No description provided for @nodesRevoked.
+  ///
+  /// In en, this message translates to:
+  /// **'Revoked'**
+  String get nodesRevoked;
+
+  /// No description provided for @nodesNow.
+  ///
+  /// In en, this message translates to:
+  /// **'now'**
+  String get nodesNow;
+
+  /// No description provided for @nodesInDuration.
+  ///
+  /// In en, this message translates to:
+  /// **'in {duration}'**
+  String nodesInDuration(String duration);
+
+  /// No description provided for @nodesAgoDuration.
+  ///
+  /// In en, this message translates to:
+  /// **'{duration} ago'**
+  String nodesAgoDuration(String duration);
+
+  /// No description provided for @durationMonths.
+  ///
+  /// In en, this message translates to:
+  /// **'{months} mo'**
+  String durationMonths(int months);
+
+  /// No description provided for @durationYears.
+  ///
+  /// In en, this message translates to:
+  /// **'{years} y'**
+  String durationYears(int years);
+
+  /// No description provided for @nodesUnavailable.
+  ///
+  /// In en, this message translates to:
+  /// **'Unavailable'**
+  String get nodesUnavailable;
+
+  /// No description provided for @sentinelOwnerRevokeConsequence.
+  ///
+  /// In en, this message translates to:
+  /// **'This removes the sentinel of {address}.'**
+  String sentinelOwnerRevokeConsequence(String address);
+
+  /// No description provided for @tokensHeld.
+  ///
+  /// In en, this message translates to:
+  /// **'Held'**
+  String get tokensHeld;
+
+  /// No description provided for @tokensFavorites.
+  ///
+  /// In en, this message translates to:
+  /// **'Favorites'**
+  String get tokensFavorites;
+
+  /// No description provided for @tokensAll.
+  ///
+  /// In en, this message translates to:
+  /// **'All'**
+  String get tokensAll;
+
+  /// No description provided for @tokensYouHold.
+  ///
+  /// In en, this message translates to:
+  /// **'You hold'**
+  String get tokensYouHold;
+
+  /// No description provided for @tokensIssuedByYou.
+  ///
+  /// In en, this message translates to:
+  /// **'Issued by you'**
+  String get tokensIssuedByYou;
+
+  /// No description provided for @tokensSearchHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Name, symbol, owner or ZTS'**
+  String get tokensSearchHint;
+
+  /// No description provided for @tokensBalanceUnavailable.
+  ///
+  /// In en, this message translates to:
+  /// **'Balance unavailable'**
+  String get tokensBalanceUnavailable;
+
+  /// No description provided for @tokensCatalogUnavailable.
+  ///
+  /// In en, this message translates to:
+  /// **'Tokens unavailable'**
+  String get tokensCatalogUnavailable;
+
+  /// No description provided for @tokensSearchClear.
+  ///
+  /// In en, this message translates to:
+  /// **'Clear'**
+  String get tokensSearchClear;
+
+  /// No description provided for @tokensSupply.
+  ///
+  /// In en, this message translates to:
+  /// **'Supply'**
+  String get tokensSupply;
+
+  /// No description provided for @tokensOwner.
+  ///
+  /// In en, this message translates to:
+  /// **'Owner'**
+  String get tokensOwner;
+
+  /// No description provided for @tokensToken.
+  ///
+  /// In en, this message translates to:
+  /// **'Token'**
+  String get tokensToken;
+
+  /// No description provided for @plasmaPageEntries.
+  ///
+  /// In en, this message translates to:
+  /// **'in {count} entries'**
+  String plasmaPageEntries(int count);
+
+  /// No description provided for @plasmaPageSelected.
+  ///
+  /// In en, this message translates to:
+  /// **'{count} selected'**
+  String plasmaPageSelected(int count);
+
+  /// No description provided for @plasmaPageSelectHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Select rows to cancel together'**
+  String get plasmaPageSelectHint;
+
+  /// No description provided for @plasmaPageCancelable.
+  ///
+  /// In en, this message translates to:
+  /// **'Cancelable'**
+  String get plasmaPageCancelable;
+
+  /// No description provided for @plasmaPageSubmitted.
+  ///
+  /// In en, this message translates to:
+  /// **'Submitted'**
+  String get plasmaPageSubmitted;
+
+  /// No description provided for @plasmaPageSubmitting.
+  ///
+  /// In en, this message translates to:
+  /// **'Submitting'**
+  String get plasmaPageSubmitting;
+
+  /// No description provided for @plasmaPageUnknown.
+  ///
+  /// In en, this message translates to:
+  /// **'Unknown'**
+  String get plasmaPageUnknown;
+
+  /// No description provided for @plasmaPageCopyFusion.
+  ///
+  /// In en, this message translates to:
+  /// **'Copy fusion hash'**
+  String get plasmaPageCopyFusion;
+
+  /// No description provided for @registrationWaiting.
+  ///
+  /// In en, this message translates to:
+  /// **'Waiting for confirmation'**
+  String get registrationWaiting;
+
+  /// No description provided for @registrationPillarRegistered.
+  ///
+  /// In en, this message translates to:
+  /// **'{name} is registered'**
+  String registrationPillarRegistered(String name);
+
+  /// No description provided for @registrationPillarReady.
+  ///
+  /// In en, this message translates to:
+  /// **'It joins the producers within a few momentums.'**
+  String get registrationPillarReady;
+
+  /// No description provided for @registrationTokenCreated.
+  ///
+  /// In en, this message translates to:
+  /// **'Token created'**
+  String get registrationTokenCreated;
+
+  /// No description provided for @registrationViewPillar.
+  ///
+  /// In en, this message translates to:
+  /// **'View pillar'**
+  String get registrationViewPillar;
+
+  /// No description provided for @registrationViewSentinel.
+  ///
+  /// In en, this message translates to:
+  /// **'View sentinel'**
+  String get registrationViewSentinel;
+
+  /// No description provided for @registrationViewToken.
+  ///
+  /// In en, this message translates to:
+  /// **'View token'**
+  String get registrationViewToken;
+
+  /// No description provided for @registrationDone.
+  ///
+  /// In en, this message translates to:
+  /// **'Done'**
+  String get registrationDone;
+
+  /// No description provided for @registrationBlock.
+  ///
+  /// In en, this message translates to:
+  /// **'Block'**
+  String get registrationBlock;
+
+  /// No description provided for @registrationChain.
+  ///
+  /// In en, this message translates to:
+  /// **'Chain'**
+  String get registrationChain;
+
+  /// No description provided for @launchSkipHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Click or press a key to skip'**
+  String get launchSkipHint;
+
+  /// No description provided for @plasmaFuseFor.
+  ///
+  /// In en, this message translates to:
+  /// **'For'**
+  String get plasmaFuseFor;
+
+  /// No description provided for @plasmaFuseAnotherAddress.
+  ///
+  /// In en, this message translates to:
+  /// **'Another address'**
+  String get plasmaFuseAnotherAddress;
+
+  /// No description provided for @plasmaFuseAction.
+  ///
+  /// In en, this message translates to:
+  /// **'Fuse {amount} QSR'**
+  String plasmaFuseAction(String amount);
+
+  /// No description provided for @plasmaFuseLockNote.
+  ///
+  /// In en, this message translates to:
+  /// **'Cancel unlocked fuses to recover QSR.'**
+  String get plasmaFuseLockNote;
+
+  /// No description provided for @tokensFlags.
+  ///
+  /// In en, this message translates to:
+  /// **'Flags'**
+  String get tokensFlags;
+
+  /// No description provided for @tokensTransferOwnership.
+  ///
+  /// In en, this message translates to:
+  /// **'Transfer ownership'**
+  String get tokensTransferOwnership;
+
+  /// No description provided for @tokensDomain.
+  ///
+  /// In en, this message translates to:
+  /// **'Domain'**
+  String get tokensDomain;
+
+  /// No description provided for @tokensUtility.
+  ///
+  /// In en, this message translates to:
+  /// **'Utility'**
+  String get tokensUtility;
+
+  /// No description provided for @tokensMintableByOwner.
+  ///
+  /// In en, this message translates to:
+  /// **'Yes, by owner'**
+  String get tokensMintableByOwner;
+
+  /// No description provided for @tokensBurnableByHolder.
+  ///
+  /// In en, this message translates to:
+  /// **'By any holder'**
+  String get tokensBurnableByHolder;
+
+  /// No description provided for @tokensBurnableByOwner.
+  ///
+  /// In en, this message translates to:
+  /// **'By owner'**
+  String get tokensBurnableByOwner;
+
+  /// No description provided for @tokensYes.
+  ///
+  /// In en, this message translates to:
+  /// **'Yes'**
+  String get tokensYes;
+
+  /// No description provided for @tokensNo.
+  ///
+  /// In en, this message translates to:
+  /// **'No'**
+  String get tokensNo;
+
+  /// No description provided for @tokensThisAddress.
+  ///
+  /// In en, this message translates to:
+  /// **'This address'**
+  String get tokensThisAddress;
+
+  /// No description provided for @tokensCopyStandard.
+  ///
+  /// In en, this message translates to:
+  /// **'Copy token standard'**
+  String get tokensCopyStandard;
+
+  /// No description provided for @tokensCopyOwner.
+  ///
+  /// In en, this message translates to:
+  /// **'Copy owner address'**
+  String get tokensCopyOwner;
+
+  /// No description provided for @tokensRemainingSupply.
+  ///
+  /// In en, this message translates to:
+  /// **'{amount} left under the max supply.'**
+  String tokensRemainingSupply(String amount);
+
+  /// No description provided for @tokensTransferNote.
+  ///
+  /// In en, this message translates to:
+  /// **'Only the new owner can give it back.'**
+  String get tokensTransferNote;
+
+  /// No description provided for @tokensActionUnavailable.
+  ///
+  /// In en, this message translates to:
+  /// **'Unavailable'**
+  String get tokensActionUnavailable;
+
+  /// No description provided for @tokensActionSubmitting.
+  ///
+  /// In en, this message translates to:
+  /// **'Submitting'**
+  String get tokensActionSubmitting;
+
+  /// No description provided for @tokensActionSubmitted.
+  ///
+  /// In en, this message translates to:
+  /// **'Submitted'**
+  String get tokensActionSubmitted;
+
+  /// No description provided for @tokensActionUnknown.
+  ///
+  /// In en, this message translates to:
+  /// **'Unknown'**
+  String get tokensActionUnknown;
+
+  /// No description provided for @tokenCreateNameAndSymbol.
+  ///
+  /// In en, this message translates to:
+  /// **'Name and symbol'**
+  String get tokenCreateNameAndSymbol;
+
+  /// No description provided for @tokenCreateOptions.
+  ///
+  /// In en, this message translates to:
+  /// **'Options'**
+  String get tokenCreateOptions;
+
+  /// No description provided for @tokenCreateIssue.
+  ///
+  /// In en, this message translates to:
+  /// **'Issue'**
+  String get tokenCreateIssue;
+
+  /// No description provided for @tokenCreateFee.
+  ///
+  /// In en, this message translates to:
+  /// **'Fee'**
+  String get tokenCreateFee;
+
+  /// No description provided for @tokenCreateHave.
+  ///
+  /// In en, this message translates to:
+  /// **'Have'**
+  String get tokenCreateHave;
+
+  /// No description provided for @tokenCreatePreview.
+  ///
+  /// In en, this message translates to:
+  /// **'Preview'**
+  String get tokenCreatePreview;
+
+  /// No description provided for @tokenCreateBurned.
+  ///
+  /// In en, this message translates to:
+  /// **'burned'**
+  String get tokenCreateBurned;
+
+  /// No description provided for @tokenCreateSymbol.
+  ///
+  /// In en, this message translates to:
+  /// **'Symbol'**
+  String get tokenCreateSymbol;
+
+  /// No description provided for @tokenCreateDomain.
+  ///
+  /// In en, this message translates to:
+  /// **'Domain'**
+  String get tokenCreateDomain;
+
+  /// No description provided for @tokenCreateDomainNote.
+  ///
+  /// In en, this message translates to:
+  /// **'Optional. Where the token is described.'**
+  String get tokenCreateDomainNote;
+
+  /// No description provided for @tokenCreateBack.
+  ///
+  /// In en, this message translates to:
+  /// **'Back'**
+  String get tokenCreateBack;
+
+  /// No description provided for @tokenCreateReviewSupply.
+  ///
+  /// In en, this message translates to:
+  /// **'Review supply'**
+  String get tokenCreateReviewSupply;
+
+  /// No description provided for @tokensBurnable.
+  ///
+  /// In en, this message translates to:
+  /// **'Burnable'**
+  String get tokensBurnable;
+
+  /// No description provided for @tokensAnotherAction.
+  ///
+  /// In en, this message translates to:
+  /// **'Another'**
+  String get tokensAnotherAction;
+
+  /// No description provided for @plasmaFuseAnotherAction.
+  ///
+  /// In en, this message translates to:
+  /// **'Another'**
+  String get plasmaFuseAnotherAction;
+
+  /// No description provided for @nodeSettingsTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Nodes'**
+  String get nodeSettingsTitle;
+
+  /// No description provided for @nodeSettingsAdd.
+  ///
+  /// In en, this message translates to:
+  /// **'Add node'**
+  String get nodeSettingsAdd;
+
+  /// No description provided for @nodeSettingsEmbedded.
+  ///
+  /// In en, this message translates to:
+  /// **'Embedded node'**
+  String get nodeSettingsEmbedded;
+
+  /// No description provided for @nodeSettingsConnected.
+  ///
+  /// In en, this message translates to:
+  /// **'Connected'**
+  String get nodeSettingsConnected;
+
+  /// No description provided for @nodeSettingsUnknown.
+  ///
+  /// In en, this message translates to:
+  /// **'Not checked'**
+  String get nodeSettingsUnknown;
+
+  /// No description provided for @nodeSettingsChainTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Chain identifier'**
+  String get nodeSettingsChainTitle;
+
+  /// No description provided for @nodeSettingsClientChain.
+  ///
+  /// In en, this message translates to:
+  /// **'Client chain {chain}'**
+  String nodeSettingsClientChain(int chain);
+
+  /// No description provided for @nodeSettingsNodeChain.
+  ///
+  /// In en, this message translates to:
+  /// **'Chain {chain}'**
+  String nodeSettingsNodeChain(int chain);
+
+  /// No description provided for @nodeSettingsMomentum.
+  ///
+  /// In en, this message translates to:
+  /// **'Momentum'**
+  String get nodeSettingsMomentum;
+
+  /// No description provided for @nodeSettingsPeers.
+  ///
+  /// In en, this message translates to:
+  /// **'Peers'**
+  String get nodeSettingsPeers;
+
+  /// No description provided for @nodeSettingsPeerIp.
+  ///
+  /// In en, this message translates to:
+  /// **'IP'**
+  String get nodeSettingsPeerIp;
+
+  /// No description provided for @nodeSettingsPeerKey.
+  ///
+  /// In en, this message translates to:
+  /// **'Public key'**
+  String get nodeSettingsPeerKey;
+
+  /// No description provided for @nodeSettingsNone.
+  ///
+  /// In en, this message translates to:
+  /// **'None yet'**
+  String get nodeSettingsNone;
+
+  /// No description provided for @nodeSettingsSporks.
+  ///
+  /// In en, this message translates to:
+  /// **'Sporks'**
+  String get nodeSettingsSporks;
+
+  /// No description provided for @nodeSettingsSporksMode.
+  ///
+  /// In en, this message translates to:
+  /// **'Sporks mode'**
+  String get nodeSettingsSporksMode;
+
+  /// No description provided for @nodeSettingsMismatchTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Chain identifier mismatch'**
+  String get nodeSettingsMismatchTitle;
+
+  /// No description provided for @nodeSettingsMismatchBody.
+  ///
+  /// In en, this message translates to:
+  /// **'Node chain {nodeChain}. Client chain {clientChain}. Proceed?'**
+  String nodeSettingsMismatchBody(int nodeChain, int clientChain);
+
+  /// No description provided for @nodeSettingsProceed.
+  ///
+  /// In en, this message translates to:
+  /// **'Proceed anyway'**
+  String get nodeSettingsProceed;
+
+  /// No description provided for @nodeSettingsChanged.
+  ///
+  /// In en, this message translates to:
+  /// **'Node connected'**
+  String get nodeSettingsChanged;
+
+  /// No description provided for @nodeSettingsAdded.
+  ///
+  /// In en, this message translates to:
+  /// **'Node added'**
+  String get nodeSettingsAdded;
+
+  /// No description provided for @nodeSettingsUpdated.
+  ///
+  /// In en, this message translates to:
+  /// **'Node saved'**
+  String get nodeSettingsUpdated;
+
+  /// No description provided for @nodeSettingsDeleted.
+  ///
+  /// In en, this message translates to:
+  /// **'Node deleted'**
+  String get nodeSettingsDeleted;
+
+  /// No description provided for @nodeSettingsChainChanged.
+  ///
+  /// In en, this message translates to:
+  /// **'Chain changed'**
+  String get nodeSettingsChainChanged;
+
+  /// No description provided for @nodeSettingsFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'Node change failed. Try again.'**
+  String get nodeSettingsFailed;
+
+  /// No description provided for @nodeSettingsSaveFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'Could not save. Try again.'**
+  String get nodeSettingsSaveFailed;
+
+  /// No description provided for @nodeSettingsSessionChanged.
+  ///
+  /// In en, this message translates to:
+  /// **'Session changed. Try again.'**
+  String get nodeSettingsSessionChanged;
+
+  /// No description provided for @nodeSettingsChainHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Used to sign transactions'**
+  String get nodeSettingsChainHint;
+
+  /// No description provided for @nodeSettingsChainInvalid.
+  ///
+  /// In en, this message translates to:
+  /// **'Enter a positive whole number'**
+  String get nodeSettingsChainInvalid;
+
+  /// No description provided for @nodeSettingsUpdating.
+  ///
+  /// In en, this message translates to:
+  /// **'Connecting'**
+  String get nodeSettingsUpdating;
+
+  /// No description provided for @nodeSettingsDeleteQuestion.
+  ///
+  /// In en, this message translates to:
+  /// **'Delete this node?'**
+  String get nodeSettingsDeleteQuestion;
+
+  /// No description provided for @nodeSettingsSynced.
+  ///
+  /// In en, this message translates to:
+  /// **'Synced'**
+  String get nodeSettingsSynced;
+
+  /// No description provided for @nodeSettingsSyncing.
+  ///
+  /// In en, this message translates to:
+  /// **'Syncing'**
+  String get nodeSettingsSyncing;
+
+  /// No description provided for @securitySettingsLockAfter.
+  ///
+  /// In en, this message translates to:
+  /// **'Lock after'**
+  String get securitySettingsLockAfter;
+
+  /// No description provided for @securitySettingsInactivity.
+  ///
+  /// In en, this message translates to:
+  /// **'Of inactivity'**
+  String get securitySettingsInactivity;
+
+  /// No description provided for @securitySettingsMinutes.
+  ///
+  /// In en, this message translates to:
+  /// **'{minutes} min'**
+  String securitySettingsMinutes(int minutes);
+
+  /// No description provided for @securitySettingsHour.
+  ///
+  /// In en, this message translates to:
+  /// **'1 h'**
+  String get securitySettingsHour;
+
+  /// No description provided for @securitySettingsOnClose.
+  ///
+  /// In en, this message translates to:
+  /// **'On close'**
+  String get securitySettingsOnClose;
+
+  /// No description provided for @securitySettingsBiometricUnlock.
+  ///
+  /// In en, this message translates to:
+  /// **'Unlock with {method}'**
+  String securitySettingsBiometricUnlock(String method);
+
+  /// No description provided for @securitySettingsWindowsHello.
+  ///
+  /// In en, this message translates to:
+  /// **'Windows Hello'**
+  String get securitySettingsWindowsHello;
+
+  /// No description provided for @securitySettingsTouchId.
+  ///
+  /// In en, this message translates to:
+  /// **'Touch ID'**
+  String get securitySettingsTouchId;
+
+  /// No description provided for @securitySettingsBiometricHint.
+  ///
+  /// In en, this message translates to:
+  /// **'The password still works. Later.'**
+  String get securitySettingsBiometricHint;
+
+  /// No description provided for @securitySettingsWrongPasswordLimit.
+  ///
+  /// In en, this message translates to:
+  /// **'Remove this wallet after wrong passwords'**
+  String get securitySettingsWrongPasswordLimit;
+
+  /// No description provided for @securitySettingsWrongPasswordHint.
+  ///
+  /// In en, this message translates to:
+  /// **'On by default. Deletes this wallet file and shared app data after the limit. Back up the seed first.'**
+  String get securitySettingsWrongPasswordHint;
+
+  /// No description provided for @securitySettingsOff.
+  ///
+  /// In en, this message translates to:
+  /// **'Off'**
+  String get securitySettingsOff;
+
+  /// No description provided for @securitySettingsChange.
+  ///
+  /// In en, this message translates to:
+  /// **'Change'**
+  String get securitySettingsChange;
+
+  /// No description provided for @securitySettingsPasswordUnavailable.
+  ///
+  /// In en, this message translates to:
+  /// **'Password changes are not available yet.'**
+  String get securitySettingsPasswordUnavailable;
+
+  /// No description provided for @securitySettingsBackup.
+  ///
+  /// In en, this message translates to:
+  /// **'Backup'**
+  String get securitySettingsBackup;
+
+  /// No description provided for @securitySettingsSeedPhrase.
+  ///
+  /// In en, this message translates to:
+  /// **'Seed phrase'**
+  String get securitySettingsSeedPhrase;
+
+  /// No description provided for @securitySettingsSeedPhraseHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Shown on screen, in clear'**
+  String get securitySettingsSeedPhraseHint;
+
+  /// No description provided for @securitySettingsSeedVault.
+  ///
+  /// In en, this message translates to:
+  /// **'Seed Vault'**
+  String get securitySettingsSeedVault;
+
+  /// No description provided for @securitySettingsSeedVaultHint.
+  ///
+  /// In en, this message translates to:
+  /// **'An encrypted file of the seed'**
+  String get securitySettingsSeedVaultHint;
+
+  /// No description provided for @securitySettingsShow.
+  ///
+  /// In en, this message translates to:
+  /// **'Show'**
+  String get securitySettingsShow;
+
+  /// No description provided for @securitySettingsExport.
+  ///
+  /// In en, this message translates to:
+  /// **'Export'**
+  String get securitySettingsExport;
+
+  /// No description provided for @securitySettingsHardwareBackupHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Not on a hardware wallet'**
+  String get securitySettingsHardwareBackupHint;
+
+  /// No description provided for @securitySettingsSignMessage.
+  ///
+  /// In en, this message translates to:
+  /// **'Sign a message'**
+  String get securitySettingsSignMessage;
+
+  /// No description provided for @securitySettingsVerifySignature.
+  ///
+  /// In en, this message translates to:
+  /// **'Verify a signature'**
+  String get securitySettingsVerifySignature;
+
+  /// No description provided for @securitySettingsRemoveWallet.
+  ///
+  /// In en, this message translates to:
+  /// **'Remove wallet'**
+  String get securitySettingsRemoveWallet;
+
+  /// No description provided for @securitySettingsRemoveWalletHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Needs the seed or a Seed Vault'**
+  String get securitySettingsRemoveWalletHint;
+
+  /// No description provided for @securitySettingsMessage.
+  ///
+  /// In en, this message translates to:
+  /// **'Message'**
+  String get securitySettingsMessage;
+
+  /// No description provided for @securitySettingsSignature.
+  ///
+  /// In en, this message translates to:
+  /// **'Signature'**
+  String get securitySettingsSignature;
+
+  /// No description provided for @securitySettingsPublicKey.
+  ///
+  /// In en, this message translates to:
+  /// **'Public key'**
+  String get securitySettingsPublicKey;
+
+  /// No description provided for @securitySettingsPaste.
+  ///
+  /// In en, this message translates to:
+  /// **'Paste'**
+  String get securitySettingsPaste;
+
+  /// No description provided for @securitySettingsSign.
+  ///
+  /// In en, this message translates to:
+  /// **'Sign'**
+  String get securitySettingsSign;
+
+  /// No description provided for @securitySettingsVerify.
+  ///
+  /// In en, this message translates to:
+  /// **'Verify'**
+  String get securitySettingsVerify;
+
+  /// No description provided for @securitySettingsFile.
+  ///
+  /// In en, this message translates to:
+  /// **'File'**
+  String get securitySettingsFile;
+
+  /// No description provided for @securitySettingsSignFile.
+  ///
+  /// In en, this message translates to:
+  /// **'Sign file'**
+  String get securitySettingsSignFile;
+
+  /// No description provided for @securitySettingsVerifyFile.
+  ///
+  /// In en, this message translates to:
+  /// **'Verify file'**
+  String get securitySettingsVerifyFile;
+
+  /// No description provided for @securitySettingsFileSignature.
+  ///
+  /// In en, this message translates to:
+  /// **'File signature'**
+  String get securitySettingsFileSignature;
+
+  /// No description provided for @securitySettingsMessageVerified.
+  ///
+  /// In en, this message translates to:
+  /// **'Signature verified'**
+  String get securitySettingsMessageVerified;
+
+  /// No description provided for @securitySettingsInvalidMessageSignature.
+  ///
+  /// In en, this message translates to:
+  /// **'Message, signature or public key is invalid'**
+  String get securitySettingsInvalidMessageSignature;
+
+  /// No description provided for @securitySettingsFileVerified.
+  ///
+  /// In en, this message translates to:
+  /// **'File signature verified'**
+  String get securitySettingsFileVerified;
+
+  /// No description provided for @securitySettingsInvalidFileSignature.
+  ///
+  /// In en, this message translates to:
+  /// **'File signature or public key is invalid'**
+  String get securitySettingsInvalidFileSignature;
+
+  /// No description provided for @securitySettingsSignFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'Could not sign. Try again.'**
+  String get securitySettingsSignFailed;
+
+  /// No description provided for @securitySettingsVerifyFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'Could not verify. Try again.'**
+  String get securitySettingsVerifyFailed;
+
+  /// No description provided for @securitySettingsSaveFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'Could not save this setting. Try again.'**
+  String get securitySettingsSaveFailed;
+
+  /// No description provided for @securitySettingsSessionChanged.
+  ///
+  /// In en, this message translates to:
+  /// **'Session changed. Try again.'**
+  String get securitySettingsSessionChanged;
+
+  /// No description provided for @securitySettingsLockChanged.
+  ///
+  /// In en, this message translates to:
+  /// **'Lock interval changed'**
+  String get securitySettingsLockChanged;
+
+  /// No description provided for @securitySettingsLimitChanged.
+  ///
+  /// In en, this message translates to:
+  /// **'Wrong-password limit changed'**
+  String get securitySettingsLimitChanged;
+
+  /// No description provided for @securitySettingsChangePassword.
+  ///
+  /// In en, this message translates to:
+  /// **'Change password'**
+  String get securitySettingsChangePassword;
+
+  /// No description provided for @securitySettingsPasswordRules.
+  ///
+  /// In en, this message translates to:
+  /// **'At least 8 characters, with upper and lower case letters, a number and a symbol.'**
+  String get securitySettingsPasswordRules;
+
+  /// No description provided for @securitySettingsCurrentPassword.
+  ///
+  /// In en, this message translates to:
+  /// **'Current password'**
+  String get securitySettingsCurrentPassword;
+
+  /// No description provided for @securitySettingsNewPassword.
+  ///
+  /// In en, this message translates to:
+  /// **'New password'**
+  String get securitySettingsNewPassword;
+
+  /// No description provided for @securitySettingsRepeatPassword.
+  ///
+  /// In en, this message translates to:
+  /// **'Repeat new password'**
+  String get securitySettingsRepeatPassword;
+
+  /// No description provided for @securitySettingsPasswordChangeFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'Password change did not complete.'**
+  String get securitySettingsPasswordChangeFailed;
+
+  /// No description provided for @securitySettingsSeedPrompt.
+  ///
+  /// In en, this message translates to:
+  /// **'Enter the wallet password to show it.'**
+  String get securitySettingsSeedPrompt;
+
+  /// No description provided for @securitySettingsSeedWarning.
+  ///
+  /// In en, this message translates to:
+  /// **'Anyone with these words can spend from this wallet. Point at a word to read it, or press its number to keep it shown.'**
+  String get securitySettingsSeedWarning;
+
+  /// No description provided for @securitySettingsSeedFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'Could not show the seed phrase. Try again.'**
+  String get securitySettingsSeedFailed;
+
+  /// No description provided for @securitySettingsVaultInfoTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Export Seed Vault'**
+  String get securitySettingsVaultInfoTitle;
+
+  /// No description provided for @securitySettingsVaultInfo.
+  ///
+  /// In en, this message translates to:
+  /// **'A Seed Vault is a file of the seed, encrypted with a key you choose next. Keep the file and the key apart and offline. Lose either and the funds are lost.'**
+  String get securitySettingsVaultInfo;
+
+  /// No description provided for @securitySettingsVaultPromise.
+  ///
+  /// In en, this message translates to:
+  /// **'I will keep the Seed Vault and its key safe'**
+  String get securitySettingsVaultPromise;
+
+  /// No description provided for @securitySettingsVaultKey.
+  ///
+  /// In en, this message translates to:
+  /// **'Seed Vault key'**
+  String get securitySettingsVaultKey;
+
+  /// No description provided for @securitySettingsVaultKeyRules.
+  ///
+  /// In en, this message translates to:
+  /// **'The key that opens the file. At least 8 characters, with upper and lower case letters, a number and a symbol.'**
+  String get securitySettingsVaultKeyRules;
+
+  /// No description provided for @securitySettingsRepeatVaultKey.
+  ///
+  /// In en, this message translates to:
+  /// **'Repeat key'**
+  String get securitySettingsRepeatVaultKey;
+
+  /// No description provided for @securitySettingsExportStep.
+  ///
+  /// In en, this message translates to:
+  /// **'Step {step} of 2'**
+  String securitySettingsExportStep(int step);
+
+  /// No description provided for @securitySettingsVaultFileType.
+  ///
+  /// In en, this message translates to:
+  /// **'JSON file'**
+  String get securitySettingsVaultFileType;
+
+  /// No description provided for @securitySettingsVaultExported.
+  ///
+  /// In en, this message translates to:
+  /// **'Seed Vault exported'**
+  String get securitySettingsVaultExported;
+
+  /// No description provided for @securitySettingsVaultExportFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'Could not export the Seed Vault. Try again.'**
+  String get securitySettingsVaultExportFailed;
+
+  /// No description provided for @securitySettingsDone.
+  ///
+  /// In en, this message translates to:
+  /// **'Done'**
+  String get securitySettingsDone;
+
+  /// No description provided for @securitySettingsBack.
+  ///
+  /// In en, this message translates to:
+  /// **'Back'**
+  String get securitySettingsBack;
+
+  /// No description provided for @securitySettingsResetWallet.
+  ///
+  /// In en, this message translates to:
+  /// **'Reset wallet'**
+  String get securitySettingsResetWallet;
+
+  /// No description provided for @securitySettingsResetWarning.
+  ///
+  /// In en, this message translates to:
+  /// **'Deletes this wallet file and shared app data from this computer. Keep the seed phrase, or a Seed Vault and its key, before continuing.'**
+  String get securitySettingsResetWarning;
+
+  /// No description provided for @securitySettingsReset.
+  ///
+  /// In en, this message translates to:
+  /// **'Reset'**
+  String get securitySettingsReset;
+
+  /// No description provided for @walletSettingsAutoReceive.
+  ///
+  /// In en, this message translates to:
+  /// **'Auto-receive'**
+  String get walletSettingsAutoReceive;
+
+  /// No description provided for @walletSettingsAutoReceiveHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Off: receive each transaction by hand'**
+  String get walletSettingsAutoReceiveHint;
+
+  /// No description provided for @walletSettingsDesktopNotifications.
+  ///
+  /// In en, this message translates to:
+  /// **'Desktop notifications'**
+  String get walletSettingsDesktopNotifications;
+
+  /// No description provided for @walletSettingsLaunchAtStartup.
+  ///
+  /// In en, this message translates to:
+  /// **'Launch at startup'**
+  String get walletSettingsLaunchAtStartup;
+
+  /// No description provided for @walletSettingsModes.
+  ///
+  /// In en, this message translates to:
+  /// **'Modes'**
+  String get walletSettingsModes;
+
+  /// No description provided for @walletSettingsModesHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Auto: shown when the selected address owns one'**
+  String get walletSettingsModesHint;
+
+  /// No description provided for @walletSettingsAuto.
+  ///
+  /// In en, this message translates to:
+  /// **'Auto'**
+  String get walletSettingsAuto;
+
+  /// No description provided for @walletSettingsOn.
+  ///
+  /// In en, this message translates to:
+  /// **'On'**
+  String get walletSettingsOn;
+
+  /// No description provided for @walletSettingsOff.
+  ///
+  /// In en, this message translates to:
+  /// **'Off'**
+  String get walletSettingsOff;
+
+  /// No description provided for @walletSettingsWallets.
+  ///
+  /// In en, this message translates to:
+  /// **'Wallets on this computer'**
+  String get walletSettingsWallets;
+
+  /// No description provided for @walletSettingsWalletsHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Rename, remove, add'**
+  String get walletSettingsWalletsHint;
+
+  /// No description provided for @walletSettingsMaintenance.
+  ///
+  /// In en, this message translates to:
+  /// **'Maintenance'**
+  String get walletSettingsMaintenance;
+
+  /// No description provided for @walletSettingsClipboard.
+  ///
+  /// In en, this message translates to:
+  /// **'Clipboard watcher'**
+  String get walletSettingsClipboard;
+
+  /// No description provided for @walletSettingsClipboardHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Offers to connect when a WalletConnect link is copied'**
+  String get walletSettingsClipboardHint;
+
+  /// No description provided for @walletSettingsSaveFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'Could not save. Try again.'**
+  String get walletSettingsSaveFailed;
+
+  /// No description provided for @walletSettingsApplyFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'Saved. Could not apply.'**
+  String get walletSettingsApplyFailed;
+
+  /// No description provided for @walletSettingsUnavailable.
+  ///
+  /// In en, this message translates to:
+  /// **'Unavailable'**
+  String get walletSettingsUnavailable;
+
+  /// No description provided for @walletSettingsDelete.
+  ///
+  /// In en, this message translates to:
+  /// **'Delete'**
+  String get walletSettingsDelete;
+
+  /// No description provided for @walletSettingsCacheHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Clears network cache and closes the app'**
+  String get walletSettingsCacheHint;
+
+  /// No description provided for @securitySettingsVaultExportUncertain.
+  ///
+  /// In en, this message translates to:
+  /// **'Export result unknown. Check the selected file.'**
+  String get securitySettingsVaultExportUncertain;
+
+  /// No description provided for @securitySettingsPolicyUnavailable.
+  ///
+  /// In en, this message translates to:
+  /// **'Setting unavailable'**
+  String get securitySettingsPolicyUnavailable;
+
+  /// No description provided for @appsSettingsWebApps.
+  ///
+  /// In en, this message translates to:
+  /// **'Web apps'**
+  String get appsSettingsWebApps;
+
+  /// No description provided for @appsSettingsWebAppsHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Pages on this computer may ask to connect.'**
+  String get appsSettingsWebAppsHint;
+
+  /// No description provided for @appsSettingsConnected.
+  ///
+  /// In en, this message translates to:
+  /// **'Connected'**
+  String get appsSettingsConnected;
+
+  /// No description provided for @appsSettingsSite.
+  ///
+  /// In en, this message translates to:
+  /// **'Site'**
+  String get appsSettingsSite;
+
+  /// No description provided for @appsSettingsLastUsed.
+  ///
+  /// In en, this message translates to:
+  /// **'Last used'**
+  String get appsSettingsLastUsed;
+
+  /// No description provided for @appsSettingsVia.
+  ///
+  /// In en, this message translates to:
+  /// **'Via'**
+  String get appsSettingsVia;
+
+  /// No description provided for @appsSettingsUnknown.
+  ///
+  /// In en, this message translates to:
+  /// **'Unknown'**
+  String get appsSettingsUnknown;
+
+  /// No description provided for @appsSettingsNone.
+  ///
+  /// In en, this message translates to:
+  /// **'None yet'**
+  String get appsSettingsNone;
+
+  /// No description provided for @appsSettingsWebApp.
+  ///
+  /// In en, this message translates to:
+  /// **'Web app'**
+  String get appsSettingsWebApp;
+
+  /// No description provided for @appsSettingsLink.
+  ///
+  /// In en, this message translates to:
+  /// **'Link'**
+  String get appsSettingsLink;
+
+  /// No description provided for @appsSettingsWalletConnect.
+  ///
+  /// In en, this message translates to:
+  /// **'WalletConnect'**
+  String get appsSettingsWalletConnect;
+
+  /// No description provided for @appsSettingsConnectByLink.
+  ///
+  /// In en, this message translates to:
+  /// **'Connect by link'**
+  String get appsSettingsConnectByLink;
+
+  /// No description provided for @appsSettingsWalletConnectLink.
+  ///
+  /// In en, this message translates to:
+  /// **'WalletConnect link'**
+  String get appsSettingsWalletConnectLink;
+
+  /// No description provided for @appsSettingsConnect.
+  ///
+  /// In en, this message translates to:
+  /// **'Connect'**
+  String get appsSettingsConnect;
+
+  /// No description provided for @appsSettingsDisconnect.
+  ///
+  /// In en, this message translates to:
+  /// **'Disconnect'**
+  String get appsSettingsDisconnect;
+
+  /// No description provided for @appsSettingsDisconnectPairing.
+  ///
+  /// In en, this message translates to:
+  /// **'Disconnect pairing'**
+  String get appsSettingsDisconnectPairing;
+
+  /// No description provided for @appsSettingsSessions.
+  ///
+  /// In en, this message translates to:
+  /// **'Sessions'**
+  String get appsSettingsSessions;
+
+  /// No description provided for @appsSettingsPairings.
+  ///
+  /// In en, this message translates to:
+  /// **'Pairings'**
+  String get appsSettingsPairings;
+
+  /// No description provided for @appsSettingsSession.
+  ///
+  /// In en, this message translates to:
+  /// **'Session'**
+  String get appsSettingsSession;
+
+  /// No description provided for @appsSettingsPairing.
+  ///
+  /// In en, this message translates to:
+  /// **'Pairing'**
+  String get appsSettingsPairing;
+
+  /// No description provided for @appsSettingsTopic.
+  ///
+  /// In en, this message translates to:
+  /// **'Topic'**
+  String get appsSettingsTopic;
+
+  /// No description provided for @appsSettingsUrl.
+  ///
+  /// In en, this message translates to:
+  /// **'URL'**
+  String get appsSettingsUrl;
+
+  /// No description provided for @appsSettingsExpires.
+  ///
+  /// In en, this message translates to:
+  /// **'Expires'**
+  String get appsSettingsExpires;
+
+  /// No description provided for @appsSettingsActive.
+  ///
+  /// In en, this message translates to:
+  /// **'Active'**
+  String get appsSettingsActive;
+
+  /// No description provided for @appsSettingsAcknowledged.
+  ///
+  /// In en, this message translates to:
+  /// **'Acknowledged'**
+  String get appsSettingsAcknowledged;
+
+  /// No description provided for @appsSettingsSummary.
+  ///
+  /// In en, this message translates to:
+  /// **'{sessions, plural, one{1 session} other{{sessions} sessions}} · {pairings, plural, one{1 pairing} other{{pairings} pairings}}'**
+  String appsSettingsSummary(int sessions, int pairings);
+
+  /// No description provided for @appsSettingsOff.
+  ///
+  /// In en, this message translates to:
+  /// **'Off'**
+  String get appsSettingsOff;
+
+  /// No description provided for @appsSettingsStarting.
+  ///
+  /// In en, this message translates to:
+  /// **'Starting'**
+  String get appsSettingsStarting;
+
+  /// No description provided for @appsSettingsNoFreePort.
+  ///
+  /// In en, this message translates to:
+  /// **'No free port'**
+  String get appsSettingsNoFreePort;
+
+  /// No description provided for @appsSettingsNotSaved.
+  ///
+  /// In en, this message translates to:
+  /// **'Not saved'**
+  String get appsSettingsNotSaved;
+
+  /// No description provided for @appsSettingsUnavailable.
+  ///
+  /// In en, this message translates to:
+  /// **'Unavailable'**
+  String get appsSettingsUnavailable;
+
+  /// No description provided for @appsSettingsFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'Could not complete. Try again.'**
+  String get appsSettingsFailed;
+
+  /// No description provided for @appsSettingsOutcomeUnknown.
+  ///
+  /// In en, this message translates to:
+  /// **'Outcome unknown. Check the list.'**
+  String get appsSettingsOutcomeUnknown;
+
+  /// No description provided for @appsSettingsInvalidLink.
+  ///
+  /// In en, this message translates to:
+  /// **'Enter a WalletConnect link'**
+  String get appsSettingsInvalidLink;
+
+  /// No description provided for @appsSettingsScanScreen.
+  ///
+  /// In en, this message translates to:
+  /// **'Scan screen'**
+  String get appsSettingsScanScreen;
+
+  /// No description provided for @appsSettingsCamera.
+  ///
+  /// In en, this message translates to:
+  /// **'Camera'**
+  String get appsSettingsCamera;
+
+  /// No description provided for @appsSettingsInvalidQr.
+  ///
+  /// In en, this message translates to:
+  /// **'Invalid QR code'**
+  String get appsSettingsInvalidQr;
+
+  /// No description provided for @appsSettingsScreenPermission.
+  ///
+  /// In en, this message translates to:
+  /// **'Allow screen recording to scan a QR code.'**
+  String get appsSettingsScreenPermission;
+
+  /// No description provided for @addressesYourAddresses.
+  ///
+  /// In en, this message translates to:
+  /// **'Your addresses'**
+  String get addressesYourAddresses;
+
+  /// No description provided for @addressesContacts.
+  ///
+  /// In en, this message translates to:
+  /// **'Contacts'**
+  String get addressesContacts;
+
+  /// No description provided for @addressesAddAddress.
+  ///
+  /// In en, this message translates to:
+  /// **'Add address'**
+  String get addressesAddAddress;
+
+  /// No description provided for @addressesAddContact.
+  ///
+  /// In en, this message translates to:
+  /// **'Add contact'**
+  String get addressesAddContact;
+
+  /// No description provided for @addressesSelected.
+  ///
+  /// In en, this message translates to:
+  /// **'Selected'**
+  String get addressesSelected;
+
+  /// No description provided for @addressesContactName.
+  ///
+  /// In en, this message translates to:
+  /// **'Name'**
+  String get addressesContactName;
+
+  /// No description provided for @addressesContactAddress.
+  ///
+  /// In en, this message translates to:
+  /// **'Address'**
+  String get addressesContactAddress;
+
+  /// No description provided for @addressesEditContact.
+  ///
+  /// In en, this message translates to:
+  /// **'Edit contact'**
+  String get addressesEditContact;
+
+  /// No description provided for @addressesSent.
+  ///
+  /// In en, this message translates to:
+  /// **'Sent {time}'**
+  String addressesSent(String time);
+
+  /// No description provided for @addressesNoRecord.
+  ///
+  /// In en, this message translates to:
+  /// **'No record'**
+  String get addressesNoRecord;
+
+  /// No description provided for @addressesAccountChain.
+  ///
+  /// In en, this message translates to:
+  /// **'Account chain of {label}'**
+  String addressesAccountChain(String label);
+
+  /// No description provided for @addressesBlockCount.
+  ///
+  /// In en, this message translates to:
+  /// **'{count, plural, one{1 block} other{{count} blocks}}'**
+  String addressesBlockCount(int count);
+
+  /// No description provided for @addressesBalancesUnavailable.
+  ///
+  /// In en, this message translates to:
+  /// **'Balances unavailable. Try again.'**
+  String get addressesBalancesUnavailable;
+
+  /// No description provided for @addressesAccountChainUnavailable.
+  ///
+  /// In en, this message translates to:
+  /// **'Account chain unavailable. Try again.'**
+  String get addressesAccountChainUnavailable;
+
+  /// No description provided for @addressesSaveFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'Changes were not saved. Try again.'**
+  String get addressesSaveFailed;
+
+  /// No description provided for @addressesGenerationFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'Address was not added. Try again.'**
+  String get addressesGenerationFailed;
+
+  /// No description provided for @addressesGenerationUncertain.
+  ///
+  /// In en, this message translates to:
+  /// **'Check Addresses before adding another.'**
+  String get addressesGenerationUncertain;
+
+  /// No description provided for @addressesSavedReopen.
+  ///
+  /// In en, this message translates to:
+  /// **'Saved. Reopen Addresses.'**
+  String get addressesSavedReopen;
+
+  /// No description provided for @addressesNameEmpty.
+  ///
+  /// In en, this message translates to:
+  /// **'Enter a name'**
+  String get addressesNameEmpty;
+
+  /// No description provided for @addressesNameTooLong.
+  ///
+  /// In en, this message translates to:
+  /// **'Name is too long'**
+  String get addressesNameTooLong;
+
+  /// No description provided for @addressesNameTaken.
+  ///
+  /// In en, this message translates to:
+  /// **'Name already exists'**
+  String get addressesNameTaken;
+
+  /// No description provided for @addressesAddressTaken.
+  ///
+  /// In en, this message translates to:
+  /// **'Address already exists'**
+  String get addressesAddressTaken;
+
+  /// No description provided for @addressesInvalidAddress.
+  ///
+  /// In en, this message translates to:
+  /// **'Enter a valid address'**
+  String get addressesInvalidAddress;
+
+  /// No description provided for @addressesLabelTooLong.
+  ///
+  /// In en, this message translates to:
+  /// **'Label is too long'**
+  String get addressesLabelTooLong;
+
+  /// No description provided for @aboutSyrius.
+  ///
+  /// In en, this message translates to:
+  /// **'Syrius'**
+  String get aboutSyrius;
+
+  /// No description provided for @aboutEmbeddedNode.
+  ///
+  /// In en, this message translates to:
+  /// **'Embedded node'**
+  String get aboutEmbeddedNode;
+
+  /// No description provided for @aboutBuild.
+  ///
+  /// In en, this message translates to:
+  /// **'Build'**
+  String get aboutBuild;
+
+  /// No description provided for @aboutUnknown.
+  ///
+  /// In en, this message translates to:
+  /// **'Unknown'**
+  String get aboutUnknown;
+
+  /// No description provided for @aboutBuildNumber.
+  ///
+  /// In en, this message translates to:
+  /// **'Build number'**
+  String get aboutBuildNumber;
+
+  /// No description provided for @aboutLinks.
+  ///
+  /// In en, this message translates to:
+  /// **'Links'**
+  String get aboutLinks;
+
+  /// No description provided for @aboutLinksHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Docs, explorers, community'**
+  String get aboutLinksHint;
+
+  /// No description provided for @aboutComputer.
+  ///
+  /// In en, this message translates to:
+  /// **'This computer'**
+  String get aboutComputer;
+
+  /// No description provided for @aboutComputerHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Paths, platform, wallet type'**
+  String get aboutComputerHint;
+
+  /// No description provided for @aboutLicences.
+  ///
+  /// In en, this message translates to:
+  /// **'Licences'**
+  String get aboutLicences;
+
+  /// No description provided for @aboutWhatChanged.
+  ///
+  /// In en, this message translates to:
+  /// **'What changed'**
+  String get aboutWhatChanged;
+
+  /// No description provided for @aboutDownloadVerify.
+  ///
+  /// In en, this message translates to:
+  /// **'Download and verify'**
+  String get aboutDownloadVerify;
+
+  /// No description provided for @aboutVersion.
+  ///
+  /// In en, this message translates to:
+  /// **'Version'**
+  String get aboutVersion;
+
+  /// No description provided for @aboutWalletType.
+  ///
+  /// In en, this message translates to:
+  /// **'Wallet type'**
+  String get aboutWalletType;
+
+  /// No description provided for @aboutSdk.
+  ///
+  /// In en, this message translates to:
+  /// **'SDK'**
+  String get aboutSdk;
+
+  /// No description provided for @aboutBranch.
+  ///
+  /// In en, this message translates to:
+  /// **'Branch'**
+  String get aboutBranch;
+
+  /// No description provided for @aboutCommit.
+  ///
+  /// In en, this message translates to:
+  /// **'Commit'**
+  String get aboutCommit;
+
+  /// No description provided for @aboutCommitMessage.
+  ///
+  /// In en, this message translates to:
+  /// **'Commit message'**
+  String get aboutCommitMessage;
+
+  /// No description provided for @aboutCommitDate.
+  ///
+  /// In en, this message translates to:
+  /// **'Commit date'**
+  String get aboutCommitDate;
+
+  /// No description provided for @aboutOrigin.
+  ///
+  /// In en, this message translates to:
+  /// **'Origin'**
+  String get aboutOrigin;
+
+  /// No description provided for @aboutHostname.
+  ///
+  /// In en, this message translates to:
+  /// **'Hostname'**
+  String get aboutHostname;
+
+  /// No description provided for @aboutLocalIp.
+  ///
+  /// In en, this message translates to:
+  /// **'Local IP address'**
+  String get aboutLocalIp;
+
+  /// No description provided for @aboutOperatingSystem.
+  ///
+  /// In en, this message translates to:
+  /// **'Operating system'**
+  String get aboutOperatingSystem;
+
+  /// No description provided for @aboutProcessors.
+  ///
+  /// In en, this message translates to:
+  /// **'Processors'**
+  String get aboutProcessors;
+
+  /// No description provided for @aboutPaths.
+  ///
+  /// In en, this message translates to:
+  /// **'Paths'**
+  String get aboutPaths;
+
+  /// No description provided for @aboutZenonData.
+  ///
+  /// In en, this message translates to:
+  /// **'Zenon data'**
+  String get aboutZenonData;
+
+  /// No description provided for @aboutCache.
+  ///
+  /// In en, this message translates to:
+  /// **'Cache'**
+  String get aboutCache;
+
+  /// No description provided for @aboutWallet.
+  ///
+  /// In en, this message translates to:
+  /// **'Wallet'**
+  String get aboutWallet;
+
+  /// No description provided for @aboutOpenLink.
+  ///
+  /// In en, this message translates to:
+  /// **'Open link'**
+  String get aboutOpenLink;
+
+  /// No description provided for @aboutOpenFolder.
+  ///
+  /// In en, this message translates to:
+  /// **'Open folder'**
+  String get aboutOpenFolder;
+
+  /// No description provided for @aboutLicencesLoading.
+  ///
+  /// In en, this message translates to:
+  /// **'Loading'**
+  String get aboutLicencesLoading;
+
+  /// No description provided for @aboutLicencesFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'Could not load licences. Try again.'**
+  String get aboutLicencesFailed;
+
+  /// No description provided for @aboutRetry.
+  ///
+  /// In en, this message translates to:
+  /// **'Retry'**
+  String get aboutRetry;
+
+  /// No description provided for @aboutWebsites.
+  ///
+  /// In en, this message translates to:
+  /// **'Websites'**
+  String get aboutWebsites;
+
+  /// No description provided for @aboutExplorers.
+  ///
+  /// In en, this message translates to:
+  /// **'Explorers'**
+  String get aboutExplorers;
+
+  /// No description provided for @aboutSocial.
+  ///
+  /// In en, this message translates to:
+  /// **'Social'**
+  String get aboutSocial;
+
+  /// No description provided for @aboutDocumentation.
+  ///
+  /// In en, this message translates to:
+  /// **'Documentation'**
+  String get aboutDocumentation;
+
+  /// No description provided for @aboutZenonNetwork.
+  ///
+  /// In en, this message translates to:
+  /// **'Zenon Network'**
+  String get aboutZenonNetwork;
+
+  /// No description provided for @aboutCommunityForum.
+  ///
+  /// In en, this message translates to:
+  /// **'Community forum'**
+  String get aboutCommunityForum;
+
+  /// No description provided for @aboutZenonTools.
+  ///
+  /// In en, this message translates to:
+  /// **'Zenon Tools'**
+  String get aboutZenonTools;
+
+  /// No description provided for @aboutZenonOrg.
+  ///
+  /// In en, this message translates to:
+  /// **'Zenon ORG'**
+  String get aboutZenonOrg;
+
+  /// No description provided for @aboutZenonHub.
+  ///
+  /// In en, this message translates to:
+  /// **'Zenon Hub'**
+  String get aboutZenonHub;
+
+  /// No description provided for @aboutExplorer.
+  ///
+  /// In en, this message translates to:
+  /// **'Explorer'**
+  String get aboutExplorer;
+
+  /// No description provided for @aboutHubExplorer.
+  ///
+  /// In en, this message translates to:
+  /// **'Hub explorer'**
+  String get aboutHubExplorer;
+
+  /// No description provided for @aboutTwitter.
+  ///
+  /// In en, this message translates to:
+  /// **'Twitter'**
+  String get aboutTwitter;
+
+  /// No description provided for @aboutDiscord.
+  ///
+  /// In en, this message translates to:
+  /// **'Discord'**
+  String get aboutDiscord;
+
+  /// No description provided for @aboutTelegram.
+  ///
+  /// In en, this message translates to:
+  /// **'Telegram'**
+  String get aboutTelegram;
+
+  /// No description provided for @aboutMedium.
+  ///
+  /// In en, this message translates to:
+  /// **'Medium'**
+  String get aboutMedium;
+
+  /// No description provided for @aboutGithub.
+  ///
+  /// In en, this message translates to:
+  /// **'GitHub'**
+  String get aboutGithub;
+
+  /// No description provided for @aboutBitcoinTalk.
+  ///
+  /// In en, this message translates to:
+  /// **'Bitcoin Talk'**
+  String get aboutBitcoinTalk;
+
+  /// No description provided for @aboutReddit.
+  ///
+  /// In en, this message translates to:
+  /// **'Reddit'**
+  String get aboutReddit;
+
+  /// No description provided for @aboutYoutube.
+  ///
+  /// In en, this message translates to:
+  /// **'YouTube'**
+  String get aboutYoutube;
+
+  /// No description provided for @aboutWiki.
+  ///
+  /// In en, this message translates to:
+  /// **'Wiki'**
+  String get aboutWiki;
+
+  /// No description provided for @aboutCommunityWiki.
+  ///
+  /// In en, this message translates to:
+  /// **'Community wiki'**
+  String get aboutCommunityWiki;
+
+  /// No description provided for @aboutWhitepaper.
+  ///
+  /// In en, this message translates to:
+  /// **'Whitepaper'**
+  String get aboutWhitepaper;
+
+  /// No description provided for @originalsTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Originals'**
+  String get originalsTitle;
+
+  /// No description provided for @originalsSince.
+  ///
+  /// In en, this message translates to:
+  /// **'Since Syrius 0.0.5, April 2022'**
+  String get originalsSince;
+
+  /// No description provided for @originalsPlayLaunch.
+  ///
+  /// In en, this message translates to:
+  /// **'Play launch'**
+  String get originalsPlayLaunch;
+
+  /// No description provided for @originalsLaunch.
+  ///
+  /// In en, this message translates to:
+  /// **'Launch'**
+  String get originalsLaunch;
+
+  /// No description provided for @originalsLaunchPlace.
+  ///
+  /// In en, this message translates to:
+  /// **'Every start, then the lock card'**
+  String get originalsLaunchPlace;
+
+  /// No description provided for @originalsGlobe.
+  ///
+  /// In en, this message translates to:
+  /// **'Globe'**
+  String get originalsGlobe;
+
+  /// No description provided for @originalsGlobePlace.
+  ///
+  /// In en, this message translates to:
+  /// **'Welcome'**
+  String get originalsGlobePlace;
+
+  /// No description provided for @originalsMap.
+  ///
+  /// In en, this message translates to:
+  /// **'Map'**
+  String get originalsMap;
+
+  /// No description provided for @originalsMapPlace.
+  ///
+  /// In en, this message translates to:
+  /// **'Wallet ready'**
+  String get originalsMapPlace;
+
+  /// No description provided for @originalsPillar.
+  ///
+  /// In en, this message translates to:
+  /// **'Pillar'**
+  String get originalsPillar;
+
+  /// No description provided for @originalsPillarPlace.
+  ///
+  /// In en, this message translates to:
+  /// **'Your pillar, Spawn'**
+  String get originalsPillarPlace;
+
+  /// No description provided for @originalsSentinel.
+  ///
+  /// In en, this message translates to:
+  /// **'Sentinel'**
+  String get originalsSentinel;
+
+  /// No description provided for @originalsSentinelPlace.
+  ///
+  /// In en, this message translates to:
+  /// **'Your sentinel, Spawn'**
+  String get originalsSentinelPlace;
+
+  /// No description provided for @originalsZts.
+  ///
+  /// In en, this message translates to:
+  /// **'ZTS'**
+  String get originalsZts;
+
+  /// No description provided for @originalsZtsPlace.
+  ///
+  /// In en, this message translates to:
+  /// **'Tokens, Create token'**
+  String get originalsZtsPlace;
+
+  /// No description provided for @originalsPlasma.
+  ///
+  /// In en, this message translates to:
+  /// **'Generating plasma, in the strip'**
+  String get originalsPlasma;
+
+  /// No description provided for @originalsHidden.
+  ///
+  /// In en, this message translates to:
+  /// **'Hidden balances'**
+  String get originalsHidden;
+
+  /// No description provided for @originalsEmpty.
+  ///
+  /// In en, this message translates to:
+  /// **'Empty lists'**
+  String get originalsEmpty;
+
+  /// No description provided for @originalsHover.
+  ///
+  /// In en, this message translates to:
+  /// **'Hover to play'**
+  String get originalsHover;
+
+  /// No description provided for @welcomeTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Welcome'**
+  String get welcomeTitle;
+
+  /// No description provided for @welcomeSubtitle.
+  ///
+  /// In en, this message translates to:
+  /// **'One wallet, every address you will need.'**
+  String get welcomeSubtitle;
+
+  /// No description provided for @welcomeCreate.
+  ///
+  /// In en, this message translates to:
+  /// **'Create wallet'**
+  String get welcomeCreate;
+
+  /// No description provided for @welcomeCreateHint.
+  ///
+  /// In en, this message translates to:
+  /// **'A new seed of 12 or 24 words'**
+  String get welcomeCreateHint;
+
+  /// No description provided for @welcomeImport.
+  ///
+  /// In en, this message translates to:
+  /// **'Import wallet'**
+  String get welcomeImport;
+
+  /// No description provided for @welcomeImportHint.
+  ///
+  /// In en, this message translates to:
+  /// **'A seed, or a wallet file dropped here'**
+  String get welcomeImportHint;
+
+  /// No description provided for @welcomeHardware.
+  ///
+  /// In en, this message translates to:
+  /// **'Hardware wallet'**
+  String get welcomeHardware;
+
+  /// No description provided for @welcomeHardwareHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Ledger, with the Zenon app open'**
+  String get welcomeHardwareHint;
+
+  /// No description provided for @welcomeSettingsHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Node and chain can be changed later in Settings.'**
+  String get welcomeSettingsHint;
+
+  /// No description provided for @swapListTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Swaps'**
+  String get swapListTitle;
+
+  /// No description provided for @swapListAll.
+  ///
+  /// In en, this message translates to:
+  /// **'All'**
+  String get swapListAll;
+
+  /// No description provided for @swapListActive.
+  ///
+  /// In en, this message translates to:
+  /// **'Active'**
+  String get swapListActive;
+
+  /// No description provided for @swapListCompleted.
+  ///
+  /// In en, this message translates to:
+  /// **'Completed'**
+  String get swapListCompleted;
+
+  /// No description provided for @swapListReclaimable.
+  ///
+  /// In en, this message translates to:
+  /// **'Reclaimable'**
+  String get swapListReclaimable;
+
+  /// No description provided for @swapListToReclaim.
+  ///
+  /// In en, this message translates to:
+  /// **'To reclaim'**
+  String get swapListToReclaim;
+
+  /// No description provided for @swapListWaiting.
+  ///
+  /// In en, this message translates to:
+  /// **'Waiting'**
+  String get swapListWaiting;
+
+  /// No description provided for @swapListStarting.
+  ///
+  /// In en, this message translates to:
+  /// **'Starting'**
+  String get swapListStarting;
+
+  /// No description provided for @swapListUnsuccessful.
+  ///
+  /// In en, this message translates to:
+  /// **'Unsuccessful'**
+  String get swapListUnsuccessful;
+
+  /// No description provided for @swapListYouSend.
+  ///
+  /// In en, this message translates to:
+  /// **'You send'**
+  String get swapListYouSend;
+
+  /// No description provided for @swapListYouReceive.
+  ///
+  /// In en, this message translates to:
+  /// **'You receive'**
+  String get swapListYouReceive;
+
+  /// No description provided for @swapListCounterparty.
+  ///
+  /// In en, this message translates to:
+  /// **'Counterparty'**
+  String get swapListCounterparty;
+
+  /// No description provided for @swapListExpires.
+  ///
+  /// In en, this message translates to:
+  /// **'Expires'**
+  String get swapListExpires;
+
+  /// No description provided for @swapListStarted.
+  ///
+  /// In en, this message translates to:
+  /// **'Started'**
+  String get swapListStarted;
+
+  /// No description provided for @swapListYourDepositId.
+  ///
+  /// In en, this message translates to:
+  /// **'Your deposit ID'**
+  String get swapListYourDepositId;
+
+  /// No description provided for @swapListCounterpartyDepositId.
+  ///
+  /// In en, this message translates to:
+  /// **'Counterparty deposit ID'**
+  String get swapListCounterpartyDepositId;
+
+  /// No description provided for @swapListRate.
+  ///
+  /// In en, this message translates to:
+  /// **'Rate'**
+  String get swapListRate;
+
+  /// No description provided for @swapListUnknown.
+  ///
+  /// In en, this message translates to:
+  /// **'Unknown'**
+  String get swapListUnknown;
+
+  /// No description provided for @swapListWaitingNotice.
+  ///
+  /// In en, this message translates to:
+  /// **'Waiting for the counterparty. Keep Syrius open.'**
+  String get swapListWaitingNotice;
+
+  /// No description provided for @swapListExpiryNotice.
+  ///
+  /// In en, this message translates to:
+  /// **'Reclaim after the deposit expires.'**
+  String get swapListExpiryNotice;
+
+  /// No description provided for @swapListJoin.
+  ///
+  /// In en, this message translates to:
+  /// **'Join swap'**
+  String get swapListJoin;
+
+  /// No description provided for @swapListStart.
+  ///
+  /// In en, this message translates to:
+  /// **'Start swap'**
+  String get swapListStart;
+
+  /// No description provided for @swapListOpen.
+  ///
+  /// In en, this message translates to:
+  /// **'Open swap'**
+  String get swapListOpen;
+
+  /// No description provided for @swapListReclaim.
+  ///
+  /// In en, this message translates to:
+  /// **'Reclaim'**
+  String get swapListReclaim;
+
+  /// No description provided for @swapListRecover.
+  ///
+  /// In en, this message translates to:
+  /// **'Recover deposit'**
+  String get swapListRecover;
+
+  /// No description provided for @swapListTutorial.
+  ///
+  /// In en, this message translates to:
+  /// **'Swap tutorial'**
+  String get swapListTutorial;
+
+  /// No description provided for @swapListClearHistory.
+  ///
+  /// In en, this message translates to:
+  /// **'Clear history'**
+  String get swapListClearHistory;
+
+  /// No description provided for @swapListDelete.
+  ///
+  /// In en, this message translates to:
+  /// **'Delete swap'**
+  String get swapListDelete;
+
+  /// No description provided for @swapListDeleteWarning.
+  ///
+  /// In en, this message translates to:
+  /// **'This cannot be undone.'**
+  String get swapListDeleteWarning;
+
+  /// No description provided for @swapListClearWarning.
+  ///
+  /// In en, this message translates to:
+  /// **'Active swaps are kept. This cannot be undone.'**
+  String get swapListClearWarning;
+
+  /// No description provided for @swapListUnavailable.
+  ///
+  /// In en, this message translates to:
+  /// **'Swaps unavailable. Try again.'**
+  String get swapListUnavailable;
+
+  /// No description provided for @swapListSourceChanged.
+  ///
+  /// In en, this message translates to:
+  /// **'Wallet or node changed. Refresh swaps.'**
+  String get swapListSourceChanged;
+
+  /// No description provided for @swapListRefresh.
+  ///
+  /// In en, this message translates to:
+  /// **'Refresh'**
+  String get swapListRefresh;
+
+  /// No description provided for @swapListMore.
+  ///
+  /// In en, this message translates to:
+  /// **'More'**
+  String get swapListMore;
+
+  /// No description provided for @swapListHistoryFull.
+  ///
+  /// In en, this message translates to:
+  /// **'History full'**
+  String get swapListHistoryFull;
+
+  /// No description provided for @swapListHistoryFullHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Completed swaps may be removed when a new swap starts.'**
+  String get swapListHistoryFullHint;
+
+  /// No description provided for @swapListCopyForThem.
+  ///
+  /// In en, this message translates to:
+  /// **'Copy for them'**
+  String get swapListCopyForThem;
+
+  /// No description provided for @swapListDetails.
+  ///
+  /// In en, this message translates to:
+  /// **'Details'**
+  String get swapListDetails;
+
+  /// No description provided for @swapListSender.
+  ///
+  /// In en, this message translates to:
+  /// **'Sender'**
+  String get swapListSender;
+
+  /// No description provided for @swapListRecipient.
+  ///
+  /// In en, this message translates to:
+  /// **'Recipient'**
+  String get swapListRecipient;
+
+  /// No description provided for @swapListDepositId.
+  ///
+  /// In en, this message translates to:
+  /// **'Deposit ID'**
+  String get swapListDepositId;
+
+  /// No description provided for @swapListInitialDepositId.
+  ///
+  /// In en, this message translates to:
+  /// **'Initial deposit ID'**
+  String get swapListInitialDepositId;
+
+  /// No description provided for @swapListHashlock.
+  ///
+  /// In en, this message translates to:
+  /// **'Hashlock'**
+  String get swapListHashlock;
+
+  /// No description provided for @swapListYourAddress.
+  ///
+  /// In en, this message translates to:
+  /// **'Your address'**
+  String get swapListYourAddress;
+
+  /// No description provided for @swapListTokenStandard.
+  ///
+  /// In en, this message translates to:
+  /// **'Token standard'**
+  String get swapListTokenStandard;
+
+  /// No description provided for @swapListExpired.
+  ///
+  /// In en, this message translates to:
+  /// **'Expired'**
+  String get swapListExpired;
+
+  /// No description provided for @swapListVerified.
+  ///
+  /// In en, this message translates to:
+  /// **'Verified'**
+  String get swapListVerified;
+
+  /// No description provided for @swapListFavorites.
+  ///
+  /// In en, this message translates to:
+  /// **'In your favorites'**
+  String get swapListFavorites;
+
+  /// No description provided for @swapListUnverified.
+  ///
+  /// In en, this message translates to:
+  /// **'Not in your favorites'**
+  String get swapListUnverified;
+
+  /// No description provided for @swapListPlasmaWait.
+  ///
+  /// In en, this message translates to:
+  /// **'Wait for plasma to generate.'**
+  String get swapListPlasmaWait;
+
+  /// No description provided for @acceleratorFund.
+  ///
+  /// In en, this message translates to:
+  /// **'Fund'**
+  String get acceleratorFund;
+
+  /// No description provided for @acceleratorVoting.
+  ///
+  /// In en, this message translates to:
+  /// **'Voting'**
+  String get acceleratorVoting;
+
+  /// No description provided for @acceleratorNeedYourPillar.
+  ///
+  /// In en, this message translates to:
+  /// **'need your pillar'**
+  String get acceleratorNeedYourPillar;
+
+  /// No description provided for @acceleratorDonate.
+  ///
+  /// In en, this message translates to:
+  /// **'Donate'**
+  String get acceleratorDonate;
+
+  /// No description provided for @acceleratorCreateProject.
+  ///
+  /// In en, this message translates to:
+  /// **'Create project'**
+  String get acceleratorCreateProject;
+
+  /// No description provided for @acceleratorActive.
+  ///
+  /// In en, this message translates to:
+  /// **'Active'**
+  String get acceleratorActive;
+
+  /// No description provided for @acceleratorMine.
+  ///
+  /// In en, this message translates to:
+  /// **'Mine'**
+  String get acceleratorMine;
+
+  /// No description provided for @acceleratorAll.
+  ///
+  /// In en, this message translates to:
+  /// **'All'**
+  String get acceleratorAll;
+
+  /// No description provided for @acceleratorSearch.
+  ///
+  /// In en, this message translates to:
+  /// **'Search'**
+  String get acceleratorSearch;
+
+  /// No description provided for @acceleratorNewest.
+  ///
+  /// In en, this message translates to:
+  /// **'Newest'**
+  String get acceleratorNewest;
+
+  /// No description provided for @acceleratorOldest.
+  ///
+  /// In en, this message translates to:
+  /// **'Oldest'**
+  String get acceleratorOldest;
+
+  /// No description provided for @acceleratorProject.
+  ///
+  /// In en, this message translates to:
+  /// **'Project'**
+  String get acceleratorProject;
+
+  /// No description provided for @acceleratorBudget.
+  ///
+  /// In en, this message translates to:
+  /// **'Budget'**
+  String get acceleratorBudget;
+
+  /// No description provided for @acceleratorVotes.
+  ///
+  /// In en, this message translates to:
+  /// **'Votes'**
+  String get acceleratorVotes;
+
+  /// No description provided for @acceleratorQuorum.
+  ///
+  /// In en, this message translates to:
+  /// **'Quorum'**
+  String get acceleratorQuorum;
+
+  /// No description provided for @acceleratorStatus.
+  ///
+  /// In en, this message translates to:
+  /// **'Status'**
+  String get acceleratorStatus;
+
+  /// No description provided for @acceleratorYourVote.
+  ///
+  /// In en, this message translates to:
+  /// **'Your vote'**
+  String get acceleratorYourVote;
+
+  /// No description provided for @acceleratorAccepted.
+  ///
+  /// In en, this message translates to:
+  /// **'Accepted'**
+  String get acceleratorAccepted;
+
+  /// No description provided for @acceleratorPaid.
+  ///
+  /// In en, this message translates to:
+  /// **'Paid'**
+  String get acceleratorPaid;
+
+  /// No description provided for @acceleratorCompleted.
+  ///
+  /// In en, this message translates to:
+  /// **'Completed'**
+  String get acceleratorCompleted;
+
+  /// No description provided for @acceleratorRejected.
+  ///
+  /// In en, this message translates to:
+  /// **'Rejected'**
+  String get acceleratorRejected;
+
+  /// No description provided for @acceleratorUnknown.
+  ///
+  /// In en, this message translates to:
+  /// **'Unknown'**
+  String get acceleratorUnknown;
+
+  /// No description provided for @acceleratorReadFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'Network error. Try again.'**
+  String get acceleratorReadFailed;
+
+  /// No description provided for @acceleratorByOwner.
+  ///
+  /// In en, this message translates to:
+  /// **'by {owner} · {age}'**
+  String acceleratorByOwner(String owner, String age);
+
+  /// No description provided for @acceleratorVoteTally.
+  ///
+  /// In en, this message translates to:
+  /// **'{yes} · {no} · {abstain}'**
+  String acceleratorVoteTally(int yes, int no, int abstain);
+
+  /// No description provided for @acceleratorNoneYet.
+  ///
+  /// In en, this message translates to:
+  /// **'None yet'**
+  String get acceleratorNoneYet;
+
+  /// No description provided for @acceleratorRefresh.
+  ///
+  /// In en, this message translates to:
+  /// **'Refresh'**
+  String get acceleratorRefresh;
+
+  /// No description provided for @swapListStatus.
+  ///
+  /// In en, this message translates to:
+  /// **'Status'**
+  String get swapListStatus;
+
+  /// No description provided for @walletReadyTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Your wallet is ready'**
+  String get walletReadyTitle;
+
+  /// No description provided for @walletReadyFirstAddress.
+  ///
+  /// In en, this message translates to:
+  /// **'Address 1'**
+  String get walletReadyFirstAddress;
+
+  /// No description provided for @walletReadyOpen.
+  ///
+  /// In en, this message translates to:
+  /// **'Open wallet'**
+  String get walletReadyOpen;
+
+  /// No description provided for @walletReadyCopy.
+  ///
+  /// In en, this message translates to:
+  /// **'Copy address'**
+  String get walletReadyCopy;
+
+  /// No description provided for @walletReadyUnknown.
+  ///
+  /// In en, this message translates to:
+  /// **'Unknown'**
+  String get walletReadyUnknown;
+
+  /// No description provided for @walletReadySeed.
+  ///
+  /// In en, this message translates to:
+  /// **'Seed'**
+  String get walletReadySeed;
+
+  /// No description provided for @walletReadyConfirm.
+  ///
+  /// In en, this message translates to:
+  /// **'Confirm'**
+  String get walletReadyConfirm;
+
+  /// No description provided for @walletReadyPassword.
+  ///
+  /// In en, this message translates to:
+  /// **'Password'**
+  String get walletReadyPassword;
+
+  /// No description provided for @walletReadyReady.
+  ///
+  /// In en, this message translates to:
+  /// **'Ready'**
+  String get walletReadyReady;
+
+  /// No description provided for @walletReadyDevice.
+  ///
+  /// In en, this message translates to:
+  /// **'Device'**
+  String get walletReadyDevice;
+
+  /// No description provided for @entryBack.
+  ///
+  /// In en, this message translates to:
+  /// **'Back'**
+  String get entryBack;
+
+  /// No description provided for @entryReady.
+  ///
+  /// In en, this message translates to:
+  /// **'Ready'**
+  String get entryReady;
+
+  /// No description provided for @importWalletTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Import your wallet'**
+  String get importWalletTitle;
+
+  /// No description provided for @importSeedOrFile.
+  ///
+  /// In en, this message translates to:
+  /// **'Seed or file'**
+  String get importSeedOrFile;
+
+  /// No description provided for @importSeedHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Type your seed, or drop a wallet file'**
+  String get importSeedHint;
+
+  /// No description provided for @importFileHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Any file name. It is accepted if it decrypts as a Syrius keyfile.'**
+  String get importFileHint;
+
+  /// No description provided for @importFileSelected.
+  ///
+  /// In en, this message translates to:
+  /// **'Wallet file selected'**
+  String get importFileSelected;
+
+  /// No description provided for @importFileInvalid.
+  ///
+  /// In en, this message translates to:
+  /// **'Not a Syrius wallet file'**
+  String get importFileInvalid;
+
+  /// No description provided for @importSeedInvalid.
+  ///
+  /// In en, this message translates to:
+  /// **'Check the seed words and their order.'**
+  String get importSeedInvalid;
+
+  /// No description provided for @importWordCount.
+  ///
+  /// In en, this message translates to:
+  /// **'{count} of {total}'**
+  String importWordCount(int count, int total);
+
+  /// No description provided for @importUnlockTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Unlock the wallet file'**
+  String get importUnlockTitle;
+
+  /// No description provided for @importUnlockHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Enter the password it was saved with'**
+  String get importUnlockHint;
+
+  /// No description provided for @importPasswordIncorrect.
+  ///
+  /// In en, this message translates to:
+  /// **'Incorrect password'**
+  String get importPasswordIncorrect;
+
+  /// No description provided for @importDecryptFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'Could not unlock this file. Try again.'**
+  String get importDecryptFailed;
+
+  /// No description provided for @importPasswordTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Create a wallet password'**
+  String get importPasswordTitle;
+
+  /// No description provided for @importPasswordHint.
+  ///
+  /// In en, this message translates to:
+  /// **'You will need it to unlock the wallet'**
+  String get importPasswordHint;
+
+  /// No description provided for @importConfirmPassword.
+  ///
+  /// In en, this message translates to:
+  /// **'Confirm password'**
+  String get importConfirmPassword;
+
+  /// No description provided for @seedQuizTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Confirm your seed'**
+  String get seedQuizTitle;
+
+  /// No description provided for @seedQuizSeed.
+  ///
+  /// In en, this message translates to:
+  /// **'Seed'**
+  String get seedQuizSeed;
+
+  /// No description provided for @seedQuizConfirm.
+  ///
+  /// In en, this message translates to:
+  /// **'Confirm'**
+  String get seedQuizConfirm;
+
+  /// No description provided for @seedQuizWord.
+  ///
+  /// In en, this message translates to:
+  /// **'Word {position}'**
+  String seedQuizWord(int position);
+
+  /// No description provided for @seedQuizProgress.
+  ///
+  /// In en, this message translates to:
+  /// **'{count} of 3 done.'**
+  String seedQuizProgress(int count);
+
+  /// No description provided for @seedQuizInvalid.
+  ///
+  /// In en, this message translates to:
+  /// **'Check your seed before continuing.'**
+  String get seedQuizInvalid;
+
+  /// No description provided for @entryPasswordRule.
+  ///
+  /// In en, this message translates to:
+  /// **'At least 8 characters, with an upper and a lower case letter, a number and a symbol'**
+  String get entryPasswordRule;
+
+  /// No description provided for @acceleratorProjects.
+  ///
+  /// In en, this message translates to:
+  /// **'Projects'**
+  String get acceleratorProjects;
+
+  /// No description provided for @acceleratorArticle.
+  ///
+  /// In en, this message translates to:
+  /// **'Article'**
+  String get acceleratorArticle;
+
+  /// No description provided for @acceleratorExplorer.
+  ///
+  /// In en, this message translates to:
+  /// **'Explorer'**
+  String get acceleratorExplorer;
+
+  /// No description provided for @acceleratorOwner.
+  ///
+  /// In en, this message translates to:
+  /// **'Owner'**
+  String get acceleratorOwner;
+
+  /// No description provided for @acceleratorCreated.
+  ///
+  /// In en, this message translates to:
+  /// **'Created'**
+  String get acceleratorCreated;
+
+  /// No description provided for @acceleratorPhases.
+  ///
+  /// In en, this message translates to:
+  /// **'Phases'**
+  String get acceleratorPhases;
+
+  /// No description provided for @acceleratorCreatePhase.
+  ///
+  /// In en, this message translates to:
+  /// **'Create phase'**
+  String get acceleratorCreatePhase;
+
+  /// No description provided for @acceleratorUpdatePhase.
+  ///
+  /// In en, this message translates to:
+  /// **'Update phase'**
+  String get acceleratorUpdatePhase;
+
+  /// No description provided for @acceleratorVoteAs.
+  ///
+  /// In en, this message translates to:
+  /// **'Vote as {name}, {target}'**
+  String acceleratorVoteAs(String name, String target);
+
+  /// No description provided for @acceleratorPhaseNumber.
+  ///
+  /// In en, this message translates to:
+  /// **'Phase {number}'**
+  String acceleratorPhaseNumber(int number);
+
+  /// No description provided for @acceleratorYes.
+  ///
+  /// In en, this message translates to:
+  /// **'Yes'**
+  String get acceleratorYes;
+
+  /// No description provided for @acceleratorNo.
+  ///
+  /// In en, this message translates to:
+  /// **'No'**
+  String get acceleratorNo;
+
+  /// No description provided for @acceleratorAbstain.
+  ///
+  /// In en, this message translates to:
+  /// **'Abstain'**
+  String get acceleratorAbstain;
+
+  /// No description provided for @acceleratorProof.
+  ///
+  /// In en, this message translates to:
+  /// **'Proof'**
+  String get acceleratorProof;
+
+  /// No description provided for @acceleratorVotingClosed.
+  ///
+  /// In en, this message translates to:
+  /// **'Voting closed'**
+  String get acceleratorVotingClosed;
+
+  /// No description provided for @acceleratorVoteUnavailable.
+  ///
+  /// In en, this message translates to:
+  /// **'Voting unavailable'**
+  String get acceleratorVoteUnavailable;
+
+  /// No description provided for @acceleratorSessionChanged.
+  ///
+  /// In en, this message translates to:
+  /// **'Wallet changed. Reopen this view.'**
+  String get acceleratorSessionChanged;
+
+  /// No description provided for @acceleratorActionUnknown.
+  ///
+  /// In en, this message translates to:
+  /// **'Outcome unknown. Check activity.'**
+  String get acceleratorActionUnknown;
+
+  /// No description provided for @acceleratorActionSubmitted.
+  ///
+  /// In en, this message translates to:
+  /// **'Submitted'**
+  String get acceleratorActionSubmitted;
+
+  /// No description provided for @acceleratorActionRefused.
+  ///
+  /// In en, this message translates to:
+  /// **'Action refused. Refresh and try again.'**
+  String get acceleratorActionRefused;
+
+  /// No description provided for @acceleratorActionHeld.
+  ///
+  /// In en, this message translates to:
+  /// **'Original action pending'**
+  String get acceleratorActionHeld;
+
+  /// No description provided for @acceleratorNewAction.
+  ///
+  /// In en, this message translates to:
+  /// **'New action'**
+  String get acceleratorNewAction;
+
+  /// No description provided for @acceleratorDetails.
+  ///
+  /// In en, this message translates to:
+  /// **'Details'**
+  String get acceleratorDetails;
+
+  /// No description provided for @acceleratorSubmit.
+  ///
+  /// In en, this message translates to:
+  /// **'Submit'**
+  String get acceleratorSubmit;
+
+  /// No description provided for @acceleratorName.
+  ///
+  /// In en, this message translates to:
+  /// **'Name'**
+  String get acceleratorName;
+
+  /// No description provided for @acceleratorDescription.
+  ///
+  /// In en, this message translates to:
+  /// **'Description'**
+  String get acceleratorDescription;
+
+  /// No description provided for @acceleratorUrl.
+  ///
+  /// In en, this message translates to:
+  /// **'URL'**
+  String get acceleratorUrl;
+
+  /// No description provided for @acceleratorZnnBudget.
+  ///
+  /// In en, this message translates to:
+  /// **'ZNN budget'**
+  String get acceleratorZnnBudget;
+
+  /// No description provided for @acceleratorQsrBudget.
+  ///
+  /// In en, this message translates to:
+  /// **'QSR budget'**
+  String get acceleratorQsrBudget;
+
+  /// No description provided for @acceleratorDonationZnn.
+  ///
+  /// In en, this message translates to:
+  /// **'ZNN donation'**
+  String get acceleratorDonationZnn;
+
+  /// No description provided for @acceleratorDonationQsr.
+  ///
+  /// In en, this message translates to:
+  /// **'QSR donation'**
+  String get acceleratorDonationQsr;
+
+  /// No description provided for @acceleratorContinue.
+  ///
+  /// In en, this message translates to:
+  /// **'Continue'**
+  String get acceleratorContinue;
+
+  /// No description provided for @acceleratorCancel.
+  ///
+  /// In en, this message translates to:
+  /// **'Cancel'**
+  String get acceleratorCancel;
+
+  /// No description provided for @acceleratorBack.
+  ///
+  /// In en, this message translates to:
+  /// **'Back'**
+  String get acceleratorBack;
+
+  /// No description provided for @acceleratorCreateFee.
+  ///
+  /// In en, this message translates to:
+  /// **'Fee: {amount}'**
+  String acceleratorCreateFee(String amount);
+
+  /// No description provided for @acceleratorChangeVote.
+  ///
+  /// In en, this message translates to:
+  /// **'Your vote can be changed.'**
+  String get acceleratorChangeVote;
+
+  /// No description provided for @importFileOpenFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'Could not open the file picker. Try again.'**
+  String get importFileOpenFailed;
+
+  /// No description provided for @swapActionCreateDeposit.
+  ///
+  /// In en, this message translates to:
+  /// **'Create deposit'**
+  String get swapActionCreateDeposit;
+
+  /// No description provided for @swapActionNewDeposit.
+  ///
+  /// In en, this message translates to:
+  /// **'New deposit'**
+  String get swapActionNewDeposit;
+
+  /// No description provided for @swapActionFindDeposit.
+  ///
+  /// In en, this message translates to:
+  /// **'Find deposit'**
+  String get swapActionFindDeposit;
+
+  /// No description provided for @swapActionEnterDepositId.
+  ///
+  /// In en, this message translates to:
+  /// **'Enter the deposit ID'**
+  String get swapActionEnterDepositId;
+
+  /// No description provided for @swapActionEnterAddress.
+  ///
+  /// In en, this message translates to:
+  /// **'Enter a counterparty'**
+  String get swapActionEnterAddress;
+
+  /// No description provided for @swapActionEnterAmount.
+  ///
+  /// In en, this message translates to:
+  /// **'Enter an amount'**
+  String get swapActionEnterAmount;
+
+  /// No description provided for @swapActionNotEnough.
+  ///
+  /// In en, this message translates to:
+  /// **'Not enough balance'**
+  String get swapActionNotEnough;
+
+  /// No description provided for @swapActionSending.
+  ///
+  /// In en, this message translates to:
+  /// **'Sending'**
+  String get swapActionSending;
+
+  /// No description provided for @swapActionSearching.
+  ///
+  /// In en, this message translates to:
+  /// **'Searching'**
+  String get swapActionSearching;
+
+  /// No description provided for @swapActionSubmitted.
+  ///
+  /// In en, this message translates to:
+  /// **'Submitted'**
+  String get swapActionSubmitted;
+
+  /// No description provided for @swapActionUnlock.
+  ///
+  /// In en, this message translates to:
+  /// **'Unlock'**
+  String get swapActionUnlock;
+
+  /// No description provided for @swapActionUnlockSubmitted.
+  ///
+  /// In en, this message translates to:
+  /// **'Unlock submitted'**
+  String get swapActionUnlockSubmitted;
+
+  /// No description provided for @swapActionReclaimSubmitted.
+  ///
+  /// In en, this message translates to:
+  /// **'Reclaim submitted'**
+  String get swapActionReclaimSubmitted;
+
+  /// No description provided for @swapActionUnknown.
+  ///
+  /// In en, this message translates to:
+  /// **'Result unknown. Check this deposit before another action.'**
+  String get swapActionUnknown;
+
+  /// No description provided for @swapActionRefused.
+  ///
+  /// In en, this message translates to:
+  /// **'Action refused. Refresh swaps.'**
+  String get swapActionRefused;
+
+  /// No description provided for @swapActionReadFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'Deposit unavailable. Refresh swaps.'**
+  String get swapActionReadFailed;
+
+  /// No description provided for @swapActionDepositOnly.
+  ///
+  /// In en, this message translates to:
+  /// **'Only your deposit is created. Agree the other side separately.'**
+  String get swapActionDepositOnly;
+
+  /// No description provided for @swapActionTiming.
+  ///
+  /// In en, this message translates to:
+  /// **'{initialHours} h initial · {counterHours} h counter'**
+  String swapActionTiming(int initialHours, int counterHours);
+
+  /// No description provided for @swapActionDiscovery.
+  ///
+  /// In en, this message translates to:
+  /// **'{hours} h discovery · {minutes} min completion margin'**
+  String swapActionDiscovery(int hours, int minutes);
+
+  /// No description provided for @swapActionExperimental.
+  ///
+  /// In en, this message translates to:
+  /// **'Experimental. Check both tokens and amounts before unlocking.'**
+  String get swapActionExperimental;
+
+  /// No description provided for @swapActionNoRequestedTerms.
+  ///
+  /// In en, this message translates to:
+  /// **'No requested amount is recorded.'**
+  String get swapActionNoRequestedTerms;
+
+  /// No description provided for @swapActionRecorded.
+  ///
+  /// In en, this message translates to:
+  /// **'Recorded'**
+  String get swapActionRecorded;
+
+  /// No description provided for @swapActionChainPending.
+  ///
+  /// In en, this message translates to:
+  /// **'Chain status unknown'**
+  String get swapActionChainPending;
+
+  /// No description provided for @swapActionDepositVerified.
+  ///
+  /// In en, this message translates to:
+  /// **'Deposit verified'**
+  String get swapActionDepositVerified;
+
+  /// No description provided for @swapActionCanReclaim.
+  ///
+  /// In en, this message translates to:
+  /// **'Deposit expired. Reclaim it explicitly.'**
+  String get swapActionCanReclaim;
+
+  /// No description provided for @swapActionDepositLive.
+  ///
+  /// In en, this message translates to:
+  /// **'Deposit is live'**
+  String get swapActionDepositLive;
+
+  /// No description provided for @swapActionConfirmAmount.
+  ///
+  /// In en, this message translates to:
+  /// **'Check the counterparty token and amount before unlocking.'**
+  String get swapActionConfirmAmount;
+
+  /// No description provided for @swapActionFreshDetails.
+  ///
+  /// In en, this message translates to:
+  /// **'Refresh deposit'**
+  String get swapActionFreshDetails;
+
+  /// No description provided for @swapActionPaste.
+  ///
+  /// In en, this message translates to:
+  /// **'Paste'**
+  String get swapActionPaste;
+
+  /// No description provided for @swapActionTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Swap'**
+  String get swapActionTitle;
+
+  /// No description provided for @receiveOperationFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'Could not receive. Refresh activity.'**
+  String get receiveOperationFailed;
+
+  /// No description provided for @walletCreationUnavailable.
+  ///
+  /// In en, this message translates to:
+  /// **'Wallet setup is unavailable. Your original attempt has been kept.'**
+  String get walletCreationUnavailable;
 }
 
 class _AppLocalizationsDelegate

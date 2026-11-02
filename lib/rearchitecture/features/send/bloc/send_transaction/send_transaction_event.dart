@@ -1,17 +1,30 @@
 part of 'send_transaction_bloc.dart';
 
 /// The base class for events in `SendPaymentBloc`.
-sealed class SendTransactionEvent extends Equatable {}
+sealed class SendTransactionEvent extends Equatable {
+  /// Keeps display ownership separate from the shared publication transport.
+  const SendTransactionEvent({
+    this.requestId,
+    this.origin = SendTransactionOrigin.transfer,
+  });
+
+  /// An ephemeral identity, never persisted as transaction evidence.
+  final Object? requestId;
+
+  /// The surface entitled to react to this operation's result.
+  final SendTransactionOrigin origin;
+}
 
 /// Event to initiate sending a transfer.
 class SendTransactionInitiate extends SendTransactionEvent {
   /// Creates a [SendTransactionInitiate] event.
-  SendTransactionInitiate({
+  const SendTransactionInitiate({
     required this.fromAddress,
     required this.toAddress,
     required this.amount,
     required this.token,
     this.data,
+    super.requestId,
   });
 
   /// The address from which the payment is sent.
@@ -36,16 +49,19 @@ class SendTransactionInitiate extends SendTransactionEvent {
     amount,
     token,
     data,
+    requestId,
   ];
 }
 
 /// Event to initiate sending a transfer using an existing account block.
 class SendTransactionInitiateFromBlock extends SendTransactionEvent {
   /// Creates a [SendTransactionInitiateFromBlock] event.
-  SendTransactionInitiateFromBlock({
+  const SendTransactionInitiateFromBlock({
     required this.block,
     required this.fromAddress,
     required this.reasonForGeneratingPlasma,
+    super.requestId,
+    super.origin = SendTransactionOrigin.contract,
   });
 
   /// The account block template representing the transfer.
@@ -59,5 +75,5 @@ class SendTransactionInitiateFromBlock extends SendTransactionEvent {
   final String reasonForGeneratingPlasma;
 
   @override
-  List<Object?> get props => <Object?>[block, fromAddress];
+  List<Object?> get props => <Object?>[block, fromAddress, requestId, origin];
 }

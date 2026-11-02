@@ -39,6 +39,9 @@ void main() {
       reward = MockUncollectedReward();
       exception = FailureException();
 
+      when(() => reward.address).thenReturn(emptyAddress);
+      when(() => reward.znnAmount).thenReturn(BigInt.one);
+      when(() => reward.qsrAmount).thenReturn(BigInt.one);
       when(() => mockZenon.embedded).thenReturn(mockEmbedded);
       when(() => mockEmbedded.pillar).thenReturn(mockPillar);
       when(() => reward.toJson()).thenReturn(<String, dynamic>{

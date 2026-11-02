@@ -1,0 +1,13 @@
+--- a/pillar/manager.go
++++ b/pillar/manager.go
+@@ -115,6 +115,10 @@
+ 
+ 	endTime := e.EndTime.Add(time.Millisecond * -250)
+ 	task := m.worker.Process(e)
++	if task == nil {
++		// The worker can close after this callback was scheduled.
++		return
++	}
+ 	for {
+ 		select {
+ 		case <-task.Finished():

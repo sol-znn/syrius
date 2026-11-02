@@ -13,9 +13,14 @@ import 'package:znn_sdk_dart/znn_sdk_dart.dart';
 ///
 /// Settings and the home both switch addresses; this is the one place that
 /// knows what a switch has to touch.
-Future<void> selectWalletAddress(BuildContext context, String address) async {
+Future<void> selectWalletAddress(
+  BuildContext context,
+  String address, {
+  bool Function()? isCurrent,
+}) async {
+  if (isCurrent?.call() == false) return;
   await Hive.box(kSharedPrefsBox).put(kDefaultAddressKey, address);
-  if (!context.mounted) return;
+  if (!context.mounted || isCurrent?.call() == false) return;
   Provider.of<SelectedAddressNotifier>(
     context,
     listen: false,

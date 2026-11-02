@@ -1,0 +1,7 @@
+# prerequisite: unlocked-home with retained notifications in an isolated profile
+# Connection proposals are supplied by a fake client only in widget tests.
+goto dashboard
+tap --key nav_notifications
+wait --key bell_panel
+assert --key bell_panel
+assert --key bell_clear

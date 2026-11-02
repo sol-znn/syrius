@@ -1,10 +1,10 @@
 // The Embedded node panel as the person meets it: what it shows on opening,
 // the confirmation every install goes through, and the words for a failure.
 
-import 'package:material_ui/material_ui.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:intl/intl.dart' show DateFormat;
+import 'package:material_ui/material_ui.dart';
 import 'package:zenon_syrius_wallet_flutter/embedded_node/node_archive.dart';
 import 'package:zenon_syrius_wallet_flutter/embedded_node/node_library.dart';
 import 'package:zenon_syrius_wallet_flutter/embedded_node/node_updater.dart';
@@ -81,6 +81,15 @@ bool _focused(WidgetTester tester, Key key) {
 bool _enabled(WidgetTester tester, Key key) =>
     tester.widget<ButtonStyleButton>(find.byKey(key)).onPressed != null;
 
+double _buttonHeight(WidgetTester tester, Key key) => tester
+    .getSize(
+      find.descendant(
+        of: find.byKey(key),
+        matching: find.byType(Material),
+      ),
+    )
+    .height;
+
 Color? _inkOf(WidgetTester tester, String text) =>
     tester.widget<Text>(find.text(text)).style?.color;
 
@@ -95,13 +104,14 @@ void main() {
     WidgetTester tester, {
     Size size = const Size(1200, 1000),
     Locale locale = const Locale('en'),
+    ThemeData? theme,
   }) async {
     tester.view.physicalSize = size;
     tester.view.devicePixelRatio = 1;
     addTearDown(tester.view.reset);
     await tester.pumpWidget(
       MaterialApp(
-        theme: AppTheme.darkTheme,
+        theme: theme ?? AppTheme.darkTheme,
         locale: locale,
         localizationsDelegates: appLocalizationsDelegates,
         supportedLocales: AppLocalizations.supportedLocales,
@@ -137,6 +147,39 @@ void main() {
     saved = <String>[];
     picked = null;
   });
+
+  for (final bool light in <bool>[false, true]) {
+    testWidgets(
+      'update row and dialog pairs keep their roles, light $light',
+      (WidgetTester tester) async {
+        updater.downloads.add(downloadedOf());
+        await open(
+          tester,
+          theme: (light ? AppTheme.lightTheme : AppTheme.darkTheme).copyWith(
+            visualDensity: VisualDensity.compact,
+            materialTapTargetSize: MaterialTapTargetSize.padded,
+          ),
+        );
+        expect(_buttonHeight(tester, _fromFile), 30);
+        expect(_buttonHeight(tester, _download), 30);
+        await press(tester, _check);
+        await press(tester, _download);
+        expect(_buttonHeight(tester, _dialogCancel), 38);
+        expect(_buttonHeight(tester, _dialogInstall), 38);
+        expect(_focused(tester, _dialogCancel), isTrue);
+        expect(updater.calls, isNot(contains('stage $kNewSha')));
+        await tester.sendKeyEvent(LogicalKeyboardKey.enter);
+        await tester.pumpAndSettle();
+        expect(find.byType(DialogCard), findsNothing);
+        expect(updater.calls, <String>[
+          'latestRelease $kRepo',
+          'download $kTag allowUnverified=false',
+          'discard $kNewSha',
+        ]);
+      },
+      timeout: const Timeout(Duration(seconds: 20)),
+    );
+  }
 
   group('on opening', () {
     testWidgets('shows what is loaded and asks the network nothing', (
@@ -371,7 +414,7 @@ void main() {
     testWidgets('of a file reads both checks as not made', (
       WidgetTester tester,
     ) async {
-      picked = 'C:/Users/someone/Downloads/libznn.dll';
+      picked = 'C:/fixtures/libznn.dll';
       updater.picked = pickedOf();
       await open(tester);
       await press(tester, _fromFile);
@@ -425,6 +468,15 @@ void main() {
       expect(_inDialog(find.text(nothing)), findsOneWidget);
       expect(_inkOf(tester, nothing), AppTokens.dark.warn);
       expect(_focused(tester, _unverifiedCancel), isTrue);
+      expect(_buttonHeight(tester, _unverifiedCancel), 38);
+      expect(_buttonHeight(tester, _unverifiedDownload), 38);
+      final ButtonStyle warning = tester
+          .widget<OutlinedButton>(find.byKey(_unverifiedDownload))
+          .style!;
+      expect(
+        warning.side!.resolve(<WidgetState>{})!.color,
+        AppTokens.dark.warn,
+      );
       expect(find.byKey(_dialogInstall), findsNothing);
 
       await tester.sendKeyEvent(LogicalKeyboardKey.enter);

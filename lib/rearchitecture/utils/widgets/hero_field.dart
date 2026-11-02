@@ -1,8 +1,9 @@
 import 'dart:ui' as ui;
 
-import 'package:flutter/scheduler.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter_shaders/flutter_shaders.dart';
 import 'package:material_ui/material_ui.dart';
+import 'package:zenon_syrius_wallet_flutter/rearchitecture/utils/shaders/shader_clock.dart';
 import 'package:zenon_syrius_wallet_flutter/utils/app_colors.dart';
 
 /// The asset the field is drawn by. Listed under `flutter: shaders:`.
@@ -16,8 +17,8 @@ const String kHeroFieldShader = 'assets/shaders/hero_field.frag';
 /// under the content in a `Stack`, inside the card's clip.
 ///
 /// It repaints every frame while it is on screen, so it sits in its own
-/// layer and takes nothing around it along. Its ticker follows `TickerMode`:
-/// a page that is not shown does not run it.
+/// layer and takes nothing around it along. A hidden page, an unfocused
+/// window or a frosted overlay holds the field on its current frame.
 class HeroField extends StatefulWidget {
   /// Creates the field.
   const HeroField({this.strength, super.key});
@@ -33,23 +34,23 @@ class HeroField extends StatefulWidget {
 
 class _HeroFieldState extends State<HeroField>
     with SingleTickerProviderStateMixin {
-  late final Ticker _ticker = createTicker(_onTick);
-  final ValueNotifier<double> _seconds = ValueNotifier<double>(0);
+  late final ShaderClock _clock;
 
   @override
   void initState() {
     super.initState();
-    _ticker.start();
+    _clock = ShaderClock(vsync: this);
   }
 
-  void _onTick(Duration elapsed) {
-    _seconds.value = elapsed.inMicroseconds / Duration.microsecondsPerSecond;
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    _clock.updateVisibility(context);
   }
 
   @override
   void dispose() {
-    _ticker.dispose();
-    _seconds.dispose();
+    _clock.dispose();
     super.dispose();
   }
 
@@ -60,17 +61,20 @@ class _HeroFieldState extends State<HeroField>
     return RepaintBoundary(
       child: ShaderBuilder(
         assetKey: kHeroFieldShader,
-        (BuildContext context, ui.FragmentShader shader, Widget? child) =>
-            CustomPaint(
-              painter: _HeroFieldPainter(
-                shader: shader,
-                seconds: _seconds,
-                // The card colour, as `Panel` paints it.
-                base: theme.colorScheme.primary,
-                strength: widget.strength ?? (dark ? 0.16 : 0.07),
-              ),
-              child: const SizedBox.expand(),
+        (BuildContext context, ui.FragmentShader shader, Widget? child) {
+          // An unavailable shader has no frames worth scheduling.
+          _clock.active = true;
+          return CustomPaint(
+            painter: _HeroFieldPainter(
+              shader: shader,
+              seconds: _clock,
+              // The card colour, as `Panel` paints it.
+              base: theme.colorScheme.primary,
+              strength: widget.strength ?? (dark ? 0.16 : 0.07),
             ),
+            child: const SizedBox.expand(),
+          );
+        },
       ),
     );
   }
@@ -85,7 +89,7 @@ class _HeroFieldPainter extends CustomPainter {
   }) : super(repaint: seconds);
 
   final ui.FragmentShader shader;
-  final ValueNotifier<double> seconds;
+  final ValueListenable<double> seconds;
   final Color base;
   final double strength;
 

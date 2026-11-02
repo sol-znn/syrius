@@ -134,6 +134,9 @@ flutter:
     - assets/i18n/
     - assets/lottie/
     - assets/svg/
+    - assets/fonts/OFL-SpaceGrotesk.txt
+    - assets/fonts/OFL-JetBrainsMono.txt
+    - assets/fonts/OFL-NotoSans.txt
 
   # The plasma mark's glow. See assets/shaders/NOTICE.md.
   shaders:
@@ -152,6 +155,17 @@ flutter:
   # order kFontFamilyFallback in lib/utils/app_theme.dart names.
   fonts:
     - family: SpaceGrotesk
+      fonts:
+        - asset: assets/fonts/SpaceGrotesk-Regular.ttf
+        - asset: assets/fonts/SpaceGrotesk-Medium.ttf
+          weight: 500
+        - asset: assets/fonts/SpaceGrotesk-SemiBold.ttf
+          weight: 600
+        - asset: assets/fonts/SpaceGrotesk-Bold.ttf
+          weight: 700
+    # The mockup-derived 600 face is a subset. Retain the original symbol
+    # coverage through a separate fallback alias without copying font files.
+    - family: SpaceGroteskCoverage
       fonts:
         - asset: assets/fonts/SpaceGrotesk-Regular.ttf
         - asset: assets/fonts/SpaceGrotesk-Medium.ttf

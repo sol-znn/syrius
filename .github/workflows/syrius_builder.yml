@@ -3,7 +3,7 @@ name: Build and release syrius
 on:
   pull_request:
     branches:
-      - develop
+      - dev
   push:
     branches:
       - master
@@ -12,7 +12,7 @@ on:
   workflow_dispatch:
 
 env:
-  FLUTTER_VERSION: "3.44.0"
+  FLUTTER_VERSION: "3.47.7"
 
 jobs:
   build-macos:

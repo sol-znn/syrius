@@ -1,41 +1,31 @@
-import 'package:zenon_syrius_wallet_flutter/blocs/blocs.dart';
-import 'package:zenon_syrius_wallet_flutter/main.dart';
-import 'package:zenon_syrius_wallet_flutter/utils/account_block_utils.dart';
-import 'package:zenon_syrius_wallet_flutter/utils/plasma_purpose.dart';
+import 'package:zenon_syrius_wallet_flutter/blocs/accelerator/accelerator_action_bloc.dart';
+import 'package:zenon_syrius_wallet_flutter/widgets/modular_widgets/accelerator_widgets/accelerator_action_controller.dart';
 import 'package:znn_sdk_dart/znn_sdk_dart.dart';
 
-class CreatePhaseBloc extends BaseBloc<AccountBlockTemplate?> {
-  Future<void> createPhase(
+/// Compatibility observer for adding a phase to one exact original project.
+class CreatePhaseBloc extends AcceleratorActionBloc {
+  /// Retains the original injected or captured action capabilities.
+  CreatePhaseBloc({super.source, super.controller});
+
+  /// Submits the original draft and phase-membership snapshot without retrying.
+  Future<AcceleratorActionOutcome> createPhase(
     Hash id,
     String name,
     String description,
     String url,
     BigInt znnFundsNeeded,
-    BigInt qsrFundsNeeded,
-  ) async {
-    try {
-      addEvent(null);
-      final AccountBlockTemplate transactionParams =
-          zenon!.embedded.accelerator.addPhase(
-        id,
-        name,
-        description,
-        url,
-        znnFundsNeeded,
-        qsrFundsNeeded,
-      );
-      AccountBlockUtils().createAccountBlock(
-        transactionParams,
-        PlasmaPurpose.createPhase.message,
-      )
-          .then(
-        addEvent,
-      )
-          .onError(
-        addError,
-      );
-    } catch (e, stackTrace) {
-      addError(e, stackTrace);
-    }
-  }
+    BigInt qsrFundsNeeded, {
+    List<String> phaseIds = const <String>[],
+  }) => run(
+    AcceleratorActionRequest(
+      kind: AcceleratorActionKind.createPhase,
+      projectId: id.toString(),
+      phaseIds: phaseIds,
+      name: name,
+      description: description,
+      url: url,
+      znn: znnFundsNeeded,
+      qsr: qsrFundsNeeded,
+    ),
+  );
 }

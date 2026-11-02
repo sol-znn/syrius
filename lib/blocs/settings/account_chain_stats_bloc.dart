@@ -4,6 +4,7 @@ import 'package:zenon_syrius_wallet_flutter/model/model.dart';
 import 'package:zenon_syrius_wallet_flutter/utils/global.dart';
 import 'package:znn_sdk_dart/znn_sdk_dart.dart';
 
+/// Reads the selected account's counts and first block's chain provenance.
 class AccountChainStatsBloc
     extends BaseBlocForReloadingIndicator<AccountChainStats> {
   @override
@@ -21,46 +22,50 @@ class AccountChainStatsBloc
       final List<AccountBlock> allBlocks = <AccountBlock>[];
 
       for (int i = 0; i < pageCount; i++) {
-        allBlocks.addAll((await zenon!.ledger.getAccountBlocksByHeight(
-              Address.parse(
-                kSelectedAddress!,
-              ),
-              (rpcMaxPageSize * i) + 1,
-            ))
-                .list ??
-            <AccountBlock>[],);
+        allBlocks.addAll(
+          (await zenon!.ledger.getAccountBlocksByHeight(
+                Address.parse(
+                  kSelectedAddress!,
+                ),
+                (rpcMaxPageSize * i) + 1,
+              )).list ??
+              <AccountBlock>[],
+        );
       }
 
       return AccountChainStats(
         firstHash: allBlocks.isNotEmpty ? allBlocks.first.hash : emptyHash,
+        chainIdentifier: allBlocks.isNotEmpty
+            ? allBlocks.first.chainIdentifier
+            : null,
         blockCount: pageSize,
         blockTypeNumOfBlocksMap: _getNumOfBlocksForEachBlockType(allBlocks),
       );
     } else {
-      throw 'Empty account-chain';
+      throw StateError('Empty account-chain');
     }
   }
 
   Map<BlockTypeEnum, int> _getNumOfBlocksForEachBlockType(
-          List<AccountBlock> blocks,) =>
-      BlockTypeEnum.values.fold<Map<BlockTypeEnum, int>>(
-        <BlockTypeEnum, int>{},
-        (Map<BlockTypeEnum, int> previousValue, BlockTypeEnum blockType) {
-          previousValue[blockType] =
-              _getNumOfBlockForBlockType(blocks, blockType);
-          return previousValue;
-        },
-      );
+    List<AccountBlock> blocks,
+  ) => BlockTypeEnum.values.fold<Map<BlockTypeEnum, int>>(
+    <BlockTypeEnum, int>{},
+    (Map<BlockTypeEnum, int> previousValue, BlockTypeEnum blockType) {
+      previousValue[blockType] = _getNumOfBlockForBlockType(blocks, blockType);
+      return previousValue;
+    },
+  );
 
   int _getNumOfBlockForBlockType(
-          List<AccountBlock> blocks, BlockTypeEnum blockType,) =>
-      blocks.fold<int>(
-        0,
-        (int previousValue, AccountBlock element) {
-          if (element.blockType == blockType.index) {
-            return previousValue + 1;
-          }
-          return previousValue;
-        },
-      );
+    List<AccountBlock> blocks,
+    BlockTypeEnum blockType,
+  ) => blocks.fold<int>(
+    0,
+    (int previousValue, AccountBlock element) {
+      if (element.blockType == blockType.index) {
+        return previousValue + 1;
+      }
+      return previousValue;
+    },
+  );
 }

@@ -35,6 +35,7 @@ class InfiniteScrollTable<T> extends StatefulWidget {
         const <InfiniteScrollTableColumnType, InfiniteScrollTableHead>{},
     this.itemKeyGenerator,
     this.onItemTap,
+    this.rowBuilder,
     super.key,
   });
 
@@ -63,6 +64,11 @@ class InfiniteScrollTable<T> extends StatefulWidget {
 
   /// Callback to be executed when an item is tapped
   final void Function(int)? onItemTap;
+
+  /// Wraps the complete hover and input row, for a view's keyed entrance.
+  /// The table retains the item's key on the outermost subtree so lazy
+  /// row identity does not depend on the wrapper a caller supplies.
+  final Widget Function(T item, int index, Widget row)? rowBuilder;
 
   @override
   State createState() => _InfiniteScrollTableState<T>();
@@ -181,20 +187,23 @@ class _InfiniteScrollTableState<T> extends State<InfiniteScrollTable<T>> {
       ),
     );
 
-    if (widget.onItemTap == null) {
-      return _RowHover(key: key, child: child);
-    }
-
-    return _RowHover(
-      key: key,
-      child: InkWell(
-        mouseCursor: SystemMouseCursors.click,
-        // The row's tint is the hover; the ink's own would be laid over it.
-        hoverColor: Colors.transparent,
-        onTap: () => widget.onItemTap!(indexOfRow),
-        child: child,
-      ),
+    final Widget row = _RowHover(
+      key: widget.rowBuilder == null ? key : null,
+      child: widget.onItemTap == null
+          ? child
+          : InkWell(
+              mouseCursor: SystemMouseCursors.click,
+              // The row owns its hover tint, so a second ink stays clear.
+              hoverColor: Colors.transparent,
+              onTap: () => widget.onItemTap!(indexOfRow),
+              child: child,
+            ),
     );
+    final Widget Function(T item, int index, Widget row)? rowBuilder =
+        widget.rowBuilder;
+    return rowBuilder == null
+        ? row
+        : KeyedSubtree(key: key, child: rowBuilder(item, indexOfRow, row));
   }
 }
 
@@ -271,7 +280,7 @@ class _Header extends StatelessWidget {
 
         final String name = head?.name ?? column.name(context: context);
 
-        final MainAxisAlignment alignment = column.aligment;
+        final MainAxisAlignment alignment = head?.alignment ?? column.aligment;
 
         return InfiniteScrollTableColumn(
           alignment: alignment,

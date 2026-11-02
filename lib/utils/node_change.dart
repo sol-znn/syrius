@@ -17,7 +17,15 @@ library;
 
 import 'dart:async';
 
+import 'package:zenon_syrius_wallet_flutter/blocs/pow_generating_status_bloc.dart';
+import 'package:zenon_syrius_wallet_flutter/main.dart';
+import 'package:zenon_syrius_wallet_flutter/rearchitecture/features/latest_transactions/bloc/latest_transactions_bloc.dart';
 import 'package:zenon_syrius_wallet_flutter/utils/global.dart';
+import 'package:zenon_syrius_wallet_flutter/utils/node_transition.dart';
+import 'package:zenon_syrius_wallet_flutter/utils/wallet_context_revision.dart';
+
+export 'package:zenon_syrius_wallet_flutter/utils/node_transition.dart'
+    show NodeTransitionLease;
 
 /// See the library comment.
 abstract final class NodeChange {
@@ -27,9 +35,24 @@ abstract final class NodeChange {
   /// One event per change of node.
   static Stream<void> get stream => _changes.stream;
 
+  /// Uncommitted shared transport changes refuse all wallet publication.
+  static bool get transitionPending => NodeTransitions.pending;
+
+  /// Acquires one owned transition and revokes prior wallet contexts once.
+  static NodeTransitionLease? beginTransition() => NodeTransitions.begin();
+
   /// To be called after `kCurrentNode` holds the new node and the
   /// connection to it is up.
-  static void announce() => _changes.add(null);
+  static void announce() {
+    WalletContextRevision.invalidate();
+    if (sl.isRegistered<PowGeneratingStatusBloc>()) {
+      sl.get<PowGeneratingStatusBloc>().invalidate();
+    }
+    if (sl.isRegistered<LatestTransactionsBloc>()) {
+      sl.get<LatestTransactionsBloc>().invalidateReadContext();
+    }
+    _changes.add(null);
+  }
 }
 
 /// The storage prefix of a hydrated bloc of [type], for the current node.

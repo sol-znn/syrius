@@ -1,25 +1,37 @@
-import 'dart:convert';
+import 'dart:async';
 
 import 'package:material_ui/material_ui.dart';
-import 'package:stacked/stacked.dart';
-import 'package:zenon_syrius_wallet_flutter/blocs/decrypt_wallet_file_bloc.dart';
-import 'package:zenon_syrius_wallet_flutter/services/htlc_swaps_service.dart';
-import 'package:zenon_syrius_wallet_flutter/utils/utils.dart';
-import 'package:zenon_syrius_wallet_flutter/utils/wallet_file.dart';
+import 'package:zenon_syrius_wallet_flutter/rearchitecture/utils/extensions/buildcontext_extension.dart';
+import 'package:zenon_syrius_wallet_flutter/seams/missing_services.dart';
+import 'package:zenon_syrius_wallet_flutter/seams/seam.dart';
+import 'package:zenon_syrius_wallet_flutter/utils/input_validators.dart';
 import 'package:zenon_syrius_wallet_flutter/widgets/modular_widgets/settings_widgets/settings_parts.dart';
-import 'package:zenon_syrius_wallet_flutter/widgets/widgets.dart';
+import 'package:zenon_syrius_wallet_flutter/widgets/modular_widgets/settings_widgets/settings_sensitive_fields.dart';
+import 'package:zenon_syrius_wallet_flutter/widgets/modular_widgets/settings_widgets/settings_sensitive_session.dart';
 import 'package:znn_sdk_dart/znn_sdk_dart.dart';
 
-/// Changes the password that unlocks the wallet.
-///
-/// The current password is proven by decrypting the wallet file with it;
-/// only then is the file re-encrypted under the new one.
+/// Draws Change password while the owned recovery migration remains missing.
 class ChangeWalletPasswordScreen extends StatefulWidget {
+  /// Production has no secret backend. Tests may inject an owned session.
   const ChangeWalletPasswordScreen({
     required this.onStepperNotificationSeeMorePressed,
+    this.session,
+    this.routeLease,
+    this.isCurrent,
     super.key,
   });
+
+  /// Retained for existing callers of this child screen.
   final VoidCallback onStepperNotificationSeeMorePressed;
+
+  /// Complete owned operation for presentation tests, never a legacy fallback.
+  final SettingsPasswordSession? session;
+
+  /// The exact owned route, if opened by Settings.
+  final SettingsRouteLease? routeLease;
+
+  /// The original caller's synchronous scope, frozen before suspension.
+  final bool Function()? isCurrent;
 
   @override
   State<ChangeWalletPasswordScreen> createState() =>
@@ -28,198 +40,162 @@ class ChangeWalletPasswordScreen extends StatefulWidget {
 
 class _ChangeWalletPasswordScreenState
     extends State<ChangeWalletPasswordScreen> {
-  String? _currentPassErrorText;
+  final TextEditingController _current = TextEditingController();
+  final TextEditingController _password = TextEditingController();
+  final TextEditingController _repeat = TextEditingController();
+  late final SettingsScreenScope _scope = SettingsScreenScope(
+    mounted: () => mounted,
+  );
+  bool _busy = false;
+  String? _error;
 
-  final TextEditingController _newPasswordController = TextEditingController();
-  final TextEditingController _confirmPasswordController =
-      TextEditingController();
-  final TextEditingController _currentPasswordController =
-      TextEditingController();
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    _bind();
+  }
 
-  final GlobalKey<FormState> _currentPasswordKey = GlobalKey();
-  final GlobalKey<FormState> _newPasswordKey = GlobalKey();
-  final GlobalKey<FormState> _confirmPasswordKey = GlobalKey();
-  final GlobalKey<LoadingButtonState> _loadingButtonKey = GlobalKey();
+  void _bind() => _scope.bind(
+    context,
+    lease: widget.routeLease,
+    isCurrent: widget.isCurrent,
+  );
 
-  late LoadingButton _loadingButton;
+  @override
+  void didUpdateWidget(ChangeWalletPasswordScreen oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (!identical(widget.session, oldWidget.session) ||
+        !identical(widget.routeLease, oldWidget.routeLease)) {
+      _scope.revoke();
+    }
+    _bind();
+  }
+
+  bool get _valid =>
+      _current.text.isNotEmpty &&
+      InputValidators.validatePassword(_password.text) == null &&
+      InputValidators.checkPasswordMatch(_password.text, _repeat.text) == null;
+
+  Future<void> _change(bool Function() current) async {
+    if (_busy || !current() || !_valid) {
+      return;
+    }
+    final SettingsPasswordSession? session = widget.session;
+    final String oldPassword = _current.text;
+    final String newPassword = _password.text;
+    final String failed = context.l10n.securitySettingsPasswordChangeFailed;
+    final String unavailable = context.l10n.securitySettingsPasswordUnavailable;
+    final String incorrect = context.l10n.walletPasswordIncorrectError;
+    setState(() {
+      _busy = true;
+      _error = null;
+    });
+    try {
+      if (session == null) {
+        // Direct saved callbacks meet the same missing-service boundary.
+        await const UnbuiltPasswordChangeMigrationService().change();
+        return;
+      }
+      if (!session.isCurrent) {
+        return;
+      }
+      await session.changePassword(oldPassword, newPassword);
+      if (current() && session.isCurrent) {
+        _scope.back(current);
+      }
+    } on SeamNotBuilt {
+      if (current()) {
+        setState(() => _error = unavailable);
+      }
+    } on IncorrectPasswordException {
+      if (current()) {
+        setState(() => _error = incorrect);
+      }
+    } on Object {
+      if (current()) {
+        setState(() => _error = failed);
+      }
+    } finally {
+      if (mounted) {
+        setState(() => _busy = false);
+      }
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
+    final bool Function() current = _scope.capture();
+    void changed(String _) {
+      if (current() && !_busy) {
+        setState(() => _error = null);
+      }
+    }
+
+    final Widget action = OutlinedButton(
+      key: const Key('security_password_change'),
+      style: OutlinedButton.styleFrom(minimumSize: kScreenActionSize),
+      onPressed: !_busy && _valid ? () => unawaited(_change(current)) : null,
+      child: Text(context.l10n.securitySettingsChangePassword),
+    );
     return SettingsScreenFrame(
-      top: NotificationWidget(
-        onSeeMorePressed: widget.onStepperNotificationSeeMorePressed,
-      ),
-      title: 'Change password',
-      note:
-          'At least 8 characters, with an upper and a lower case letter, a '
-          'number and a symbol.',
+      title: context.l10n.securitySettingsChangePassword,
+      note: context.l10n.securitySettingsPasswordRules,
       actions: <Widget>[
         ScreenBackAction(
-          onPressed: () {
-            Navigator.pop(context, false);
-          },
+          label: context.l10n.securitySettingsBack,
+          onPressed: () => _scope.back(current),
         ),
-        _buildDecryptKeyStoreFileViewModel(),
+        if (widget.session == null)
+          SeamGate(seam: Seam.passwordChangeMigration, child: action)
+        else
+          action,
       ],
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         mainAxisSize: MainAxisSize.min,
         children: <Widget>[
-          Form(
-            key: _currentPasswordKey,
-            autovalidateMode: AutovalidateMode.onUserInteraction,
-            child: PasswordInputField(
-              errorText: _currentPassErrorText,
-              controller: _currentPasswordController,
-              hintText: 'Current password',
-              onChanged: (String value) {
-                setState(() {
-                  if (_currentPassErrorText != null) {
-                    _currentPassErrorText = null;
-                  }
-                });
-              },
-            ),
+          SettingsSecretField(
+            key: const Key('security_password_current'),
+            controller: _current,
+            label: context.l10n.securitySettingsCurrentPassword,
+            isCurrent: current,
+            enabled: !_busy,
+            onChanged: changed,
+            error: _error,
           ),
           const SizedBox(height: kSettingFormGap),
-          Form(
-            key: _newPasswordKey,
-            autovalidateMode: AutovalidateMode.onUserInteraction,
-            child: PasswordInputField(
-              controller: _newPasswordController,
-              validator: InputValidators.validatePassword,
-              onChanged: (String value) {
-                setState(() {});
-              },
-              hintText: 'New password',
-            ),
+          SettingsSecretField(
+            key: const Key('security_password_new'),
+            controller: _password,
+            label: context.l10n.securitySettingsNewPassword,
+            isCurrent: current,
+            enabled: !_busy,
+            onChanged: changed,
+            validator: InputValidators.validatePassword,
           ),
           const SizedBox(height: kSettingFormGap),
-          Form(
-            key: _confirmPasswordKey,
-            autovalidateMode: AutovalidateMode.onUserInteraction,
-            child: PasswordInputField(
-              controller: _confirmPasswordController,
-              validator: (String? value) => InputValidators.checkPasswordMatch(
-                _newPasswordController.text,
-                value,
-              ),
-              hintText: 'Repeat new password',
-              onSubmitted: (String value) {
-                if (_arePasswordsValid()) {
-                  _loadingButton.onPressed!();
-                }
-              },
-              onChanged: (String value) {
-                setState(() {});
-              },
-            ),
-          ),
-          const SizedBox(height: kSettingFormGap + 4),
-          PasswordProgressBar(
-            password: _newPasswordController.text,
-            passwordKey: _newPasswordKey,
+          SettingsSecretField(
+            key: const Key('security_password_repeat'),
+            controller: _repeat,
+            label: context.l10n.securitySettingsRepeatPassword,
+            isCurrent: current,
+            enabled: !_busy,
+            onChanged: changed,
+            validator: (String? value) =>
+                InputValidators.checkPasswordMatch(_password.text, value),
+            onSubmitted: (String _) => unawaited(_change(current)),
           ),
         ],
       ),
     );
   }
 
-  Future<void> _changePassword(
-    String currentPassword,
-    String newPassword,
-  ) async {
-    final Address baseAddress = WalletUtils.baseAddress;
-    await kWalletFile!.changePassword(currentPassword, newPassword);
-    await HtlcSwapsService.getInstance().closeBoxes();
-    await HtlcSwapsService.getInstance().openBoxes(
-      baseAddress.toString(),
-      Crypto.digest(utf8.encode(currentPassword)),
-      newCipherKey: Crypto.digest(utf8.encode(newPassword)),
-    );
-    if (!mounted) return;
-    Navigator.pop(context);
-  }
-
-  bool _arePasswordsValid() {
-    return _currentPassErrorText == null &&
-        InputValidators.validatePassword(_newPasswordController.text) == null &&
-        InputValidators.checkPasswordMatch(
-              _newPasswordController.text,
-              _confirmPasswordController.text,
-            ) ==
-            null;
-  }
-
-  Widget _buildDecryptKeyStoreFileViewModel() {
-    return ViewModelBuilder<DecryptWalletFileBloc>.reactive(
-      onViewModelReady: (DecryptWalletFileBloc model) {
-        model.stream.listen(
-          (WalletFile? walletFile) async {
-            if (walletFile != null) {
-              setState(() {
-                _currentPassErrorText = null;
-              });
-              try {
-                await _changePassword(
-                  _currentPasswordController.text,
-                  _newPasswordController.text,
-                );
-              } catch (e) {
-                await NotificationUtils.sendNotificationError(
-                  e,
-                  'An error occurred while trying to change password',
-                );
-              } finally {
-                _loadingButtonKey.currentState?.animateReverse();
-              }
-            }
-          },
-          onError: (e) async {
-            _loadingButtonKey.currentState?.animateReverse();
-            if (e is IncorrectPasswordException) {
-              setState(() {
-                _currentPassErrorText = 'Incorrect password';
-              });
-            } else {
-              await NotificationUtils.sendNotificationError(
-                e,
-                'An error occurred while trying to decrypt wallet',
-              );
-            }
-          },
-        );
-      },
-      builder: (_, DecryptWalletFileBloc model, _) {
-        _loadingButton = _buildLoadingButton(model);
-        return _loadingButton;
-      },
-      viewModelBuilder: DecryptWalletFileBloc.new,
-    );
-  }
-
-  LoadingButton _buildLoadingButton(DecryptWalletFileBloc model) {
-    return LoadingButton(
-      key: _loadingButtonKey,
-      minimumSize: kScreenActionSize,
-      onPressed: _arePasswordsValid()
-          ? () {
-              _loadingButtonKey.currentState!.animateForward();
-              model.decryptWalletFile(
-                kWalletPath!,
-                _currentPasswordController.text,
-              );
-            }
-          : null,
-      text: 'Change password',
-    );
-  }
-
   @override
   void dispose() {
-    _confirmPasswordController.dispose();
-    _currentPasswordController.dispose();
-    _newPasswordController.dispose();
+    _scope.revoke();
+    _current.dispose();
+    _password.dispose();
+    _repeat.dispose();
     super.dispose();
   }
 }

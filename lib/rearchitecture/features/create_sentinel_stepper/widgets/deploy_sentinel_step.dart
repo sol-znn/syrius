@@ -1,10 +1,11 @@
 import 'dart:async';
 
-import 'package:material_ui/material_ui.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:material_ui/material_ui.dart';
 import 'package:zenon_syrius_wallet_flutter/rearchitecture/features/create_pillar_stepper/widgets/pillar_step_parts.dart';
 import 'package:zenon_syrius_wallet_flutter/rearchitecture/features/features.dart';
+import 'package:zenon_syrius_wallet_flutter/rearchitecture/features/registration_success/registration_confirmation.dart';
 import 'package:zenon_syrius_wallet_flutter/rearchitecture/utils/utils.dart';
 import 'package:zenon_syrius_wallet_flutter/rearchitecture/utils/widgets/ltr.dart';
 import 'package:zenon_syrius_wallet_flutter/utils/utils.dart';
@@ -19,6 +20,7 @@ class DeploySentinelStep extends StatefulWidget {
     required this.address,
     required this.onDeployDone,
     this.onBackPressed,
+    this.onPublished,
     this.active = true,
     super.key,
   });
@@ -28,6 +30,9 @@ class DeploySentinelStep extends StatefulWidget {
 
   /// Called when deployment completes.
   final VoidCallback onDeployDone;
+
+  /// Retains the original result before the legacy completion callback runs.
+  final ValueChanged<RegistrationPublication>? onPublished;
 
   /// Called when the user wants to go back. No Back button when null.
   final VoidCallback? onBackPressed;
@@ -44,6 +49,8 @@ class _DeploySentinelStepState extends State<DeploySentinelStep> {
 
   // From the press until the bloc is done or has failed.
   bool _isSending = false;
+  bool _accepted = false;
+  BigInt? _submittedQsrCost;
 
   @override
   Widget build(BuildContext context) {
@@ -65,7 +72,7 @@ class _DeploySentinelStepState extends State<DeploySentinelStep> {
             key: const Key('sentinel_register_button'),
             child: LoadingButton(
               text: context.l10n.register,
-              onPressed: _isSending ? null : _onDeployPressed,
+              onPressed: _isSending || _accepted ? null : _onDeployPressed,
               circularBorderRadius: kLoadingButtonMinSize.height / 2,
               key: _registerButtonKey,
             ),
@@ -92,12 +99,31 @@ class _DeploySentinelStepState extends State<DeploySentinelStep> {
   }
 
   void _onDeployStateChanged(DeploySentinelState state) {
+    if (_accepted) return;
     if (state is DeploySentinelDone) {
+      _accepted = true;
+      final AccountBlockTemplate? block = state.accountBlock;
+      if (block != null) {
+        try {
+          widget.onPublished?.call(
+            RegistrationPublication(
+              accountBlock: block,
+              qsrCost: _submittedQsrCost,
+            ),
+          );
+        } on Object {
+          // Receipt display cannot replace the accepted result in the bloc.
+        }
+      }
       _registerButtonKey.currentState?.animateReverse();
       setState(() {
         _isSending = false;
       });
-      widget.onDeployDone();
+      try {
+        widget.onDeployDone();
+      } on Object {
+        // A completion observer never retries the accepted registration.
+      }
     } else if (state is DeploySentinelFailure) {
       _registerButtonKey.currentState?.animateReverse();
       setState(() {
@@ -118,8 +144,16 @@ class _DeploySentinelStepState extends State<DeploySentinelStep> {
   }
 
   void _onDeployPressed() {
-    if (_isSending) {
+    if (_isSending || _accepted || !widget.active) {
       return;
+    }
+    if (widget.onPublished != null) {
+      final FetchState<CreateSentinelQsrInfoData> state = context
+          .read<CreateSentinelQsrInfoBloc>()
+          .state;
+      _submittedQsrCost = state is FetchPopulated<CreateSentinelQsrInfoData>
+          ? state.data.cost
+          : null;
     }
     setState(() {
       _isSending = true;

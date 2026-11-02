@@ -1,34 +1,21 @@
-import 'package:zenon_syrius_wallet_flutter/blocs/base_bloc.dart';
-import 'package:zenon_syrius_wallet_flutter/main.dart';
-import 'package:zenon_syrius_wallet_flutter/utils/account_block_utils.dart';
-import 'package:zenon_syrius_wallet_flutter/utils/address_utils.dart';
-import 'package:zenon_syrius_wallet_flutter/utils/plasma_purpose.dart';
+import 'package:zenon_syrius_wallet_flutter/blocs/p2p_swap/htlc_swap/owned_swap_action_bloc.dart';
+import 'package:zenon_syrius_wallet_flutter/blocs/p2p_swap/htlc_swap/swap_action_origin.dart';
+import 'package:zenon_syrius_wallet_flutter/blocs/p2p_swap/htlc_swap/swap_actions.dart';
 import 'package:znn_sdk_dart/znn_sdk_dart.dart';
 
-class ReclaimHtlcSwapFundsBloc extends BaseBloc<AccountBlockTemplate?> {
+/// Reclaims only a freshly proven original deposit after positive chain time.
+class ReclaimHtlcSwapFundsBloc
+    extends OwnedSwapActionBloc<AccountBlockTemplate> {
+  /// Observes reclaim publication without owning retries or terminal status.
+  ReclaimHtlcSwapFundsBloc({super.origin});
+
+  /// Rechecks exact deposit ownership and expiry before one reclaim submission.
   Future<void> reclaimFunds({
     required Hash htlcId,
     required Address selfAddress,
-  }) async {
-    try {
-      addEvent(null);
-      final AccountBlockTemplate transactionParams =
-          zenon!.embedded.htlc.reclaim(htlcId);
-      AccountBlockUtils().createAccountBlock(
-              transactionParams, PlasmaPurpose.reclaimSwapFunds.message,
-              address: selfAddress, waitForRequiredPlasma: true,)
-          .then(
-        (AccountBlockTemplate response) {
-          ZenonAddressUtils().refreshBalance();
-          addEvent(response);
-        },
-      ).onError(
-        (Object? error, StackTrace stackTrace) {
-          addError(error.toString(), stackTrace);
-        },
-      );
-    } catch (e, stackTrace) {
-      addError(e, stackTrace);
-    }
-  }
+  }) => execute(
+    (SwapActionOrigin source) =>
+        SwapActions.reclaim(source, htlcId, selfAddress.toString()),
+    (SwapActionResult result) => result.block,
+  );
 }

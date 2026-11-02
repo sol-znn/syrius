@@ -13,6 +13,7 @@ import 'package:zenon_syrius_wallet_flutter/widgets/shell/strip/flight.dart';
 import 'package:zenon_syrius_wallet_flutter/widgets/shell/strip/plasma_status.dart';
 import 'package:zenon_syrius_wallet_flutter/widgets/shell/strip/priority_row.dart';
 import 'package:zenon_syrius_wallet_flutter/widgets/shell/strip/sync.dart';
+import 'package:zenon_syrius_wallet_flutter/widgets/shell/strip/update_slot.dart';
 import 'package:znn_sdk_dart/znn_sdk_dart.dart';
 
 export 'strip/flight.dart';
@@ -41,9 +42,10 @@ class StatusStrip extends StatelessWidget {
     required this.syncCubit,
     required this.page,
     this.flight,
+    this.showFlight = true,
     this.peers,
     this.plasma,
-    this.trailing,
+    this.trailing = const WalletUpdateSlot(),
     super.key,
   });
 
@@ -58,6 +60,10 @@ class StatusStrip extends StatelessWidget {
   /// The sends waiting for a momentum; [InFlightBlocks.wallet] when null.
   final InFlightBlocks? flight;
 
+  /// Hides publication details while locked without discarding or settling
+  /// unresolved hashes. Confirmation checks keep their existing ownership.
+  final bool showFlight;
+
   /// The node's peer count. No "Peers" part without it, and none while it
   /// holds null.
   final ValueListenable<int?>? peers;
@@ -65,34 +71,37 @@ class StatusStrip extends StatelessWidget {
   /// The plasma mark; a [GenerationStatus] over the wallet's own when null.
   final Widget? plasma;
 
-  /// A notice at the far end, such as "an update is out". Nothing when
-  /// null. It is shown at its own width or not at all, so it should be one
-  /// short line.
+  /// The disabled wallet-update slot by default; null omits the slot.
+  /// A supplied notice must fit on one short line and describe actual data.
   final Widget? trailing;
 
   @override
   Widget build(BuildContext context) {
     final ThemeData theme = Theme.of(context);
     final AppTokens tokens = AppTokens.of(context);
-    final TextStyle dim = theme.textTheme.titleMedium!.copyWith(fontSize: 13);
+    final TextStyle dim = theme.textTheme.titleMedium!.copyWith(
+      fontSize: 13,
+      color: tokens.dim,
+    );
     final TextStyle mono = monoStyle(dim);
     final InFlightBlocks flight = this.flight ?? InFlightBlocks.wallet;
     final ValueListenable<int?>? peers = this.peers;
     final Widget? trailing = this.trailing;
     return Material(
-      color: theme.colorScheme.primary,
+      color: tokens.card,
       borderRadius: BorderRadius.circular(tokens.cardRadius),
       child: SizedBox(
-        height: 40,
+        height: tokens.statusStripHeight,
         child: Padding(
-          padding: const EdgeInsetsDirectional.only(start: 12, end: 4),
+          padding: tokens.statusStripPadding,
           child: PriorityRow(
-            // The two card gaps together: 24, what stood between the parts
-            // before they were handed out by priority.
-            gap: tokens.panelGap + tokens.cardGap,
+            gap: tokens.statusStripGap,
             children: <Prioritized>[
               Prioritized(
                 priority: 0,
+                shrink: true,
+                // The height can shorten, but the connection dot stays visible.
+                minWidth: tokens.statusDotSize * 2,
                 child: Row(
                   mainAxisSize: MainAxisSize.min,
                   children: <Widget>[
@@ -104,35 +113,43 @@ class StatusStrip extends StatelessWidget {
                     // Selected, so the height is rebuilt when it changes
                     // and not each time the node is asked how far it has
                     // synced.
-                    RepaintBoundary(
-                      child:
-                          BlocSelector<
-                            NodeSyncStatusCubit,
-                            NodeSyncStatusState,
-                            int
-                          >(
-                            bloc: syncCubit,
-                            selector: (NodeSyncStatusState state) =>
-                                state.data?.second.currentHeight ?? 0,
-                            builder: (BuildContext context, int height) =>
-                                _buildHeight(height, mono),
-                          ),
+                    Flexible(
+                      child: RepaintBoundary(
+                        child:
+                            BlocSelector<
+                              NodeSyncStatusCubit,
+                              NodeSyncStatusState,
+                              int
+                            >(
+                              bloc: syncCubit,
+                              selector: (NodeSyncStatusState state) =>
+                                  state.data?.second.currentHeight ?? 0,
+                              builder: (BuildContext context, int height) =>
+                                  _buildHeight(
+                                    height,
+                                    mono,
+                                    tokens.cardGap,
+                                    context,
+                                  ),
+                            ),
+                      ),
                     ),
                   ],
                 ),
               ),
               Prioritized(
                 priority: 3,
-                child: BlocSelector<
-                  NodeSyncStatusCubit,
-                  NodeSyncStatusState,
-                  int?
-                >(
-                  bloc: syncCubit,
-                  selector: momentumsBehind,
-                  builder: (BuildContext context, _) =>
-                      SyncBehind(state: syncCubit.state),
-                ),
+                child:
+                    BlocSelector<
+                      NodeSyncStatusCubit,
+                      NodeSyncStatusState,
+                      int?
+                    >(
+                      bloc: syncCubit,
+                      selector: momentumsBehind,
+                      builder: (BuildContext context, _) =>
+                          SyncBehind(state: syncCubit.state),
+                    ),
               ),
               Prioritized(
                 priority: 6,
@@ -144,7 +161,7 @@ class StatusStrip extends StatelessWidget {
                   (BuildContext context) => Row(
                     mainAxisSize: MainAxisSize.min,
                     children: <Widget>[
-                      Text('Node ', style: dim),
+                      Text('${context.l10n.stripNode} ', style: dim),
                       Flexible(
                         child: ValueFlash(
                           value: kCurrentNode,
@@ -168,7 +185,7 @@ class StatusStrip extends StatelessWidget {
                   return Row(
                     mainAxisSize: MainAxisSize.min,
                     children: <Widget>[
-                      Text('Chain ', style: dim),
+                      Text('${context.l10n.stripChain} ', style: dim),
                       ValueFlash(
                         value: chainId,
                         child: Ltr(
@@ -220,14 +237,16 @@ class StatusStrip extends StatelessWidget {
                           after.data?.second.currentHeight,
                   listener: (BuildContext context, _) =>
                       unawaited(flight.check()),
-                  child: FlightChip(blocks: flight),
+                  child: showFlight
+                      ? FlightChip(blocks: flight)
+                      : const SizedBox.shrink(),
                 ),
               ),
               Prioritized(
                 priority: 4,
                 shrink: true,
                 // The mark alone.
-                minWidth: 36,
+                minWidth: tokens.statusDotSize * 2.25,
                 end: true,
                 child: RepaintBoundary(
                   child: plasma ?? const GenerationStatus(),
@@ -237,11 +256,7 @@ class StatusStrip extends StatelessWidget {
                 Prioritized(
                   priority: 2,
                   end: true,
-                  child: Padding(
-                    // The strip's own end padding is the plasma well's: 4.
-                    padding: const EdgeInsetsDirectional.only(end: 8),
-                    child: trailing,
-                  ),
+                  child: trailing,
                 ),
             ],
           ),
@@ -250,12 +265,17 @@ class StatusStrip extends StatelessWidget {
     );
   }
 
-  Widget _buildHeight(int height, TextStyle mono) => height <= 0
+  Widget _buildHeight(
+    int height,
+    TextStyle mono,
+    double gap,
+    BuildContext context,
+  ) => height <= 0
       ? const SizedBox.shrink()
       : Padding(
-          padding: const EdgeInsetsDirectional.only(start: 12),
+          padding: EdgeInsetsDirectional.only(start: gap),
           child: Tooltip(
-            message: 'Momentum height',
+            message: context.l10n.stripMomentumHeight(height),
             child: ValueFlash(
               value: height,
               child: Ltr(
@@ -263,6 +283,9 @@ class StatusStrip extends StatelessWidget {
                   '#${splitAmount(BigInt.from(height), 0).$1}',
                   key: const Key('strip_height'),
                   style: mono,
+                  maxLines: 1,
+                  softWrap: false,
+                  overflow: TextOverflow.ellipsis,
                 ),
               ),
             ),

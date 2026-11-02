@@ -12,17 +12,24 @@ sealed class BurnTokenEvent extends Equatable {
 /// Requests burning an amount of a token.
 final class BurnTokenRequested extends BurnTokenEvent {
   /// Creates a [BurnTokenRequested] event.
-  const BurnTokenRequested({
+  BurnTokenRequested({
     required this.amount,
-    required this.token,
-  });
+    required Token token,
+    this.intent,
+  }) : _token = Map<String, dynamic>.unmodifiable(token.toJson());
 
   /// Amount to burn in the token's smallest unit.
   final BigInt amount;
 
   /// Token to burn.
-  final Token token;
+  final Map<String, dynamic> _token;
+
+  /// Queued SDK metadata cannot be rewritten by the source object.
+  Token get token => Token.fromJson(Map<String, dynamic>.of(_token));
+
+  /// An inline or legacy form captures its confirmation before yielding.
+  final TokenActionIntent? intent;
 
   @override
-  List<Object?> get props => <Object?>[amount, token];
+  List<Object?> get props => <Object?>[amount, _token, intent];
 }

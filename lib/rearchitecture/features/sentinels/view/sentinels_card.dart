@@ -1,78 +1,151 @@
-import 'package:material_ui/material_ui.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:material_ui/material_ui.dart';
 import 'package:zenon_syrius_wallet_flutter/main.dart';
-import 'package:zenon_syrius_wallet_flutter/rearchitecture/features/card_parts/card_parts.dart';
-import 'package:zenon_syrius_wallet_flutter/rearchitecture/features/features.dart';
-import 'package:zenon_syrius_wallet_flutter/rearchitecture/features/pillar_parts/pillar_parts.dart';
+import 'package:zenon_syrius_wallet_flutter/rearchitecture/features/sentinels/bloc/sentinels_bloc.dart';
+import 'package:zenon_syrius_wallet_flutter/rearchitecture/features/sentinels/view/sentinel_values.dart';
 import 'package:zenon_syrius_wallet_flutter/rearchitecture/utils/utils.dart';
+import 'package:zenon_syrius_wallet_flutter/rearchitecture/utils/widgets/page/empty_note.dart';
 import 'package:zenon_syrius_wallet_flutter/utils/utils.dart';
-import 'package:zenon_syrius_wallet_flutter/widgets/widgets.dart'
-    hide
-        InfiniteScrollTable,
-        InfiniteScrollTableCell,
-        InfiniteScrollTableHeaderColumn;
+import 'package:zenon_syrius_wallet_flutter/widgets/reusable_widgets/error_widget.dart';
+import 'package:zenon_syrius_wallet_flutter/widgets/reusable_widgets/modals/modal_chrome.dart';
+import 'package:zenon_syrius_wallet_flutter/widgets/shell/page_refresh.dart';
 import 'package:znn_sdk_dart/znn_sdk_dart.dart';
 
-/// Every active sentinel on the network, by its owner's address.
+/// Every active sentinel on the network, with its actual registration window.
 ///
-/// The selected address's own sentinel is marked "Yours" and carries the
-/// countdown to its revocation window; while that window is open the row
-/// also offers Disassemble.
+/// Owner actions go to the existing workflow through caller-owned callbacks.
+/// The active endpoint cannot supply revoked history, so no historical row is
+/// invented or merged into this list from an ownership lookup.
 class SentinelsCard extends StatelessWidget {
-  /// {@macro default_constructor}
-  const SentinelsCard({super.key});
+  /// Creates the list; an injected bloc remains owned by its caller.
+  const SentinelsCard({
+    this.bloc,
+    this.selectedAddress,
+    this.onSpawn,
+    this.onOpenOwner,
+    this.heading,
+    super.key,
+  });
+
+  /// An already scoped reader, chiefly supplied by the Nodes integration.
+  final SentinelsBloc? bloc;
+
+  /// The captured address to mark, without inferring wallet ownership.
+  final String? selectedAddress;
+
+  /// Opens the existing registration workflow after current admission checks.
+  final VoidCallback? onSpawn;
+
+  /// Opens the selected owner's existing management and revoke workflow.
+  final VoidCallback? onOpenOwner;
+
+  /// The shared Nodes tabs, or the localized title when omitted.
+  final Widget? heading;
 
   @override
   Widget build(BuildContext context) {
+    final Widget view = _View(
+      selectedAddress: selectedAddress ?? kSelectedAddress,
+      onSpawn: onSpawn,
+      onOpenOwner: onOpenOwner,
+      heading: heading,
+    );
+    final SentinelsBloc? supplied = bloc;
+    if (supplied != null) {
+      return BlocProvider<SentinelsBloc>.value(value: supplied, child: view);
+    }
     return BlocProvider<SentinelsBloc>(
       create: (_) =>
           SentinelsBloc(zenon: zenon!)..add(const InfiniteListRequested()),
-      child: const _View(),
+      child: view,
     );
   }
 }
 
 class _View extends StatelessWidget {
-  const _View();
+  const _View({
+    required this.selectedAddress,
+    required this.onSpawn,
+    required this.onOpenOwner,
+    required this.heading,
+  });
+
+  final String? selectedAddress;
+  final VoidCallback? onSpawn;
+  final VoidCallback? onOpenOwner;
+  final Widget? heading;
+
+  void _refresh(BuildContext context) {
+    context.read<SentinelsBloc>().add(const InfiniteListRefreshRequested());
+  }
 
   @override
   Widget build(BuildContext context) {
-    return Panel(
-      title: context.l10n.sentinels,
-      actions: <Widget>[
-        RefreshButton(
-          onPressed: () {
-            context.read<SentinelsBloc>().add(
-              const InfiniteListRefreshRequested(),
-            );
-          },
-        ),
-      ],
+    final AppTokens tokens = AppTokens.of(context);
+    return PageRefreshAction(
+      onRefresh: () => _refresh(context),
       child: BlocBuilder<SentinelsBloc, InfiniteListState<SentinelInfo>>(
         builder: (_, InfiniteListState<SentinelInfo> state) {
-          return StateSwitcher(
-            child: switch (state.status) {
-              InfiniteListStatus.initial => const _Loading(
-                key: ValueKey<String>('loading'),
-              ),
-              InfiniteListStatus.failure => CardNote.error(
-                state.error!,
-                key: const ValueKey<String>('failure'),
-              ),
-              // The table would say "None yet" itself, but under the
-              // table's key, and the first sentinel would appear with no
-              // fade.
-              InfiniteListStatus.success when state.data!.isEmpty =>
-                SyriusErrorWidget(
-                  context.l10n.noItemsFound,
-                  key: const ValueKey<String>('empty'),
+          // Pagination can overlap while network membership changes. Owner
+          // identity remains unique, and this endpoint remains active-only.
+          final List<SentinelInfo> sentinels = <String, SentinelInfo>{
+            for (final SentinelInfo item in state.data ?? <SentinelInfo>[])
+              if (item.active) item.owner.toString(): item,
+          }.values.toList();
+          return Panel(
+            key: const Key('sentinels_list'),
+            title: context.l10n.sentinels,
+            heading: heading,
+            actions: <Widget>[
+              TextButton.icon(
+                key: const Key('sentinels_spawn'),
+                style: secondaryButtonStyle(context).copyWith(
+                  visualDensity: VisualDensity.standard,
+                  minimumSize: WidgetStatePropertyAll<Size>(
+                    Size(0, tokens.pillarActionHeight),
+                  ),
+                  padding: WidgetStatePropertyAll<EdgeInsetsGeometry>(
+                    EdgeInsetsDirectional.symmetric(horizontal: tokens.cardGap),
+                  ),
+                  textStyle: WidgetStatePropertyAll<TextStyle>(
+                    tokens.compactText,
+                  ),
+                  tapTargetSize: MaterialTapTargetSize.shrinkWrap,
                 ),
-              InfiniteListStatus.success => _Populated(
-                key: const ValueKey<String>('table'),
-                hasReachedMax: state.hasReachedMax,
-                sentinels: state.data!,
+                onPressed: onSpawn,
+                icon: Icon(Icons.add, size: tokens.settingsIconSize),
+                label: Text(context.l10n.spawn),
               ),
-            },
+            ],
+            child: ListEntrance(
+              key: ValueKey<String>('sentinels_$selectedAddress'),
+              itemKeys: sentinels.map(_sentinelKey).toList(),
+              child: StateSwitcher(
+                child: switch (state.status) {
+                  InfiniteListStatus.initial => const _Loading(
+                    key: ValueKey<String>('loading'),
+                  ),
+                  InfiniteListStatus.failure => SyriusErrorWidget(
+                    context.l10n.nodesUnavailable,
+                    onRetry: () => _refresh(context),
+                    key: const ValueKey<String>('failure'),
+                  ),
+                  InfiniteListStatus.success when sentinels.isEmpty =>
+                    EmptyNote(
+                      text: context.l10n.nodesNoneYet,
+                      key: const ValueKey<String>('empty'),
+                    ),
+                  InfiniteListStatus.success => _Populated(
+                    key: const ValueKey<String>('table'),
+                    hasReachedMax: state.hasReachedMax,
+                    sentinels: sentinels,
+                    selectedAddress: selectedAddress,
+                    onOpenOwner: onOpenOwner,
+                    onRefresh: () => _refresh(context),
+                  ),
+                },
+              ),
+            ),
           );
         },
       ),
@@ -80,11 +153,11 @@ class _View extends StatelessWidget {
   }
 }
 
-/// The table's head and one of its rows, as the table lays them out; the
-/// loading bars are spaced by them. A row is as tall as the copy button
-/// beside its address.
+LocalKey _sentinelKey(SentinelInfo item) =>
+    ValueKey<String>(item.owner.toString());
+
+/// The head is shared with InfiniteScrollTable. Rows fit the compact chip.
 const double _kHeadHeight = 40;
-const double _kRowHeight = 40 + kInfiniteTableHorizontalPadding;
 const double _kSkeletonBar = 12;
 
 /// The list while it loads: a bar where each of the first rows will be,
@@ -95,16 +168,19 @@ class _Loading extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final double rowHeight =
+        AppTokens.of(context).pillarActionHeight +
+        kInfiniteTableHorizontalPadding;
     // A short card shows fewer bars instead of overflowing.
-    return const SingleChildScrollView(
-      physics: NeverScrollableScrollPhysics(),
-      padding: EdgeInsets.fromLTRB(
+    return SingleChildScrollView(
+      physics: const NeverScrollableScrollPhysics(),
+      padding: EdgeInsetsDirectional.fromSTEB(
         kInfiniteTableHorizontalPadding,
-        _kHeadHeight + 1 + (_kRowHeight - _kSkeletonBar) / 2,
+        _kHeadHeight + 1 + (rowHeight - _kSkeletonBar) / 2,
         kInfiniteTableHorizontalPadding,
         0,
       ),
-      child: SkeletonRows(rows: 5, gap: _kRowHeight + 1 - _kSkeletonBar),
+      child: SkeletonRows(rows: 5, gap: rowHeight + 1 - _kSkeletonBar),
     );
   }
 }
@@ -113,30 +189,63 @@ class _Populated extends StatelessWidget {
   const _Populated({
     required this.hasReachedMax,
     required this.sentinels,
+    required this.selectedAddress,
+    required this.onOpenOwner,
+    required this.onRefresh,
     super.key,
   });
 
   final bool hasReachedMax;
   final List<SentinelInfo> sentinels;
+  final String? selectedAddress;
+  final VoidCallback? onOpenOwner;
+  final VoidCallback onRefresh;
+
+  static const int _ownerFlex = 5;
+  static const int _registeredFlex = 3;
+  static const int _revocableFlex = 3;
+  static const int _statusFlex = 2;
 
   @override
   Widget build(BuildContext context) {
+    final AppTokens tokens = AppTokens.of(context);
     // Tab goes through the rows' buttons, top to bottom, before it leaves
     // the card.
     return FocusTraversalGroup(
       policy: ReadingOrderTraversalPolicy(),
       child: SizedBox.expand(
+        key: const Key('sentinels_loaded'),
         child: InfiniteScrollTable<SentinelInfo>(
           // Keeps the scroll position when the page is left and shown again.
           key: const PageStorageKey<String>('sentinels_table'),
-          itemKeyGenerator: (SentinelInfo sentinelInfo) =>
-              ValueKey<String>(sentinelInfo.owner.toString()),
+          itemKeyGenerator: _sentinelKey,
+          rowBuilder: (SentinelInfo item, int index, Widget row) =>
+              ListEntranceItem(key: _sentinelKey(item), child: row),
           items: sentinels,
           hasReachedMax: hasReachedMax,
           columns: _columns,
+          heads: <InfiniteScrollTableColumnType, InfiniteScrollTableHead>{
+            .sentinelAddress: InfiniteScrollTableHead(
+              name: context.l10n.nodesOwner,
+              flex: _ownerFlex,
+            ),
+            .date: InfiniteScrollTableHead(
+              name: context.l10n.nodesRegistered,
+              flex: _registeredFlex,
+            ),
+            .duration: InfiniteScrollTableHead(
+              name: context.l10n.nodesRevocable,
+              flex: _revocableFlex,
+            ),
+            .type: InfiniteScrollTableHead(
+              name: context.l10n.nodesStatus,
+              flex: _statusFlex,
+              alignment: MainAxisAlignment.end,
+            ),
+          },
           generateRowCells: (SentinelInfo sentinelInfo) => _buildRowCells(
-            context: context,
             sentinelInfo: sentinelInfo,
+            tokens: tokens,
           ),
           onScrollReachedBottom: () {
             context.read<SentinelsBloc>().add(
@@ -149,69 +258,74 @@ class _Populated extends StatelessWidget {
   }
 
   List<InfiniteScrollTableCell> _buildRowCells({
-    required BuildContext context,
     required SentinelInfo sentinelInfo,
+    required AppTokens tokens,
   }) {
-    // The three cells after the address are for the address's own sentinel
-    // and stay empty on every other row.
-    final bool own = sentinelInfo.owner.toString() == kSelectedAddress;
+    final String owner = sentinelInfo.owner.toString();
+    final bool own = owner == selectedAddress;
+    final Widget identifier = Row(
+      mainAxisSize: MainAxisSize.min,
+      children: <Widget>[
+        Flexible(
+          child: SentinelOwnerText(
+            address: owner,
+            style: tokens.dataText.copyWith(
+              fontSize: tokens.compactText.fontSize,
+              color: tokens.dim,
+            ),
+          ),
+        ),
+        if (own) ...<Widget>[
+          SizedBox(width: tokens.inlineGap),
+          const SentinelStatusChip(active: true, yours: true),
+        ],
+      ],
+    );
 
     return <InfiniteScrollTableCell>[
-      InfiniteScrollTableCell.textFromAddress(
-        address: sentinelInfo.owner,
-        flex: 3,
-        isStakeAddress: own,
+      InfiniteScrollTableCell(
+        flex: _ownerFlex,
+        child: own && onOpenOwner != null
+            ? InkWell(
+                key: const Key('sentinels_open_owner'),
+                onTap: onOpenOwner,
+                borderRadius: BorderRadius.circular(tokens.compactRadius),
+                child: identifier,
+              )
+            : identifier,
       ),
       InfiniteScrollTableCell(
-        child: own
-            ? Align(
-                alignment: Alignment.centerLeft,
-                child: StatusDot(on: true, label: context.l10n.sentinelYours),
-              )
-            : const SizedBox.shrink(),
+        flex: _registeredFlex,
+        child: SentinelRegistrationTime(
+          timestamp: sentinelInfo.registrationTimestamp,
+        ),
       ),
       InfiniteScrollTableCell(
-        child: own
-            ? Align(
-                alignment: Alignment.centerLeft,
-                child: Tooltip(
-                  message: sentinelInfo.isRevocable
-                      ? context.l10n.revocationWindowOpen
-                      : context.l10n.untilRevocationWindowOpens,
-                  child: RevokeCountdown(
-                    seconds: sentinelInfo.revokeCooldown,
-                    open: sentinelInfo.isRevocable,
-                    alignment: CrossAxisAlignment.start,
-                    onFinished: () => _refresh(context),
-                  ),
-                ),
-              )
-            : const SizedBox.shrink(),
+        flex: _revocableFlex,
+        child: Align(
+          alignment: AlignmentDirectional.centerStart,
+          child: SentinelRevocationTime(
+            key: ValueKey<String>(owner),
+            sentinel: sentinelInfo,
+            onRefresh: onRefresh,
+          ),
+        ),
       ),
       InfiniteScrollTableCell(
-        // Disassemble is offered only while the revocation window is open.
-        child: own && sentinelInfo.isRevocable
-            ? Center(
-                child: RevokeSentinelButton(
-                  onRevoked: () => _refresh(context),
-                ),
-              )
-            : const SizedBox.shrink(),
+        flex: _statusFlex,
+        child: Align(
+          alignment: AlignmentDirectional.centerEnd,
+          child: SentinelStatusChip(active: sentinelInfo.active),
+        ),
       ),
     ];
-  }
-
-  /// The window opened or closed, or the sentinel is gone: read the list
-  /// again.
-  void _refresh(BuildContext context) {
-    context.read<SentinelsBloc>().add(const InfiniteListRefreshRequested());
   }
 
   static const List<InfiniteScrollTableColumnType> _columns =
       <InfiniteScrollTableColumnType>[
         .sentinelAddress,
-        .blank,
-        .blank,
-        .blank,
+        .date,
+        .duration,
+        .type,
       ];
 }

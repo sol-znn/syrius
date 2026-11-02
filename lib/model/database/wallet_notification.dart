@@ -1,26 +1,51 @@
-import 'package:material_ui/material_ui.dart';
 import 'package:flutter_vector_icons/flutter_vector_icons.dart';
+import 'package:material_ui/material_ui.dart';
 import 'package:zenon_syrius_wallet_flutter/model/model.dart';
 import 'package:zenon_syrius_wallet_flutter/utils/app_colors.dart';
 
+/// A retained wallet event with optional producer-supplied chain metadata.
 class WalletNotification {
+  /// Creates an event while retaining nullable fields from legacy storage.
   WalletNotification({
     required this.title,
     required this.timestamp,
     required this.details,
     required this.type,
     this.id,
+    this.eventKind,
+    this.walletScope,
+    this.chainId,
+    this.transactionHash,
   });
+
+  /// The event's display title, if the original producer supplied one.
   final String? title;
 
+  /// The original event time in milliseconds since the Unix epoch.
   final int? timestamp;
 
+  /// The original event details, without inferred identifiers.
   final String? details;
 
+  /// The producer-selected display category.
   final NotificationType? type;
 
+  /// The legacy producer identifier, separate from the storage key.
   final int? id;
 
+  /// Explicit producer identity. Legacy text is never parsed to infer a kind.
+  final String? eventKind;
+
+  /// The stable chain and wallet anchor, independent of address selection.
+  final String? walletScope;
+
+  /// The original event's chain, when the producer knows it.
+  final int? chainId;
+
+  /// The exact originally published hash, when supplied by the producer.
+  final String? transactionHash;
+
+  /// Returns the category colour used by legacy notification surfaces.
   Color getColor() {
     switch (type) {
       case NotificationType.error:
@@ -32,11 +57,14 @@ class WalletNotification {
     }
   }
 
+  /// Returns the category icon used by legacy notification surfaces.
   Widget getIcon() {
     switch (type) {
       case NotificationType.stakingDeactivated:
-        return _getCircledIcon(MaterialCommunityIcons.alert_circle_outline,
-            iconColor: Colors.grey,);
+        return _getCircledIcon(
+          MaterialCommunityIcons.alert_circle_outline,
+          iconColor: Colors.grey,
+        );
       case NotificationType.error:
         return const Icon(
           MaterialCommunityIcons.alert_circle_outline,
@@ -68,8 +96,10 @@ class WalletNotification {
       case NotificationType.delete:
         return _getCircledIcon(Icons.delete_forever);
       case NotificationType.confirm:
-        return _getCircledIcon(Icons.remove_red_eye,
-            iconColor: AppColors.alertNotification,);
+        return _getCircledIcon(
+          Icons.remove_red_eye,
+          iconColor: AppColors.alertNotification,
+        );
       default:
         return _getCircledIcon(MaterialCommunityIcons.arrow_top_right);
     }

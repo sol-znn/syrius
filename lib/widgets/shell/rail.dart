@@ -1,51 +1,89 @@
 import 'dart:async';
 import 'dart:math' as math;
 
+import 'package:flutter/foundation.dart';
+import 'package:flutter_svg/flutter_svg.dart';
 import 'package:material_ui/material_ui.dart';
 import 'package:zenon_syrius_wallet_flutter/main.dart';
 import 'package:zenon_syrius_wallet_flutter/rearchitecture/utils/extensions/buildcontext_extension.dart';
 import 'package:zenon_syrius_wallet_flutter/utils/app_theme.dart';
 import 'package:zenon_syrius_wallet_flutter/utils/constants.dart';
-import 'package:zenon_syrius_wallet_flutter/utils/global.dart';
 import 'package:zenon_syrius_wallet_flutter/widgets/shell/tabs.dart';
 
-/// The space between two rail items, half above each and half below.
-const double _kRailItemGap = 2;
+// Canonical symbol contents from 00-head.html. Their original paths keep
+// the silhouette and stroke consistent between the rail and Settings.
+const Map<String, String> _symbols = <String, String>{
+  'home':
+      '<path d="M3 11 12 3l9 8v9a1 1 0 0 1-1 1h-5v-6H9v6H4a1 1 0 0 1-1-1z"/>',
+  'send': '<path d="M22 2 11 13M22 2l-7 20-4-9-9-4z"/>',
+  'up': '<path d="M12 19V5M5 12l7-7 7 7"/>',
+  'down': '<path d="M12 5v14M19 12l-7 7-7-7"/>',
+  'copy':
+      '<rect x="9" y="9" width="12" height="12" rx="2"/><path d="M5 15V5a2 2 0 0 1 2-2h10"/>',
+  'dl': '<path d="M12 3v12M7 10l5 5 5-5M4 21h16"/>',
+  'refresh':
+      '<path d="M3 12a9 9 0 0 1 15-6.7L21 8M21 3v5h-5M21 '
+      '12a9 9 0 0 1-15 6.7L3 16M3 21v-5h5"/>',
+  'trash': '<path d="M4 7h16M9 7V4h6v3M6 7l1 13h10l1-13M10 11v6M14 11v6"/>',
+  'coins': '<circle cx="9" cy="9" r="6"/><path d="M15.5 9.5a6 6 0 1 1-6 6"/>',
+  'stack': '<path d="m12 3 9 5-9 5-9-5zM3 13l9 5 9-5M3 18l9 5 9-5"/>',
+  'zap': '<path d="M13 2 4 14h7l-1 8 9-12h-7z"/>',
+  'token': '<circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="3.5"/>',
+  'swap': '<path d="M7 4 3 8l4 4M3 8h14M17 12l4 4-4 4M21 16H7"/>',
+  'rocket':
+      '<path d="M12 2c4 3 5 8 4 13H8C7 10 8 5 12 2zM8 15l-3 3 '
+      '3 1M16 15l3 3-3 1M12 19v3"/>',
+  'bell':
+      '<path d="M6 8a6 6 0 0 1 12 0c0 7 3 8 3 8H3s3-1 3-8M10 '
+      '20a2 2 0 0 0 4 0"/>',
+  'gear':
+      '<circle cx="12" cy="12" r="3"/><path d="M12 2v3M12 19v3M2 12h3M19 12h3M4.9 4.9l2.1 2.1M17 17l2.1 2.1M4.9 19.1 7 17M17 7l2.1-2.1"/>',
+  'lock':
+      '<rect x="4" y="11" width="16" height="10" rx="2"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/>',
+  'link':
+      '<path d="M10 14a5 5 0 0 0 7 0l3-3a5 5 0 0 0-7-7l-1 1M14 '
+      '10a5 5 0 0 0-7 0l-3 3a5 5 0 0 0 7 7l1-1"/>',
+  'chevr': '<path d="m9 6 6 6-6 6"/>',
+  'shield': '<path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>',
+  'eye':
+      '<path d="M2 12s4-7 10-7 10 7 10 7-4 7-10 7S2 12 2 12z"/><circle cx="12" cy="12" r="3"/>',
+  'book':
+      '<path d="M4 4h12a3 3 0 0 1 3 3v13H7a3 3 0 0 0-3 3zM4 '
+      '4v16M19 16H7a3 3 0 0 0-3 3"/>',
+  'info': '<circle cx="12" cy="12" r="9"/><path d="M12 11v5M12 8h.01"/>',
+  'globe':
+      '<circle cx="12" cy="12" r="9"/><path d="M3 12h18M12 3a14 14 0 0 1 0 18M12 3a14 14 0 0 0 0 18"/>',
+};
 
-/// The rail's width open: an icon and a label for each page.
-const double _kRailWidth = 200;
+/// Draws an original shell symbol for the rail or Settings section menu.
+Widget buildShellSymbol(
+  BuildContext context,
+  String symbol, {
+  Color? color,
+  double? size,
+  bool directional = false,
+}) {
+  final AppTokens tokens = AppTokens.of(context);
+  final String? contents = _symbols[symbol];
+  if (contents == null) {
+    throw ArgumentError.value(symbol, 'symbol', 'Unknown shell symbol');
+  }
+  return SvgPicture.string(
+    '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" '
+    'fill="none" stroke="currentColor" stroke-width="1.8" '
+    'stroke-linecap="round" stroke-linejoin="round">$contents</svg>',
+    width: size ?? tokens.railIconSize,
+    height: size ?? tokens.railIconSize,
+    colorFilter: ColorFilter.mode(color ?? tokens.dim, BlendMode.srcIn),
+    matchTextDirection: directional,
+    excludeFromSemantics: true,
+  );
+}
 
-/// The rail's width collapsed: the icons alone, with as much room on each
-/// side of one as it has above and below at the tallest row.
-const double _kRailCollapsedWidth = 56;
+String get _chordName =>
+    defaultTargetPlatform == TargetPlatform.macOS ? 'Cmd' : 'Ctrl';
 
-const double _kRailIconSize = 18;
-
-/// The space before an icon in the open rail, and between it and its label.
-const double _kRailIconInset = 12;
-
-/// The same space collapsed, which is what centres the icon in the strip.
-const double _kRailIconInsetCollapsed =
-    (_kRailCollapsedWidth - _kRailIconSize) / 2;
-
-/// What is left of an item in the open rail after the icon: the room its
-/// label is laid out in, at every width of the rail.
-const double _kRailLabelBox = _kRailWidth - _kRailIconInset - _kRailIconSize;
-
-/// The labels are gone before the rail is much narrower than they are, and
-/// come back once it is nearly wide enough for them: they fade over the wide
-/// 60% of the travel, so the edge of the rail is not seen cutting through a
-/// word at full strength.
-const Interval _kRailLabelFade = Interval(0.4, 1);
-
-/// A length between its value in the collapsed rail and in the open one.
-/// [expansion] is 0 collapsed and 1 open.
-double _railLerp(double collapsed, double open, double expansion) =>
-    collapsed + (open - collapsed) * expansion;
-
-/// Puts a rail tooltip beside its item, towards the page, [gap] off the
-/// rail. Material puts a tooltip under its target, which in a column of
-/// icons is on top of the next one.
+/// A tooltip beside its item, towards the page, avoids covering the next row.
 TooltipPositionDelegate _railTooltipBeside(
   TextDirection direction,
   double gap,
@@ -64,210 +102,265 @@ TooltipPositionDelegate _railTooltipBeside(
   );
 };
 
-/// The selected rail item's tint: the theme's hover tint, twice as strong on
-/// the light ground, where near white the eye needs about twice the alpha
-/// for the step the dark ground shows at once. An item under the pointer
-/// gets half of it, so hover stays lighter than selected in both themes.
-///
-/// The rail's own colour, not a scheme role: it used the scheme's primary,
-/// which is the card colour (the status strip's fill) and drew the selected
-/// item in the light theme as a mid-grey slab.
-Color _railPillColor(BuildContext context) {
-  final Color hover = AppTokens.of(context).hover;
-  final double strength = Theme.of(context).brightness == Brightness.light
-      ? 2
-      : 1;
-  return hover.withValues(alpha: hover.a * strength);
-}
-
-/// One destination of the rail: a page, its name and its icon.
+/// One destination, with stable metadata for the shell's shortcut palette.
 class RailEntry {
   /// Creates an entry for [tab].
   const RailEntry(this.tab, this.label, this.icon);
 
-  /// The page the entry opens.
+  /// The existing identifier, also used in harness selectors.
   final Tabs tab;
 
-  /// The entry's name.
+  /// The English source label. Render [localizedLabel] in the interface.
   final String label;
 
-  /// The entry's icon.
+  /// Material metadata for existing consumers. [buildIcon] draws the source
+  /// mockup's glyph in the rail and in new consumers.
   final IconData icon;
+
+  /// The destination's name in the current locale.
+  String localizedLabel(BuildContext context) => switch (tab) {
+    Tabs.dashboard => context.l10n.railHome,
+    Tabs.transfer => context.l10n.transfer,
+    Tabs.staking => context.l10n.railStaking,
+    Tabs.pillars || Tabs.sentinels => context.l10n.railNodes,
+    Tabs.plasma => context.l10n.plasma,
+    Tabs.tokens => context.l10n.tokens,
+    Tabs.p2pSwap => context.l10n.railSwap,
+    Tabs.accelerator => context.l10n.railAccelerator,
+    Tabs.notifications => context.l10n.railNotifications,
+    Tabs.settings => context.l10n.railSettings,
+    Tabs.lock =>
+      label == 'Locked' ? context.l10n.railLocked : context.l10n.railLock,
+    _ => label,
+  };
+
+  /// Draws the original glyph without a second accessible name.
+  Widget buildIcon(BuildContext context, {Color? color}) {
+    final AppTokens tokens = AppTokens.of(context);
+    final String? symbol = switch (tab) {
+      Tabs.dashboard => 'home',
+      Tabs.transfer => 'send',
+      Tabs.staking => 'coins',
+      Tabs.pillars || Tabs.sentinels => 'stack',
+      Tabs.plasma => 'zap',
+      Tabs.tokens => 'token',
+      Tabs.p2pSwap => 'swap',
+      Tabs.accelerator => 'rocket',
+      Tabs.notifications => 'bell',
+      Tabs.settings => 'gear',
+      Tabs.lock => 'lock',
+      Tabs.walletConnect => 'link',
+      _ => null,
+    };
+    return symbol == null
+        ? Icon(icon, size: tokens.railIconSize, color: color ?? tokens.dim)
+        : buildShellSymbol(context, symbol, color: color);
+  }
 }
 
-/// The rail's pages, in the order of their number shortcuts.
+/// The eight pages, in the order of their number shortcuts.
 const List<RailEntry> kRailPages = <RailEntry>[
   RailEntry(Tabs.dashboard, 'Home', Icons.home_outlined),
   RailEntry(Tabs.transfer, 'Transfer', Icons.send_outlined),
-  RailEntry(Tabs.pillars, 'Pillars', Icons.layers_outlined),
-  RailEntry(Tabs.sentinels, 'Sentinels', Icons.shield_outlined),
   RailEntry(Tabs.staking, 'Staking', Icons.savings_outlined),
+  RailEntry(Tabs.pillars, 'Nodes', Icons.layers_outlined),
   RailEntry(Tabs.plasma, 'Plasma', Icons.bolt_outlined),
   RailEntry(Tabs.tokens, 'Tokens', Icons.toll_outlined),
-  RailEntry(Tabs.p2pSwap, 'P2P Swap', Icons.swap_horiz),
+  RailEntry(Tabs.p2pSwap, 'Swap', Icons.swap_horiz),
   RailEntry(Tabs.accelerator, 'Accelerator', Icons.rocket_launch_outlined),
 ];
 
-/// The wallet's own entries, at the foot of the rail.
-///
-/// Help has none: what it held is Settings > About.
+/// The footer. Connected sites is reached through Settings > Apps.
 List<RailEntry> railWalletEntries({required bool onLock}) => <RailEntry>[
-  // Shown when the page exists: kTabs decides, the rail follows.
-  if (kTabs.contains(Tabs.walletConnect))
-    const RailEntry(Tabs.walletConnect, 'Connected sites', Icons.link),
   const RailEntry(
     Tabs.notifications,
     'Notifications',
     Icons.notifications_outlined,
   ),
   const RailEntry(Tabs.settings, 'Settings', Icons.settings_outlined),
-  RailEntry(
-    Tabs.lock,
-    onLock ? 'Locked' : 'Lock',
-    onLock ? Icons.lock_outline : Icons.lock_open_outlined,
-  ),
+  RailEntry(Tabs.lock, onLock ? 'Locked' : 'Lock', Icons.lock_outline),
 ];
 
-/// What a profile that has never opened or collapsed the rail gets.
-///
-/// Collapsed: the labels cost every page 144 px for as long as they show,
-/// and the pages are few enough to know by their icons within a day. The
-/// names are one press away, and under the pointer as tooltips.
-const bool _kRailCollapsedDefault = true;
-
-/// Whether the rail is collapsed to its icons: the stored choice, and the
-/// one place that reads and writes it.
-///
-/// A notifier and not a field of the rail, because two things change it
-/// (the rail's own toggle and the shell's shortcut) and the shell's is not
-/// inside the rail.
-///
-/// Public, with [ShellRail], so that `test/shell` can reach the rail: the
-/// shell round it cannot be pumped without a wallet and a node.
+/// The profile's choice, shared by the toggle, shortcut and Display setting.
+/// Without an open preferences service the choice lasts in memory.
 class RailCollapse extends ValueNotifier<bool> {
-  /// Starts from what is stored, or from the default when nothing is.
+  /// Starts collapsed when no valid choice has been stored.
   RailCollapse() : super(_stored());
 
   static bool _stored() {
-    final Object? stored = sharedPrefsService!.get(
-      kRailCollapsedKey,
-      defaultValue: _kRailCollapsedDefault,
-    );
-    // Anything but a bool is a damaged entry, and reads as never chosen.
-    return stored is bool ? stored : _kRailCollapsedDefault;
+    try {
+      final Object? stored = sharedPrefsService?.get(kRailCollapsedKey);
+      return stored is! bool || stored;
+    } on Object {
+      // A service can exist before its box is open.
+      return true;
+    }
   }
 
-  /// Opens the rail if it is collapsed and collapses it if it is open, and
-  /// stores which for the next start.
-  void toggle() {
-    value = !value;
-    unawaited(sharedPrefsService!.put(kRailCollapsedKey, value));
+  /// Opens a collapsed rail and closes an open one.
+  void toggle() => setCollapsed(collapsed: !value);
+
+  /// Stores an explicit choice made by the toggle or Display setting.
+  void setCollapsed({required bool collapsed}) {
+    if (value == collapsed) return;
+    value = collapsed;
+    unawaited(_store(collapsed));
+  }
+
+  static Future<void> _store(bool collapsed) async {
+    try {
+      await sharedPrefsService?.put(kRailCollapsedKey, collapsed);
+    } on Object {
+      // A closed box must not break navigation. This choice remains in
+      // memory until the profile next opens its stored preferences.
+    }
   }
 }
 
-/// The rail at the width it has now: [_kRailCollapsedWidth] collapsed,
-/// [_kRailWidth] open, and each width between while it moves from one to
-/// the other. The page beside it has whatever is left.
-///
-/// One controller gives the width, the labels' fade and the icons' place,
-/// so the three cannot come apart. That is why it is a controller and not
-/// an AnimatedContainer: the items need the value the width was made from.
-///
-/// The motion always runs. The controller keeps its duration whatever the
-/// system says about reduced motion ([AnimationBehavior.preserve]; the
-/// default shortens it to a twentieth), and nothing here asks MediaQuery.
-///
-/// Public, with [RailCollapse], for `test/shell`.
+/// Opening finishes the width movement before the labels fade in, so a
+/// moving edge never cuts through visible text.
 class ShellRail extends StatefulWidget {
-  /// Creates the rail. [collapse] is the shell's, so its shortcut and the
-  /// rail's toggle change the same thing.
+  /// Creates the rail around the shell-owned choice and navigation.
   const ShellRail({
     required this.collapse,
     required this.selected,
     required this.locked,
     required this.onSelected,
+    this.onNotifications,
+    this.hasUnseen = false,
     super.key,
   });
 
-  /// Whether the rail is collapsed. The rail follows it and toggles it.
+  /// Whether the rail is collapsed.
   final RailCollapse collapse;
 
-  /// The page shown.
+  /// The selected page. Legacy Sentinels navigation also selects Nodes.
   final Tabs selected;
 
-  /// Whether the wallet is locked: the rail, toggle included, then takes no
-  /// pointer and no focus.
+  /// Removes pointer, keyboard and accessibility access to navigation.
   final bool locked;
 
-  /// Called with the page of the item pressed.
+  /// Opens an existing destination.
   final ValueChanged<Tabs> onSelected;
+
+  /// Opens the bell panel when supplied; otherwise opens Notifications.
+  final VoidCallback? onNotifications;
+
+  /// Whether the bell carries the unseen marker.
+  final bool hasUnseen;
 
   @override
   State<ShellRail> createState() => _ShellRailState();
 }
 
-class _ShellRailState extends State<ShellRail>
-    with SingleTickerProviderStateMixin {
-  // Starts where the stored choice is, so the first frame is already at its
-  // width: nothing opens or closes as the wallet starts.
-  late final AnimationController _controller = AnimationController(
+class _ShellRailState extends State<ShellRail> with TickerProviderStateMixin {
+  // Preserve keeps the complete motion on systems whose accessibility
+  // preference otherwise shortens controllers to a twentieth.
+  late final AnimationController _width = AnimationController(
     vsync: this,
-    duration: Durations.short4,
+    value: 1,
+    animationBehavior: AnimationBehavior.preserve,
+  );
+  late double _widthStart = widget.collapse.value ? 0 : 1;
+  late double _widthEnd = _widthStart;
+  late final AnimationController _labels = AnimationController(
+    vsync: this,
     value: widget.collapse.value ? 0 : 1,
     animationBehavior: AnimationBehavior.preserve,
   );
-
-  late final CurvedAnimation _expansion = CurvedAnimation(
-    parent: _controller,
-    curve: Easing.standard,
-  );
+  late final Listenable _motion = Listenable.merge(<Listenable>[
+    _width,
+    _labels,
+  ]);
 
   @override
   void initState() {
     super.initState();
-    widget.collapse.addListener(_follow);
+    _width.addStatusListener(_followWidth);
+    widget.collapse.addListener(_followChoice);
+  }
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    final AppTokens tokens = AppTokens.of(context);
+    _width.duration = tokens.railWidthDuration;
+    _labels.duration = tokens.railLabelDuration;
   }
 
   @override
   void didUpdateWidget(ShellRail oldWidget) {
     super.didUpdateWidget(oldWidget);
     if (oldWidget.collapse != widget.collapse) {
-      oldWidget.collapse.removeListener(_follow);
-      widget.collapse.addListener(_follow);
-      _follow();
+      oldWidget.collapse.removeListener(_followChoice);
+      widget.collapse.addListener(_followChoice);
+      _followChoice();
+    }
+  }
+
+  void _followWidth(AnimationStatus status) {
+    if (status == AnimationStatus.completed &&
+        _widthEnd == 1 &&
+        !widget.collapse.value) {
+      _labels.forward();
+    }
+  }
+
+  double _expansion(AppTokens tokens) =>
+      _widthStart +
+      (_widthEnd - _widthStart) * tokens.spring.transform(_width.value);
+
+  void _followChoice() {
+    // Text leaves before a closing edge moves. Reversing an interrupted
+    // opening never exposes a fragment of a label.
+    _labels
+      ..stop()
+      ..value = 0;
+    _widthStart = _expansion(AppTokens.of(context));
+    _widthEnd = widget.collapse.value ? 0 : 1;
+    setState(() {});
+    if (_widthStart == _widthEnd) {
+      _width.value = 1;
+      if (_widthEnd == 1) _labels.forward();
+    } else {
+      // Each direction uses the spring from its own starting width.
+      _width.forward(from: 0);
     }
   }
 
   @override
   void dispose() {
-    widget.collapse.removeListener(_follow);
-    _expansion.dispose();
-    _controller.dispose();
+    widget.collapse.removeListener(_followChoice);
+    _width.removeStatusListener(_followWidth);
+    _width.dispose();
+    _labels.dispose();
     super.dispose();
-  }
-
-  void _follow() {
-    // The toggle is renamed at once; the width catches up.
-    setState(() {});
-    unawaited(
-      widget.collapse.value ? _controller.reverse() : _controller.forward(),
-    );
   }
 
   @override
   Widget build(BuildContext context) {
+    final AppTokens tokens = AppTokens.of(context);
     return AnimatedBuilder(
-      animation: _expansion,
+      animation: _motion,
       builder: (BuildContext context, Widget? child) {
-        final double expansion = _expansion.value.clamp(0.0, 1.0);
+        final double expansion = _expansion(tokens);
         return SizedBox(
-          width: _railLerp(_kRailCollapsedWidth, _kRailWidth, expansion),
+          width:
+              tokens.railCollapsedWidth +
+              (tokens.railExpandedWidth - tokens.railCollapsedWidth) *
+                  expansion,
           child: _Rail(
-            selected: widget.selected,
+            selected: widget.selected == Tabs.sentinels
+                ? Tabs.pillars
+                : widget.selected,
             locked: widget.locked,
             onSelected: widget.onSelected,
+            onNotifications: widget.onNotifications,
+            hasUnseen: widget.hasUnseen,
             collapsed: widget.collapse.value,
             expansion: expansion,
+            labelsVisible: _width.isCompleted && !widget.collapse.value,
+            labelOpacity: tokens.ease.transform(_labels.value),
             onToggle: widget.collapse.toggle,
           ),
         );
@@ -276,347 +369,95 @@ class _ShellRailState extends State<ShellRail>
   }
 }
 
-/// The side rail: the toggle that opens and collapses it, the pages under
-/// that, the wallet's own entries at the bottom, and one pill that glides to
-/// whichever is selected.
-///
-/// It fills the width it is given and does not choose it: [ShellRail] does,
-/// and tells the rail how far open that width is.
-class _Rail extends StatefulWidget {
+class _Rail extends StatelessWidget {
   const _Rail({
     required this.selected,
     required this.locked,
     required this.onSelected,
+    required this.onNotifications,
+    required this.hasUnseen,
     required this.collapsed,
     required this.expansion,
+    required this.labelsVisible,
+    required this.labelOpacity,
     required this.onToggle,
   });
 
   final Tabs selected;
   final bool locked;
   final ValueChanged<Tabs> onSelected;
-
-  /// Where the rail is going: collapsed, or open. It names the toggle.
+  final VoidCallback? onNotifications;
+  final bool hasUnseen;
   final bool collapsed;
-
-  /// Where the rail is now: 0 collapsed, 1 open, between while it moves.
   final double expansion;
-
+  final bool labelsVisible;
+  final double labelOpacity;
   final VoidCallback onToggle;
 
   @override
-  State<_Rail> createState() => _RailState();
-}
-
-class _RailState extends State<_Rail> {
-  double? _lastHeight;
-
-  @override
   Widget build(BuildContext context) {
-    final List<RailEntry> wallet = railWalletEntries(
-      onLock: widget.selected == Tabs.lock,
-    );
-    return LayoutBuilder(
-      builder: (BuildContext context, BoxConstraints constraints) {
-        final double height = constraints.maxHeight;
-        // Every item must fit the shortest window (1200x600) without
-        // losing Lock off the bottom: rows shrink from 40 to 30 first.
-        // The toggle is a row like the others, above the pages.
-        final int count = 1 + kRailPages.length + wallet.length;
-        final double itemHeight = ((height - 24) / count - _kRailItemGap).clamp(
-          30.0,
-          40.0,
-        );
-        final double slot = itemHeight + _kRailItemGap;
-
-        // Where the pill sits: counted from the top for the pages, under the
-        // toggle's row, and from the bottom for the wallet's entries, as
-        // the Spacer between them lays them out.
-        final int pageAt = kRailPages.indexWhere(
-          (RailEntry e) => e.tab == widget.selected,
-        );
-        final int walletAt = wallet.indexWhere(
-          (RailEntry e) => e.tab == widget.selected,
-        );
-        final double? pillTop = pageAt >= 0
-            ? (1 + pageAt) * slot
-            : walletAt >= 0
-            ? height - (wallet.length - walletAt) * slot
-            : null;
-
-        // The pill glides when the selection changes. When the window is
-        // resized the items move at once, and so must the pill.
-        final bool resized = _lastHeight != null && _lastHeight != height;
-        _lastHeight = height;
-
-        final Color pill = _railPillColor(context);
-        // Locked, the rail takes no pointer and no keyboard focus: the only
-        // way past the lock screen is the password. IgnorePointer alone
-        // would leave Tab and Enter able to reach an item.
-        return ExcludeFocus(
-          excluding: widget.locked,
-          child: IgnorePointer(
-            ignoring: widget.locked,
-            child: AnimatedOpacity(
-              opacity: widget.locked ? 0.4 : 1,
-              duration: Durations.short4,
-              child: Stack(
-                children: <Widget>[
-                  if (pillTop != null)
-                    AnimatedPositioned(
-                      key: const Key('rail_pill'),
-                      duration: resized ? Duration.zero : Durations.medium1,
-                      curve: Easing.emphasizedDecelerate,
-                      left: 0,
-                      right: 0,
-                      top: pillTop + _kRailItemGap / 2,
-                      height: itemHeight,
-                      child: DecoratedBox(
-                        decoration: BoxDecoration(
-                          color: pill,
-                          borderRadius: BorderRadius.circular(kCardRadius),
-                        ),
-                      ),
-                    ),
-                  Positioned.fill(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.stretch,
-                      children: <Widget>[
-                        _RailToggle(
-                          collapsed: widget.collapsed,
-                          expansion: widget.expansion,
-                          height: itemHeight,
-                          onTap: widget.onToggle,
-                        ),
-                        for (final RailEntry entry in kRailPages)
-                          _buildItem(entry, itemHeight),
-                        const Spacer(),
-                        for (final RailEntry entry in wallet)
-                          _buildItem(entry, itemHeight),
-                      ],
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ),
-        );
-      },
-    );
-  }
-
-  Widget _buildItem(RailEntry entry, double height) {
-    return _RailButton(
-      // The harness finds rail items by this key (`--tab <name>`).
-      hitKey: ValueKey<String>('nav_${entry.tab.name}'),
-      icon: entry.icon,
-      name: entry.label,
-      height: height,
-      expansion: widget.expansion,
-      selected: entry.tab == widget.selected,
-      onTap: () => widget.onSelected(entry.tab),
-    );
-  }
-}
-
-/// The button that opens and collapses the rail, in the first row.
-///
-/// One chevron for both: it points away from the rail's edge to open it and
-/// turns half a circle with the rail to point back. The icon mirrors itself
-/// right to left, where the rail is on the other side, and the turn is the
-/// same there.
-class _RailToggle extends StatelessWidget {
-  const _RailToggle({
-    required this.collapsed,
-    required this.expansion,
-    required this.height,
-    required this.onTap,
-  });
-
-  final bool collapsed;
-  final double expansion;
-  final double height;
-  final VoidCallback onTap;
-
-  @override
-  Widget build(BuildContext context) {
-    return _RailButton(
-      // The harness opens and collapses the rail by this key.
-      hitKey: const ValueKey<String>('rail_toggle'),
-      icon: Icons.chevron_right,
-      iconAngle: math.pi * expansion,
-      name: collapsed ? context.l10n.railExpand : context.l10n.railCollapse,
-      labelled: false,
-      height: height,
-      expansion: expansion,
-      onTap: onTap,
-    );
-  }
-}
-
-/// One row of the rail: an icon, and its name beside it while the rail is
-/// open. A page's item and the toggle are both one, so the hover, the focus
-/// ring and the tooltip are made once.
-///
-/// The selected item is marked by the rail's pill, behind it; the row
-/// itself only changes its ink, on selection and under the mouse.
-class _RailButton extends StatefulWidget {
-  const _RailButton({
-    required this.hitKey,
-    required this.icon,
-    required this.name,
-    required this.height,
-    required this.expansion,
-    required this.onTap,
-    this.labelled = true,
-    this.selected = false,
-    this.iconAngle = 0,
-  });
-
-  /// On the row's own box: the harness and the tests find a row by it and
-  /// press its middle.
-  final Key hitKey;
-  final IconData icon;
-
-  /// What the row is called: its label, and its tooltip when it shows none.
-  final String name;
-  final double height;
-
-  /// How far open the rail is: 0 collapsed, 1 open.
-  final double expansion;
-  final VoidCallback onTap;
-
-  /// Whether the name shows beside the icon while the rail is open.
-  final bool labelled;
-  final bool selected;
-
-  /// How far the icon is turned, in radians.
-  final double iconAngle;
-
-  @override
-  State<_RailButton> createState() => _RailButtonState();
-}
-
-class _RailButtonState extends State<_RailButton> {
-  bool _hovered = false;
-  bool _focused = false;
-
-  @override
-  Widget build(BuildContext context) {
-    final ThemeData theme = Theme.of(context);
     final AppTokens tokens = AppTokens.of(context);
-    final Color dim = theme.textTheme.titleMedium!.color!;
-    final Color fg = theme.textTheme.bodyLarge!.color!;
-    final Color pill = _railPillColor(context);
-    final bool selected = widget.selected;
-    final bool lit = selected || _hovered;
-    // The label is in the tree from the moment the rail starts to open
-    // until it has closed, and not while it rests collapsed.
-    final bool showsLabel = widget.labelled && widget.expansion > 0;
-    // The tooltip names the row only while no label does. It is switched
-    // off, not taken out: taking it out would rebuild the row under it and
-    // drop its hover and its focus each time the rail moved.
-    return TooltipVisibility(
-      visible: !showsLabel,
-      child: Tooltip(
-        message: widget.name,
-        positionDelegate: _railTooltipBeside(
-          Directionality.of(context),
-          tokens.cardGap,
-        ),
-        // The icon carries the name for a screen reader instead, and only
-        // while there is no label, so the name is never read twice.
-        excludeFromSemantics: true,
-        child: Padding(
-          padding: const EdgeInsets.symmetric(vertical: _kRailItemGap / 2),
-          child: Material(
-            type: MaterialType.transparency,
-            child: InkWell(
-              borderRadius: BorderRadius.circular(tokens.cardRadius),
-              // Half the pill: enough to say "this one", less than
-              // "selected".
-              hoverColor: selected
-                  ? Colors.transparent
-                  : pill.withValues(alpha: pill.a / 2),
-              // Focus is the ring below, not a fill: the theme's focus
-              // fill is a 12% grey, heavier than the pill it would sit on.
-              focusColor: Colors.transparent,
-              onHover: (bool value) => setState(() => _hovered = value),
-              onFocusChange: (bool value) => setState(() => _focused = value),
-              onTap: widget.onTap,
-              child: DecoratedBox(
-                // The key is on this box and not on the one inside it: a
-                // decoration is hit anywhere in its bounds, and the middle
-                // of a row that shows an icon alone is otherwise empty.
-                key: widget.hitKey,
-                // Drawn inside the row's own box, so focus moves nothing.
-                position: DecorationPosition.foreground,
-                decoration: BoxDecoration(
-                  border: _focused
-                      ? Border.all(color: tokens.focusRing, width: 2)
-                      : null,
-                  borderRadius: BorderRadius.circular(tokens.cardRadius),
-                ),
-                child: SizedBox(
-                  height: widget.height,
-                  child: Padding(
-                    // Only the start is padded. The icon is centred in the
-                    // collapsed rail by this inset and not by an alignment,
-                    // so it slides the 7 px to its open place with the
-                    // width instead of jumping there.
-                    padding: EdgeInsetsDirectional.only(
-                      start: _railLerp(
-                        _kRailIconInsetCollapsed,
-                        _kRailIconInset,
-                        widget.expansion,
-                      ),
-                    ),
-                    child: Row(
-                      children: <Widget>[
-                        TweenAnimationBuilder<Color?>(
-                          tween: ColorTween(
-                            end: selected
-                                ? tokens.znnInk
-                                : lit
-                                ? fg
-                                : dim,
+    final List<RailEntry> wallet = railWalletEntries(
+      onLock: selected == Tabs.lock,
+    );
+    return ExcludeFocus(
+      excluding: locked,
+      child: ExcludeSemantics(
+        excluding: locked,
+        child: IgnorePointer(
+          ignoring: locked,
+          child: Opacity(
+            opacity: locked ? tokens.disabledOpacity : 1,
+            child: Padding(
+              padding: tokens.railPadding,
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: <Widget>[
+                  _RailButton(
+                    hitKey: const ValueKey<String>('rail_toggle'),
+                    iconKey: const ValueKey<String>('rail_icon_toggle'),
+                    buildIcon: (BuildContext context, Color color) =>
+                        Transform.rotate(
+                          angle: math.pi * expansion,
+                          child: buildShellSymbol(
+                            context,
+                            'chevr',
+                            color: color,
+                            directional: true,
                           ),
-                          duration: Durations.short3,
-                          builder:
-                              (
-                                BuildContext context,
-                                Color? color,
-                                Widget? child,
-                              ) => Transform.rotate(
-                                angle: widget.iconAngle,
-                                child: Icon(
-                                  widget.icon,
-                                  size: _kRailIconSize,
-                                  color: color,
-                                  semanticLabel: showsLabel
-                                      ? null
-                                      : widget.name,
-                                ),
-                              ),
                         ),
-                        if (showsLabel)
-                          Expanded(
-                            child: _RailLabel(
-                              text: widget.name,
-                              expansion: widget.expansion,
-                              style: theme.textTheme.bodyLarge!.copyWith(
-                                fontSize: 14,
-                                fontWeight: selected
-                                    ? FontWeight.w500
-                                    : FontWeight.w400,
-                                color: lit ? fg : dim,
-                              ),
-                            ),
-                          ),
-                      ],
-                    ),
+                    name: collapsed
+                        ? context.l10n.railExpand
+                        : context.l10n.railCollapse,
+                    shortcut: '$_chordName B',
+                    height: tokens.railToggleHeight,
+                    labelled: false,
+                    labelOpacity: 0,
+                    quiet: true,
+                    onTap: () {
+                      if (!locked) onToggle();
+                    },
                   ),
-                ),
+                  SizedBox(height: tokens.railItemGap),
+                  for (int i = 0; i < kRailPages.length; i++) ...<Widget>[
+                    _buildItem(context, kRailPages[i], '$_chordName ${i + 1}'),
+                    SizedBox(height: tokens.railItemGap),
+                  ],
+                  const Spacer(),
+                  for (int i = 0; i < wallet.length; i++) ...<Widget>[
+                    _buildItem(
+                      context,
+                      wallet[i],
+                      switch (wallet[i].tab) {
+                        Tabs.settings => '$_chordName ,',
+                        Tabs.lock => '$_chordName L',
+                        _ => null,
+                      },
+                    ),
+                    if (i < wallet.length - 1)
+                      SizedBox(height: tokens.railItemGap),
+                  ],
+                ],
               ),
             ),
           ),
@@ -624,46 +465,322 @@ class _RailButtonState extends State<_RailButton> {
       ),
     );
   }
+
+  Widget _buildItem(BuildContext context, RailEntry entry, String? shortcut) {
+    return _RailButton(
+      hitKey: ValueKey<String>('nav_${entry.tab.name}'),
+      iconKey: ValueKey<String>('rail_icon_${entry.tab.name}'),
+      labelKey: ValueKey<String>('rail_label_${entry.tab.name}'),
+      buildIcon: (BuildContext context, Color color) =>
+          entry.buildIcon(context, color: color),
+      name: entry.localizedLabel(context),
+      shortcut: shortcut,
+      height: AppTokens.of(context).railItemHeight,
+      labelled: labelsVisible,
+      labelOpacity: labelOpacity,
+      selected: entry.tab == selected,
+      hasUnseen: entry.tab == Tabs.notifications && hasUnseen,
+      onTap: () {
+        if (locked) return;
+        if (entry.tab == Tabs.notifications && onNotifications != null) {
+          onNotifications!();
+        } else {
+          onSelected(entry.tab);
+        }
+      },
+    );
+  }
 }
 
-/// A rail item's label, laid out in the room it has in the open rail
-/// whatever the rail's width is at this moment, and cut off at the rail's
-/// edge.
-///
-/// So while the rail opens or closes the label keeps its one line and its
-/// own ellipsis, and fades. Laid out in the room actually left, it would be
-/// cut to a new ellipsis on every frame, and wrap if it were allowed to.
-class _RailLabel extends StatelessWidget {
-  const _RailLabel({
-    required this.text,
-    required this.style,
-    required this.expansion,
+class _RailButton extends StatefulWidget {
+  const _RailButton({
+    required this.hitKey,
+    required this.iconKey,
+    required this.buildIcon,
+    required this.name,
+    required this.shortcut,
+    required this.height,
+    required this.labelled,
+    required this.labelOpacity,
+    required this.onTap,
+    this.labelKey,
+    this.selected = false,
+    this.hasUnseen = false,
+    this.quiet = false,
   });
 
-  final String text;
-  final TextStyle style;
-  final double expansion;
+  final Key hitKey;
+  final Key iconKey;
+  final Key? labelKey;
+  final Widget Function(BuildContext, Color) buildIcon;
+  final String name;
+  final String? shortcut;
+  final double height;
+  final bool labelled;
+  final double labelOpacity;
+  final bool selected;
+  final bool hasUnseen;
+  final bool quiet;
+  final VoidCallback onTap;
+
+  @override
+  State<_RailButton> createState() => _RailButtonState();
+}
+
+class _RailButtonState extends State<_RailButton>
+    with SingleTickerProviderStateMixin {
+  bool _hovered = false;
+  bool _focused = false;
+  bool _hasAppearance = false;
+  final ColorTween _icon = ColorTween();
+  final ColorTween _text = ColorTween();
+  final ColorTween _fill = ColorTween();
+
+  late final AnimationController _appearance = AnimationController(
+    vsync: this,
+    value: 1,
+    animationBehavior: AnimationBehavior.preserve,
+  );
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    _appearance.duration = AppTokens.of(context).railLabelDuration;
+    _retarget();
+  }
+
+  @override
+  void didUpdateWidget(_RailButton oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.selected != widget.selected ||
+        oldWidget.quiet != widget.quiet) {
+      _retarget();
+    }
+  }
+
+  Color _color(ColorTween tween) {
+    final double t = AppTokens.of(context).ease.transform(_appearance.value);
+    return Color.lerp(tween.begin, tween.end, t)!;
+  }
+
+  void _retarget() {
+    final AppTokens tokens = AppTokens.of(context);
+    final Color ink = widget.quiet ? tokens.faint : tokens.dim;
+    final Color icon = widget.selected
+        ? tokens.znnInk
+        : _hovered
+        ? tokens.foreground
+        : ink;
+    final Color text = widget.selected || _hovered ? tokens.foreground : ink;
+    final Color fill = widget.selected ? tokens.card : Colors.transparent;
+    _icon
+      ..begin = _hasAppearance ? _color(_icon) : icon
+      ..end = icon;
+    _text
+      ..begin = _hasAppearance ? _color(_text) : text
+      ..end = text;
+    _fill
+      ..begin = _hasAppearance ? _color(_fill) : fill
+      ..end = fill;
+    if (_hasAppearance) {
+      _appearance.forward(from: 0);
+    }
+    _hasAppearance = true;
+  }
+
+  @override
+  void dispose() {
+    _appearance.dispose();
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
-    return ClipRect(
-      child: OverflowBox(
-        alignment: AlignmentDirectional.centerStart,
-        minWidth: _kRailLabelBox,
-        maxWidth: _kRailLabelBox,
-        child: Padding(
-          padding: const EdgeInsetsDirectional.only(
-            start: _kRailIconInset,
-            end: _kRailIconInset,
-          ),
-          child: Opacity(
-            opacity: _kRailLabelFade.transform(expansion),
-            child: AnimatedDefaultTextStyle(
-              duration: Durations.short3,
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-              style: style,
-              child: Text(text),
+    final AppTokens tokens = AppTokens.of(context);
+    final String tooltip = widget.shortcut == null
+        ? widget.name
+        : '${widget.name}  ${widget.shortcut}';
+    return AnimatedBuilder(
+      animation: _appearance,
+      builder: (BuildContext context, Widget? child) => Semantics(
+        container: true,
+        button: true,
+        enabled: true,
+        selected: widget.selected,
+        focused: _focused,
+        label: widget.name,
+        hint: widget.shortcut,
+        value: widget.hasUnseen ? context.l10n.railUnseen : null,
+        onTap: widget.onTap,
+        child: ExcludeSemantics(
+          child: TooltipVisibility(
+            visible: !widget.labelled || widget.labelOpacity == 0,
+            child: Tooltip(
+              richMessage: TextSpan(
+                text: '',
+                semanticsLabel: tooltip,
+                style: tokens.railTooltipText,
+                children: <InlineSpan>[
+                  TextSpan(text: widget.name),
+                  if (widget.shortcut != null)
+                    WidgetSpan(
+                      alignment: PlaceholderAlignment.middle,
+                      child: Padding(
+                        padding: EdgeInsetsDirectional.only(
+                          start: tokens.inlineGap,
+                        ),
+                        child: Directionality(
+                          textDirection: TextDirection.ltr,
+                          child: DecoratedBox(
+                            decoration: BoxDecoration(
+                              border: Border.all(color: tokens.line),
+                              borderRadius: BorderRadius.circular(
+                                tokens.keyboardHintRadius,
+                              ),
+                            ),
+                            child: Padding(
+                              padding: tokens.keyboardHintPadding,
+                              child: Text(
+                                widget.shortcut!,
+                                style: tokens.keyboardHintText,
+                              ),
+                            ),
+                          ),
+                        ),
+                      ),
+                    ),
+                ],
+              ),
+              padding: tokens.railTooltipPadding,
+              textStyle: tokens.railTooltipText,
+              decoration: BoxDecoration(
+                color: tokens.card3,
+                border: Border.all(color: tokens.line),
+                borderRadius: BorderRadius.circular(tokens.compactRadius),
+                boxShadow: <BoxShadow>[tokens.tooltipShadow],
+              ),
+              excludeFromSemantics: true,
+              positionDelegate: _railTooltipBeside(
+                Directionality.of(context),
+                tokens.cardGap,
+              ),
+              child: Material(
+                type: MaterialType.transparency,
+                child: InkWell(
+                  key: widget.hitKey,
+                  borderRadius: BorderRadius.circular(tokens.cardRadius),
+                  hoverColor: Colors.transparent,
+                  focusColor: Colors.transparent,
+                  splashFactory: NoSplash.splashFactory,
+                  onHover: (bool hovered) {
+                    _hovered = hovered;
+                    _retarget();
+                  },
+                  onFocusChange: (bool focused) {
+                    if (mounted) setState(() => _focused = focused);
+                  },
+                  onTap: widget.onTap,
+                  child: DecoratedBox(
+                    // A decoration makes the whole row hittable, including
+                    // the empty middle of a row that shows only an icon.
+                    position: DecorationPosition.foreground,
+                    decoration: BoxDecoration(
+                      border: _focused
+                          ? Border.all(
+                              color: tokens.focusRing,
+                              width: tokens.focusWidth,
+                            )
+                          : null,
+                      borderRadius: BorderRadius.circular(tokens.cardRadius),
+                    ),
+                    child: SizedBox(
+                      height: widget.height,
+                      child: DecoratedBox(
+                        key: widget.selected ? const Key('rail_pill') : null,
+                        decoration: BoxDecoration(
+                          color: _color(_fill),
+                          borderRadius: BorderRadius.circular(
+                            tokens.cardRadius,
+                          ),
+                        ),
+                        child: Stack(
+                          children: <Widget>[
+                            Positioned.fill(
+                              child: Padding(
+                                padding: EdgeInsetsDirectional.symmetric(
+                                  horizontal: tokens.railItemInset,
+                                ),
+                                child: Row(
+                                  children: <Widget>[
+                                    SizedBox(
+                                      key: widget.iconKey,
+                                      width: tokens.railIconSize,
+                                      height: tokens.railIconSize,
+                                      child: widget.buildIcon(
+                                        context,
+                                        _color(_icon),
+                                      ),
+                                    ),
+                                    if (widget.labelled) ...<Widget>[
+                                      SizedBox(width: tokens.railLabelGap),
+                                      Expanded(
+                                        child: Opacity(
+                                          opacity: widget.labelOpacity,
+                                          child: Text(
+                                            widget.name,
+                                            key: widget.labelKey,
+                                            maxLines: 1,
+                                            overflow: TextOverflow.ellipsis,
+                                            style: tokens.bodyText.copyWith(
+                                              color: _color(_text),
+                                            ),
+                                          ),
+                                        ),
+                                      ),
+                                    ],
+                                  ],
+                                ),
+                              ),
+                            ),
+                            if (widget.hasUnseen)
+                              PositionedDirectional(
+                                start:
+                                    tokens.railDotStart -
+                                    tokens.railDotRingWidth,
+                                top:
+                                    tokens.railDotTop - tokens.railDotRingWidth,
+                                child: DecoratedBox(
+                                  decoration: BoxDecoration(
+                                    shape: BoxShape.circle,
+                                    color: tokens.background,
+                                  ),
+                                  child: Padding(
+                                    padding: EdgeInsets.all(
+                                      tokens.railDotRingWidth,
+                                    ),
+                                    child: SizedBox(
+                                      key: const ValueKey<String>(
+                                        'rail_unseen_dot',
+                                      ),
+                                      width: tokens.railDotSize,
+                                      height: tokens.railDotSize,
+                                      child: DecoratedBox(
+                                        decoration: BoxDecoration(
+                                          shape: BoxShape.circle,
+                                          color: tokens.pink,
+                                        ),
+                                      ),
+                                    ),
+                                  ),
+                                ),
+                              ),
+                          ],
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
+              ),
             ),
           ),
         ),

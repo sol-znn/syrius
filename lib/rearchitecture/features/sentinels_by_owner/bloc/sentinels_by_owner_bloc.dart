@@ -1,23 +1,12 @@
-import 'package:zenon_syrius_wallet_flutter/rearchitecture/utils/blocs/blocs.dart';
+import 'package:zenon_syrius_wallet_flutter/rearchitecture/utils/blocs/address_owned_fetch_cubit.dart';
 import 'package:znn_sdk_dart/znn_sdk_dart.dart';
 
 /// Fetches the sentinel owned by an address.
 ///
-/// The SDK returns a nullable [SentinelInfo]. This bloc normalizes that value
-/// into a list so consumers can share the same [FetchBloc] shape used by other
-/// address-based features.
-class SentinelsByOwnerBloc extends FetchBloc<List<SentinelInfo>> {
+/// The nullable SDK response becomes a list with explicit current ownership.
+class SentinelsByOwnerBloc extends AddressOwnedFetchCubit<List<SentinelInfo>> {
   /// {@macro default_constructor}
-  SentinelsByOwnerBloc({required super.zenon})
-    : super(
-        fromJsonT: (Map<String, dynamic> data) =>
-            List.castFrom<dynamic, Map<String, dynamic>>(
-              data['list'],
-            ).map(SentinelInfo.fromJson).toList(),
-        toJsonT: (List<SentinelInfo> list) => <String, dynamic>{
-          'list': list.map((SentinelInfo entry) => entry.toJson()).toList(),
-        },
-      );
+  SentinelsByOwnerBloc({required super.zenon});
 
   @override
   Future<List<SentinelInfo>> getData({required Address address}) async {
@@ -27,6 +16,11 @@ class SentinelsByOwnerBloc extends FetchBloc<List<SentinelInfo>> {
 
     return sentinelInfo == null
         ? <SentinelInfo>[]
-        : <SentinelInfo>[sentinelInfo];
+        : List<SentinelInfo>.unmodifiable(<SentinelInfo>[sentinelInfo]);
   }
+
+  @override
+  bool accepts(List<SentinelInfo> data, Address address) => data.every(
+    (SentinelInfo sentinel) => sentinel.owner.toString() == address.toString(),
+  );
 }

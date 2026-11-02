@@ -92,6 +92,30 @@ abstract class DappBridgeConsent {
   Future<void> revoke(String origin);
 }
 
+/// A production store can bind a decision to one original grant incarnation.
+abstract interface class DappBridgeCapturedConsent {
+  /// Reads the current address grant without prompting or mutating consent.
+  bool has(String origin, String address);
+
+  /// Captures the original preferences Box and requester grant incarnation.
+  DappBridgeConsentReceipt captureConsent(String origin);
+}
+
+/// Queued decisions never recapture another wallet's preferences or grant.
+abstract interface class DappBridgeConsentReceipt {
+  /// Whether the original Box and predecision grant incarnation remain current.
+  bool get isCurrent;
+
+  /// Whether the committed outcome still belongs to that original requester.
+  bool get outcomeIsCurrent;
+
+  /// Grants one approved address only to this captured requester generation.
+  Future<void> grant(String address);
+
+  /// Persists this exact revocation before any disconnect notification.
+  Future<void> revoke({bool Function()? isCurrent});
+}
+
 /// Sends a notification to the sockets of an origin.
 typedef DappBridgeEmit =
     void Function(
@@ -117,14 +141,12 @@ const int kDappBridgeMaxSignMessage = 8192;
 /// results and refusals as the Syrius extension's `window.zenon` and the
 /// Android app's `syrius://request`, so a page speaks to all three alike.
 class DappBridgeService {
-  /// Creates the service over [wallet] and [consent].
+  /// Creates the service over [_wallet] and [_consent].
   DappBridgeService({
-    required DappBridgeWallet wallet,
-    required DappBridgeConsent consent,
-    DateTime Function() now = DateTime.now,
-  }) : _wallet = wallet,
-       _consent = consent,
-       _now = now;
+    required this._wallet,
+    required this._consent,
+    this._now = DateTime.now,
+  });
 
   final DappBridgeWallet _wallet;
   final DappBridgeConsent _consent;
@@ -167,7 +189,27 @@ class DappBridgeService {
   /// Withdraws [origin] and tells its pages they see no account. Called for
   /// a page's own `znn_disconnect` and for Disconnect in the wallet.
   Future<void> revoke(String origin) async {
-    await _consent.revoke(origin);
+    final DappBridgeConsent consent = _consent;
+    final DappBridgeConsentReceipt? receipt =
+        consent is DappBridgeCapturedConsent
+        ? (consent as DappBridgeCapturedConsent).captureConsent(origin)
+        : null;
+    if (receipt != null) {
+      return revokeReceipt(origin, receipt);
+    }
+    await consent.revoke(origin);
+    _seenAccounts[origin] = <String>[];
+    emit?.call('accountsChanged', <String>[], origin: origin);
+  }
+
+  /// The row's original receipt is captured before any queued persistence.
+  Future<void> revokeReceipt(
+    String origin,
+    DappBridgeConsentReceipt receipt, {
+    bool Function()? isCurrent,
+  }) async {
+    await receipt.revoke(isCurrent: isCurrent);
+    if (!receipt.outcomeIsCurrent) return;
     _seenAccounts[origin] = <String>[];
     emit?.call('accountsChanged', <String>[], origin: origin);
   }
@@ -318,12 +360,28 @@ class DappBridgeService {
       _checkCooldown(origin);
     }
     final String address = await _unlockedAddress();
+    final int chain = _wallet.chainId;
+    final String? node = _wallet.nodeUrl;
+    final DappBridgeConsent consent = _consent;
+    final DappBridgeConsentReceipt? receipt =
+        consent is DappBridgeCapturedConsent
+        ? (consent as DappBridgeCapturedConsent).captureConsent(origin)
+        : null;
     if (!_consent.has(origin, address)) {
       _checkCooldown(origin);
       _approved(origin, await _wallet.approveConnect(origin, address));
       // The selection may have changed while the dialog was up. What was
       // approved is the address that was shown.
-      await _consent.grant(origin, address);
+      if (_wallet.selectedAddress != address ||
+          _wallet.chainId != chain ||
+          _wallet.nodeUrl != node ||
+          (receipt != null && !receipt.isCurrent)) {
+        throw const DappBridgeError.locked('The account changed. Ask again');
+      }
+      await (receipt?.grant(address) ?? consent.grant(origin, address));
+      if (receipt != null && !receipt.outcomeIsCurrent) {
+        throw const DappBridgeError.notConnected();
+      }
     }
     final List<String> accounts = _accounts(origin);
     _seenAccounts[origin] = accounts;
@@ -352,9 +410,21 @@ class DappBridgeService {
       );
     }
     final String address = await _connectedAddress(origin);
+    final DappBridgeConsent consent = _consent;
+    final DappBridgeConsentReceipt? receipt =
+        consent is DappBridgeCapturedConsent
+        ? (consent as DappBridgeCapturedConsent).captureConsent(origin)
+        : null;
+    final int chain = _wallet.chainId;
+    final String? node = _wallet.nodeUrl;
     _checkCooldown(origin);
     _approved(origin, await _wallet.approveSign(origin, address, message));
     _stillApproved(origin, address);
+    if ((receipt != null && !receipt.isCurrent) ||
+        chain != _wallet.chainId ||
+        node != _wallet.nodeUrl) {
+      throw const DappBridgeError.notConnected();
+    }
     final ({String publicKey, String signature}) signed = await _wallet.sign(
       address,
       message,
@@ -401,9 +471,21 @@ class DappBridgeService {
 
   Future<Object?> _send(String origin, DappBridgeBlock block) async {
     final String address = await _connectedAddress(origin);
+    final DappBridgeConsent consent = _consent;
+    final DappBridgeConsentReceipt? receipt =
+        consent is DappBridgeCapturedConsent
+        ? (consent as DappBridgeCapturedConsent).captureConsent(origin)
+        : null;
+    final int chain = _wallet.chainId;
+    final String? node = _wallet.nodeUrl;
     _checkCooldown(origin);
     _approved(origin, await _wallet.approveSend(origin, address, block));
     _stillApproved(origin, address);
+    if ((receipt != null && !receipt.isCurrent) ||
+        chain != _wallet.chainId ||
+        node != _wallet.nodeUrl) {
+      throw const DappBridgeError.notConnected();
+    }
     return _wallet.send(origin, address, block);
   }
 }

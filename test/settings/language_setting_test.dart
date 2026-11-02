@@ -351,17 +351,24 @@ void main() {
   // and the node. Their wiring is a few lines each, and it is those lines
   // that `_app` above stands in for.
   test('main.dart and main_dev.dart are wired alike', () {
+    final RegExp whitespace = RegExp(r'\s+');
     for (final String entry in <String>['lib/main.dart', 'lib/main_dev.dart']) {
-      final String source = File(entry).readAsStringSync();
+      final String source = File(
+        entry,
+      ).readAsStringSync().replaceAll(whitespace, '');
       for (final String line in <String>[
         'create: (_) => LocaleNotifier(WidgetUtils.savedLanguage()),',
         'Consumer2<AppThemeNotifier, LocaleNotifier>(',
         'locale: localeNotifier.locale,',
         'localeListResolutionCallback: resolveAppLocale,',
         'localizationsDelegates: appLocalizationsDelegates,',
-        'AppLocalizations.supportedLocales,',
+        'supportedLocales: AppLocalizations.supportedLocales,',
       ]) {
-        expect(source, contains(line), reason: entry);
+        expect(
+          source,
+          contains(line.replaceAll(whitespace, '')),
+          reason: entry,
+        );
       }
     }
     // material_ui's delegates, not the generated list's: see

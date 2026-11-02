@@ -1,36 +1,26 @@
-import 'package:zenon_syrius_wallet_flutter/blocs/blocs.dart';
-import 'package:zenon_syrius_wallet_flutter/main.dart';
-import 'package:zenon_syrius_wallet_flutter/utils/account_block_utils.dart';
-import 'package:zenon_syrius_wallet_flutter/utils/global.dart';
-import 'package:zenon_syrius_wallet_flutter/utils/plasma_purpose.dart';
+import 'package:zenon_syrius_wallet_flutter/blocs/accelerator/accelerator_action_bloc.dart';
+import 'package:zenon_syrius_wallet_flutter/widgets/modular_widgets/accelerator_widgets/accelerator_action_controller.dart';
 import 'package:znn_sdk_dart/znn_sdk_dart.dart';
 
-class VoteProjectBloc extends BaseBloc<AccountBlockTemplate?> {
-  Future<void> voteProject(Hash id, AcceleratorProjectVote vote) async {
-    try {
-      addEvent(null);
-      final PillarInfo pillarInfo = (await zenon!.embedded.pillar.getByOwner(
-        Address.parse(kSelectedAddress!),
-      ))
-          .first;
-      final AccountBlockTemplate transactionParams =
-          zenon!.embedded.accelerator.voteByName(
-        id,
-        pillarInfo.name,
-        vote.index,
-      );
-      AccountBlockUtils().createAccountBlock(
-        transactionParams,
-        PlasmaPurpose.voteForProject.message,
-      )
-          .then(
-        addEvent,
-      )
-          .onError(
-        addError,
-      );
-    } catch (e, stackTrace) {
-      addError(e, stackTrace);
-    }
-  }
+/// Compatibility observer for one exact project or phase vote intent.
+class VoteProjectBloc extends AcceleratorActionBloc {
+  /// Retains the original injected or captured action capabilities.
+  VoteProjectBloc({super.source, super.controller});
+
+  /// Submits the chosen target, Pillar and vote without choosing replacements.
+  Future<AcceleratorActionOutcome> voteProject(
+    Hash id,
+    AcceleratorProjectVote vote, {
+    Hash? projectId,
+    String? pillarName,
+  }) => run(
+    // No owner lookup may silently choose a Pillar or reinterpret a phase hash.
+    AcceleratorActionRequest(
+      kind: AcceleratorActionKind.vote,
+      projectId: (projectId ?? id).toString(),
+      phaseId: projectId == null || projectId == id ? null : id.toString(),
+      pillarName: pillarName,
+      vote: vote,
+    ),
+  );
 }

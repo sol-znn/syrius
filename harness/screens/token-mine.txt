@@ -1,0 +1,13 @@
+# prerequisite: pending F06 reversible selected-owner token preparation
+# The selected address must own a mintable token with remaining supply.
+# Only the inline draft is opened. No question, signing or publication runs.
+goto tokens
+wait --key tokens_filter_all --timeout 30
+tap --key tokens_filter_all
+wait --key token_mint_button --nth 0 --timeout 30
+tap --key token_mint_button --nth 0
+wait --key mint_amount_field --timeout 30
+type --key mint_amount_field 5000
+assert --key token_action_mode_mint
+assert --key mint_beneficiary_field
+assert --key mint_amount_field

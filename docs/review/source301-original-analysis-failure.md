@@ -1,0 +1,9 @@
+# Source301 original analysis refusal
+
+Recorded 2026-11-01 19:08 UTC. Exact source `1de2710bc7ec8b9bc26078ccb34164cad388887a`, tree `6c36fa6524181ee903e8b002345b68fe9006df9c`. The [original focused run 41320894996](https://github.com/edgepillar/syrius/actions/runs/41320894996), job 124890670412, attempt one, is terminal failure. All 928 Python controls run with three original skips and zero failures/errors; fourteen original asset controls pass.
+
+Selected analysis reports zero errors/warnings and one CURLY_BRACES_IN_FLOW_CONTROL_STRUCTURES info, at closed source alias `harness_agent`, line 3846 column 46. The original command exits zero with complete 160-byte output, no overflow, SHA-256 `0768c0b61029cab91263c994d3322b61cf541da486e5a8f7c271d785043d7e5c`. The zero-finding gate correctly fails before Flutter startup/recipe tests. Zero Dart cases and zero artifacts are qualified; the sole original is terminal and unretried, without full Windows, native producer or reader dispatch.
+
+The source location is the existing multiline paint-clip condition ending in an unbraced `return false`. Source302 adds only that body's braces. The condition, return value, render-ancestor walk, Node negative, all forty clipped/Clip.none counterexamples, exact ordered maps, physical scripts, SDK/input authority, selection and limits remain. Source300's three test failures, Source299's analysis refusal and all earlier FAILURE/HOLD/UNKNOWN evidence remain source-bound and unretried.
+
+Full Windows/independent inspection and all four isolated native/reader/image families remain required for the shared harness change. Acceptance stays 72/80 rows, nineteen preparations, 26 available literal outputs, 68 missing and zero of 94 accepted matches. Native101/103 remain UNKNOWN; Native104 is not admitted. No original financial/profile/seed/reopen flow is replayed; the PR stays Draft.

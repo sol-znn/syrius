@@ -73,4 +73,43 @@ class SendDraftCubit extends Cubit<SendDraft> {
 
   /// Forgets everything.
   void clear() => emit(const SendDraft());
+
+  /// An old accepted request cannot clear a draft edited while it waited.
+  bool clearIfUnchanged(SendDraft expected) {
+    if (isClosed || !identical(state, expected)) return false;
+    clear();
+    return true;
+  }
+
+  /// Selects one exact recipient without submitting or changing the amount.
+  /// Mounted forms observe it too, so returning to Send is not required.
+  void selectRecipient(String recipient) => emit(
+    SendDraft(
+      fromAddress: state.fromAddress,
+      tokenStandard: state.tokenStandard,
+      recipient: recipient,
+      amount: state.amount,
+    ),
+  );
+
+  /// A row selects its exact asset without reusing another asset's amount.
+  /// The existing recipient remains a draft, subject to normal confirmation.
+  void selectToken({
+    required String fromAddress,
+    required String tokenStandard,
+  }) {
+    if (isClosed) return;
+    emit(
+      SendDraft(
+        fromAddress: fromAddress,
+        tokenStandard: tokenStandard,
+        recipient: state.recipient,
+        amount:
+            state.fromAddress == fromAddress &&
+                state.tokenStandard == tokenStandard
+            ? state.amount
+            : '',
+      ),
+    );
+  }
 }

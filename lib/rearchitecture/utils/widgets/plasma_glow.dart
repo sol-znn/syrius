@@ -1,9 +1,10 @@
 import 'dart:async';
 import 'dart:ui' as ui;
 
-import 'package:material_ui/material_ui.dart';
-import 'package:flutter/scheduler.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
+import 'package:material_ui/material_ui.dart';
+import 'package:zenon_syrius_wallet_flutter/rearchitecture/utils/shaders/shader_clock.dart';
 
 const String _kShader = 'assets/shaders/heatmap.frag';
 const String _kTexture = 'assets/images/plasma_heatmap.png';
@@ -31,8 +32,12 @@ class _PlasmaGlowAssets {
     final ui.Codec codec = await ui.instantiateImageCodec(
       bytes.buffer.asUint8List(),
     );
-    final ui.FrameInfo frame = await codec.getNextFrame();
-    return _PlasmaGlowAssets(program, frame.image);
+    try {
+      final ui.FrameInfo frame = await codec.getNextFrame();
+      return _PlasmaGlowAssets(program, frame.image);
+    } finally {
+      codec.dispose();
+    }
   }
 }
 
@@ -75,16 +80,21 @@ class PlasmaGlow extends StatefulWidget {
 
 class _PlasmaGlowState extends State<PlasmaGlow>
     with SingleTickerProviderStateMixin {
-  late final Ticker _ticker = createTicker(_onTick);
-  final ValueNotifier<double> _time = ValueNotifier<double>(0);
-  Duration _last = Duration.zero;
+  late final ShaderClock _clock;
   ui.FragmentShader? _shader;
   ui.Image? _texture;
 
   @override
   void initState() {
     super.initState();
+    _clock = ShaderClock(vsync: this);
     unawaited(_load());
+  }
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    _clock.updateVisibility(context);
   }
 
   Future<void> _load() async {
@@ -110,23 +120,12 @@ class _PlasmaGlowState extends State<PlasmaGlow>
   }
 
   void _sync() {
-    if (widget.active && !_ticker.isActive && _shader != null) {
-      _last = Duration.zero;
-      _ticker.start();
-    } else if (!widget.active && _ticker.isActive) {
-      _ticker.stop();
-    }
-  }
-
-  void _onTick(Duration elapsed) {
-    _time.value += (elapsed - _last).inMicroseconds / 1000 * _kSpeed;
-    _last = elapsed;
+    _clock.active = widget.active && _shader != null;
   }
 
   @override
   void dispose() {
-    _ticker.dispose();
-    _time.dispose();
+    _clock.dispose();
     _shader?.dispose();
     super.dispose();
   }
@@ -146,7 +145,7 @@ class _PlasmaGlowState extends State<PlasmaGlow>
                 painter: _PlasmaGlowPainter(
                   shader: shader,
                   texture: texture,
-                  time: _time,
+                  time: _clock,
                   innerGlow: widget.innerGlow,
                   outerGlow: widget.outerGlow,
                   contour: widget.contour,
@@ -169,7 +168,7 @@ class _PlasmaGlowPainter extends CustomPainter {
 
   final ui.FragmentShader shader;
   final ui.Image texture;
-  final ValueNotifier<double> time;
+  final ValueListenable<double> time;
   final double innerGlow;
   final double outerGlow;
   final double contour;
@@ -182,7 +181,7 @@ class _PlasmaGlowPainter extends CustomPainter {
       ..setImageSampler(0, texture)
       ..setFloat(0, size.width) // u_size
       ..setFloat(1, size.height)
-      ..setFloat(2, time.value) // u_time
+      ..setFloat(2, time.value * 1000 * _kSpeed) // u_time
       ..setFloat(3, 0) // u_angle
       ..setFloat(4, 0) // u_noise
       ..setFloat(5, innerGlow) // u_innerGlow

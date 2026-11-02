@@ -9,6 +9,9 @@ class AppLocalizationsAr extends AppLocalizations {
   AppLocalizationsAr([String locale = 'ar']) : super(locale);
 
   @override
+  String get notYet => 'Not yet';
+
+  @override
   String get activePillars => 'Active Pillars';
 
   @override
@@ -1862,6 +1865,15 @@ class AppLocalizationsAr extends AppLocalizations {
   String get commonClose => 'Close';
 
   @override
+  String get windowMinimize => 'Minimize';
+
+  @override
+  String get windowMaximize => 'Maximize';
+
+  @override
+  String get windowRestore => 'Restore';
+
+  @override
   String get commonDismiss => 'Dismiss';
 
   @override
@@ -1918,7 +1930,7 @@ class AppLocalizationsAr extends AppLocalizations {
   String get goToPaletteHint => 'Go to';
 
   @override
-  String get goToPaletteEmpty => 'No page by that name';
+  String get goToPaletteEmpty => 'None yet';
 
   @override
   String get assetCellUnknownStandardTooltip => 'Unknown token standard';
@@ -2182,7 +2194,7 @@ class AppLocalizationsAr extends AppLocalizations {
   String get stakingLast7Days => 'Last 7 days';
 
   @override
-  String get stakingChart => 'Chart';
+  String get stakingChart => 'Rewards';
 
   @override
   String get plasmaPageFusedByYou => 'Fused by you';
@@ -2228,6 +2240,2542 @@ class AppLocalizationsAr extends AppLocalizations {
 
   @override
   String plasmaPageCancelFusesDone(int done, int total) {
-    return '$done of $total cancelled';
+    return '$done of $total submitted';
   }
+
+  @override
+  String get railHome => 'Home';
+
+  @override
+  String get railStaking => 'Staking';
+
+  @override
+  String get railNodes => 'Nodes';
+
+  @override
+  String get railSwap => 'Swap';
+
+  @override
+  String get railAccelerator => 'Accelerator';
+
+  @override
+  String get railNotifications => 'Notifications';
+
+  @override
+  String get railSettings => 'Settings';
+
+  @override
+  String get railLock => 'Lock';
+
+  @override
+  String get railLocked => 'Locked';
+
+  @override
+  String get railUnseen => 'Unseen';
+
+  @override
+  String get settingsSectionAddresses => 'Addresses';
+
+  @override
+  String get settingsSectionNode => 'Node';
+
+  @override
+  String get settingsSectionSecurity => 'Security';
+
+  @override
+  String get settingsSectionDisplay => 'Display';
+
+  @override
+  String get settingsSectionWallet => 'Wallet';
+
+  @override
+  String get settingsSectionApps => 'Apps';
+
+  @override
+  String get settingsSectionAbout => 'About';
+
+  @override
+  String get stakingStarted => 'Started';
+
+  @override
+  String get stakingUnlocks => 'Unlocks';
+
+  @override
+  String get stakingUnlocked => 'Unlocked';
+
+  @override
+  String get stakingCancelWithdraw => 'Cancel and withdraw';
+
+  @override
+  String get stakingNewStake => 'New stake';
+
+  @override
+  String stakingStakeAmount(String amount) {
+    return 'Stake $amount ZNN';
+  }
+
+  @override
+  String stakingAmountOf(String amount) {
+    return 'of $amount ZNN';
+  }
+
+  @override
+  String stakingStartedDaysAgo(int count) {
+    return '$count d ago';
+  }
+
+  @override
+  String stakingStartedMonthsAgo(int count) {
+    return '$count mo ago';
+  }
+
+  @override
+  String stakingUnlockMonthsDays(int months, int days) {
+    return '$months mo $days d';
+  }
+
+  @override
+  String get displayTheme => 'Theme';
+
+  @override
+  String get displayTextSize => 'Text size';
+
+  @override
+  String get displayLanguage => 'Language';
+
+  @override
+  String get displayMenu => 'Menu';
+
+  @override
+  String get displayMenuHint => 'Icons only, labels on hover';
+
+  @override
+  String get displayIcons => 'Icons';
+
+  @override
+  String get displayLabels => 'Labels';
+
+  @override
+  String get displayHideBalances => 'Hide balances';
+
+  @override
+  String get displayHideBalancesHint => 'Also the eye on Home';
+
+  @override
+  String get displayDollarValues => 'Dollar values';
+
+  @override
+  String get displayDollarValuesHint =>
+      'ZNN and QSR at CoinGecko\'s price, asked once a minute while a value is on screen. Mainnet\'s price on every chain.';
+
+  @override
+  String get displayExplorer => 'Explorer';
+
+  @override
+  String get displayExplorerHint => 'Links follow the chain. None off chain 1.';
+
+  @override
+  String get displaySystem => 'System';
+
+  @override
+  String get displayDark => 'Dark';
+
+  @override
+  String get displayLight => 'Light';
+
+  @override
+  String get displaySmall => 'Small';
+
+  @override
+  String get displayDefault => 'Default';
+
+  @override
+  String get displayLarge => 'Large';
+
+  @override
+  String get displayHuge => 'Huge';
+
+  @override
+  String displaySaveFailed(String setting) {
+    return 'Could not save $setting';
+  }
+
+  @override
+  String get transferZap => 'Zap';
+
+  @override
+  String get transferToReceive => 'To receive';
+
+  @override
+  String get transferReceiving => 'Receiving';
+
+  @override
+  String get transferAutoReceiveOn => 'Auto-receive on';
+
+  @override
+  String get transferAutoReceiveOff => 'Auto-receive off';
+
+  @override
+  String get nodesDelegatedTo => 'Delegated to';
+
+  @override
+  String get nodesWeight => 'weight';
+
+  @override
+  String get nodesChange => 'Change';
+
+  @override
+  String get nodesDelegate => 'Delegate';
+
+  @override
+  String get nodesUndelegate => 'Undelegate';
+
+  @override
+  String get nodesRewards => 'Rewards';
+
+  @override
+  String get nodesMore => 'More';
+
+  @override
+  String get nodesYourPillar => 'Your pillar';
+
+  @override
+  String get nodesYourSentinel => 'Your sentinel';
+
+  @override
+  String get nodesToCollect => 'To collect';
+
+  @override
+  String get nodesNoneYet => 'None yet';
+
+  @override
+  String get stripNode => 'Node';
+
+  @override
+  String get stripChain => 'Chain';
+
+  @override
+  String stripMomentumHeight(int height) {
+    return 'Momentum height: $height';
+  }
+
+  @override
+  String get stripDisconnected => 'Disconnected';
+
+  @override
+  String get stripConnecting => 'Connecting';
+
+  @override
+  String get stripSynced => 'Connected and in sync';
+
+  @override
+  String stripSyncing(int current, int target) {
+    return 'Syncing, momentum $current of $target';
+  }
+
+  @override
+  String get stripWaitingConfirmation => 'Waiting for a momentum';
+
+  @override
+  String stripSecondsAtLeast(int seconds) {
+    return '≥$seconds s';
+  }
+
+  @override
+  String nodesUndelegateConfirm(String pillarName) {
+    return 'Undelegate from $pillarName?';
+  }
+
+  @override
+  String get homeCopyAddress => 'Copy address';
+
+  @override
+  String get homeSwitchAddress => 'Switch address';
+
+  @override
+  String get homeShowBalances => 'Show balances';
+
+  @override
+  String get homeLoading => 'Loading';
+
+  @override
+  String get homeNodeNotAnswering => 'Node not answering';
+
+  @override
+  String get homePlasmaHigh => 'High';
+
+  @override
+  String get homePlasmaMedium => 'Medium';
+
+  @override
+  String get homePlasmaLow => 'Low';
+
+  @override
+  String get homePlasmaNone => 'None';
+
+  @override
+  String get homeToCollect => 'To collect';
+
+  @override
+  String get homeCollectAll => 'Collect all';
+
+  @override
+  String get homeNoneYet => 'None yet';
+
+  @override
+  String get homePending => 'Pending';
+
+  @override
+  String get homePendingMomentum => 'momentum';
+
+  @override
+  String get homeAmountUnknown => 'Unknown';
+
+  @override
+  String get homeCollectionUncertain => 'Collection outcome unknown';
+
+  @override
+  String get homePlasmaNeedsWork => 'Sends need proof of work';
+
+  @override
+  String homePlasmaSends(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: 'Enough for about $count sends',
+      one: 'Enough for 1 send',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get bellNeedsYou => 'Needs you';
+
+  @override
+  String get bellToday => 'Today';
+
+  @override
+  String get bellYesterday => 'Yesterday';
+
+  @override
+  String get bellClear => 'Clear';
+
+  @override
+  String get bellNoneYet => 'None yet';
+
+  @override
+  String get bellApprove => 'Approve';
+
+  @override
+  String get bellDecline => 'Decline';
+
+  @override
+  String get bellRemove => 'Remove';
+
+  @override
+  String get bellRequested => 'Requested';
+
+  @override
+  String get bellRequired => 'Required';
+
+  @override
+  String get bellOptional => 'Optional';
+
+  @override
+  String get bellApproved => 'To approve';
+
+  @override
+  String get bellAccounts => 'Accounts';
+
+  @override
+  String get bellChains => 'Chains';
+
+  @override
+  String get bellMethods => 'Methods';
+
+  @override
+  String get bellEvents => 'Events';
+
+  @override
+  String get bellUnavailable => 'Request unavailable';
+
+  @override
+  String get bellApprovalFailed => 'Connection failed. Check Apps.';
+
+  @override
+  String get bellHistoryFailed => 'Notifications unavailable';
+
+  @override
+  String get bellExpand => 'Show events';
+
+  @override
+  String get bellCollapse => 'Hide events';
+
+  @override
+  String get bellBlockPublished => 'Block published';
+
+  @override
+  String bellFoldCount(int count) {
+    return '× $count';
+  }
+
+  @override
+  String get bellConnectRequest => 'Asks to connect.';
+
+  @override
+  String get bellResolving => 'Waiting';
+
+  @override
+  String get bellNow => 'now';
+
+  @override
+  String bellMinutesAgo(int count) {
+    return '$count min';
+  }
+
+  @override
+  String bellHoursAgo(int count) {
+    return '$count h';
+  }
+
+  @override
+  String bellDaysAgo(int count) {
+    return '$count d';
+  }
+
+  @override
+  String get goToPalettePages => 'Pages';
+
+  @override
+  String get goToPaletteActions => 'Actions';
+
+  @override
+  String get goToPaletteAddresses => 'Addresses';
+
+  @override
+  String get goToPaletteMove => 'move';
+
+  @override
+  String get goToPaletteOpen => 'open';
+
+  @override
+  String goToPaletteShortcuts(
+    String first,
+    String last,
+    String lock,
+    String refresh,
+  ) {
+    return '$first to $last pages · $lock lock · $refresh refresh';
+  }
+
+  @override
+  String goToPaletteSendTo(String name) {
+    return 'Send to $name';
+  }
+
+  @override
+  String get goToPaletteDelegate => 'Delegation';
+
+  @override
+  String get goToPaletteDeleteCache => 'Delete cache';
+
+  @override
+  String get goToPaletteDelegateAction => 'Delegate to a pillar';
+
+  @override
+  String get goToPaletteSendToHint => 'Send to';
+
+  @override
+  String get goToPaletteDeleteCacheConfirm =>
+      'Delete cached data and close Syrius?';
+
+  @override
+  String get commonRefresh => 'Refresh';
+
+  @override
+  String get publicationSessionChanged =>
+      'Wallet or node changed. Review and try again.';
+
+  @override
+  String get stripWalletUpdates => 'Wallet updates';
+
+  @override
+  String stripUpdateAvailable(String version) {
+    return 'Syrius $version is out';
+  }
+
+  @override
+  String get activityTitle => 'Activity';
+
+  @override
+  String get activityReceived => 'Received';
+
+  @override
+  String get activityDelegated => 'Delegated';
+
+  @override
+  String get activityFused => 'Fused';
+
+  @override
+  String get activityReward => 'Reward';
+
+  @override
+  String get activityStaked => 'Staked';
+
+  @override
+  String get activityMessage => 'Message';
+
+  @override
+  String get activityNow => 'Now';
+
+  @override
+  String activityMinutes(int count) {
+    return '$count min';
+  }
+
+  @override
+  String activityHours(int count) {
+    return '$count h';
+  }
+
+  @override
+  String activityDays(int count) {
+    return '$count d';
+  }
+
+  @override
+  String get activityUnitsUnavailable => 'Units unavailable';
+
+  @override
+  String get activityExplorer => 'Open in explorer';
+
+  @override
+  String get activitySelectedAddress => 'Selected address';
+
+  @override
+  String get activityUnavailable => 'Activity unavailable';
+
+  @override
+  String get lockUnlock => 'Unlock';
+
+  @override
+  String get lockOpening => 'Opening the wallet';
+
+  @override
+  String get lockAddWallet => 'Add a wallet';
+
+  @override
+  String get lockForgotPassword => 'Forgot the password';
+
+  @override
+  String get lockShowPassword => 'Show password';
+
+  @override
+  String get lockHidePassword => 'Hide password';
+
+  @override
+  String get lockAttemptSaveFailed =>
+      'Unlock state was not saved. Restart Syrius.';
+
+  @override
+  String lockTriesLeft(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count tries left. The wallet resets at the limit.',
+      one: '1 try left. The wallet resets at the limit.',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get sendRecent => 'Recent';
+
+  @override
+  String get sendAddressBook => 'Address book';
+
+  @override
+  String get sendSearchContacts => 'Search contacts';
+
+  @override
+  String get sendClearRecipient => 'Clear recipient';
+
+  @override
+  String get sendAvailable => 'Available';
+
+  @override
+  String get sendEnterAddress => 'Enter an address';
+
+  @override
+  String get sendEnterAmount => 'Enter an amount';
+
+  @override
+  String sendNotEnough(String symbol) {
+    return 'Not enough $symbol';
+  }
+
+  @override
+  String sendAmount(String amount, String symbol) {
+    return 'Send $amount $symbol';
+  }
+
+  @override
+  String get sendWaitingForNode => 'Waiting for the node';
+
+  @override
+  String get sendCheckAddress => 'Check the full address';
+
+  @override
+  String sendLooksLike(String name) {
+    return 'Looks like $name';
+  }
+
+  @override
+  String get sendLookAlikeDetail =>
+      'The ends match a known address. Check the full address.';
+
+  @override
+  String get sendKnownAddress => 'Known address';
+
+  @override
+  String get sendTypedAddress => 'Typed address';
+
+  @override
+  String sendUseKnown(String name) {
+    return 'Use $name';
+  }
+
+  @override
+  String get sendUseTypedAnyway => 'Use typed address';
+
+  @override
+  String get sendFirstTimeRecipient => 'First send recorded here';
+
+  @override
+  String sendLastSent(String name, String time) {
+    return '$name · Last sent $time';
+  }
+
+  @override
+  String sendNodeBehind(int count) {
+    return 'Node is $count momentums behind';
+  }
+
+  @override
+  String get sendWaitForSync => 'Wait for sync';
+
+  @override
+  String get sendContactsUnavailable =>
+      'Address book unavailable. Check the full address.';
+
+  @override
+  String sendConfirmTitle(String amount, String symbol) {
+    return 'Send $amount $symbol?';
+  }
+
+  @override
+  String get sendConfirmTo => 'To';
+
+  @override
+  String get sendConfirmFrom => 'From';
+
+  @override
+  String get sendPlasmaPending => 'Checked when sending';
+
+  @override
+  String get sendHardwareConfirm => 'Confirm on your device after Send.';
+
+  @override
+  String get sendOutcomeUnavailable => 'Send outcome unavailable';
+
+  @override
+  String get sendOutcomeUncertain => 'Check Activity before sending again.';
+
+  @override
+  String get receiveCopyAddress => 'Copy address';
+
+  @override
+  String get receiveShowQr => 'Show QR';
+
+  @override
+  String get receiveHideQr => 'Hide QR';
+
+  @override
+  String get receiveRequestAmount => 'Request an amount';
+
+  @override
+  String get receiveShareImage => 'Share image';
+
+  @override
+  String get receiveInvalidAmount =>
+      'Enter a positive amount within this token\'s precision';
+
+  @override
+  String get receiveExportFailed => 'The QR image could not be exported';
+
+  @override
+  String get receiveCopyFailed => 'Could not copy address. Try again.';
+
+  @override
+  String get zapRandomAlien => 'A random alien';
+
+  @override
+  String get zapCandidatesUnavailable => 'Recipients unavailable';
+
+  @override
+  String get zapPickAnother => 'Pick another';
+
+  @override
+  String get zapCopyRecipient => 'Copy recipient';
+
+  @override
+  String get zapDefaultMessage => 'You got zapped. Have a great day, alien.';
+
+  @override
+  String zapBytes(int used) {
+    return '$used/140';
+  }
+
+  @override
+  String get zapMessageTooLong => 'Use at most 140 bytes';
+
+  @override
+  String get zapOneBlock => 'One block';
+
+  @override
+  String get zapTwoBlocks => 'Two blocks, one per coin';
+
+  @override
+  String get zapBlockPerCoin => 'One block per coin';
+
+  @override
+  String get zapNodeNotice =>
+      'Your node can steer the pick. A hardware wallet confirms each block.';
+
+  @override
+  String zapAmountLabel(String symbol) {
+    return '$symbol amount';
+  }
+
+  @override
+  String zapActionBoth(String znn, String qsr) {
+    return 'Zap $znn ZNN + $qsr QSR';
+  }
+
+  @override
+  String zapActionSingle(String amount, String symbol) {
+    return 'Zap $amount $symbol';
+  }
+
+  @override
+  String get pillarsSearchLoaded => 'Search loaded rows';
+
+  @override
+  String get pillarsSortLoaded => 'Sort loaded rows';
+
+  @override
+  String get pillarsLoadMore => 'Load more';
+
+  @override
+  String get pillarsNoMatches => 'No matches';
+
+  @override
+  String get pillarsShares => 'Shares';
+
+  @override
+  String get pillarsAprEstimate => 'APR est.';
+
+  @override
+  String get pillarsSortProduction => 'Uptime';
+
+  @override
+  String get pillarsYours => 'Yours';
+
+  @override
+  String get pillarsDelegated => 'Delegated';
+
+  @override
+  String get pillarsReward => 'Reward';
+
+  @override
+  String get pillarsRegistered => 'Registered';
+
+  @override
+  String get pillarsUnavailable => 'Unavailable';
+
+  @override
+  String get pillarsMomentums => 'Momentums';
+
+  @override
+  String pillarsMomentumsValue(String produced, String expected) {
+    return '$produced of $expected expected';
+  }
+
+  @override
+  String get pillarOwnerLocked => 'Locked';
+
+  @override
+  String get pillarOwnerDeposited => 'Deposited';
+
+  @override
+  String get pillarOwnerSlotCost => 'Registration cost';
+
+  @override
+  String get pillarOwnerProducer => 'Producer';
+
+  @override
+  String get pillarOwnerReward => 'Reward';
+
+  @override
+  String get pillarOwnerRevocable => 'Revocable';
+
+  @override
+  String get pillarOwnerSharing => 'Sharing';
+
+  @override
+  String get pillarOwnerMomentums => 'Momentums';
+
+  @override
+  String pillarOwnerShares(int momentum, int delegate) {
+    return '$momentum% block · $delegate% delegate';
+  }
+
+  @override
+  String pillarOwnerProduction(int produced, int expected) {
+    return '$produced of $expected';
+  }
+
+  @override
+  String get pillarOwnerDepositQsr => 'Deposit QSR';
+
+  @override
+  String get pillarOwnerWithdrawQsr => 'Withdraw QSR';
+
+  @override
+  String get pillarOwnerDisassemble => 'Disassemble';
+
+  @override
+  String get pillarOwnerUnavailable => 'Unavailable';
+
+  @override
+  String pillarOwnerRevokeQuestion(String name) {
+    return 'Disassemble $name?';
+  }
+
+  @override
+  String get pillarOwnerRevokeFinalTitle => 'Confirm disassembly';
+
+  @override
+  String pillarOwnerRevokeConsequence(String name) {
+    return 'This removes $name as a pillar.';
+  }
+
+  @override
+  String get nodesOwner => 'Owner';
+
+  @override
+  String get nodesRegistered => 'Registered';
+
+  @override
+  String get nodesRevocable => 'Revocable';
+
+  @override
+  String get nodesStatus => 'Status';
+
+  @override
+  String get nodesActive => 'Active';
+
+  @override
+  String get nodesRevoked => 'Revoked';
+
+  @override
+  String get nodesNow => 'now';
+
+  @override
+  String nodesInDuration(String duration) {
+    return 'in $duration';
+  }
+
+  @override
+  String nodesAgoDuration(String duration) {
+    return '$duration ago';
+  }
+
+  @override
+  String durationMonths(int months) {
+    return '$months mo';
+  }
+
+  @override
+  String durationYears(int years) {
+    return '$years y';
+  }
+
+  @override
+  String get nodesUnavailable => 'Unavailable';
+
+  @override
+  String sentinelOwnerRevokeConsequence(String address) {
+    return 'This removes the sentinel of $address.';
+  }
+
+  @override
+  String get tokensHeld => 'Held';
+
+  @override
+  String get tokensFavorites => 'Favorites';
+
+  @override
+  String get tokensAll => 'All';
+
+  @override
+  String get tokensYouHold => 'You hold';
+
+  @override
+  String get tokensIssuedByYou => 'Issued by you';
+
+  @override
+  String get tokensSearchHint => 'Name, symbol, owner or ZTS';
+
+  @override
+  String get tokensBalanceUnavailable => 'Balance unavailable';
+
+  @override
+  String get tokensCatalogUnavailable => 'Tokens unavailable';
+
+  @override
+  String get tokensSearchClear => 'Clear';
+
+  @override
+  String get tokensSupply => 'Supply';
+
+  @override
+  String get tokensOwner => 'Owner';
+
+  @override
+  String get tokensToken => 'Token';
+
+  @override
+  String plasmaPageEntries(int count) {
+    return 'in $count entries';
+  }
+
+  @override
+  String plasmaPageSelected(int count) {
+    return '$count selected';
+  }
+
+  @override
+  String get plasmaPageSelectHint => 'Select rows to cancel together';
+
+  @override
+  String get plasmaPageCancelable => 'Cancelable';
+
+  @override
+  String get plasmaPageSubmitted => 'Submitted';
+
+  @override
+  String get plasmaPageSubmitting => 'Submitting';
+
+  @override
+  String get plasmaPageUnknown => 'Unknown';
+
+  @override
+  String get plasmaPageCopyFusion => 'Copy fusion hash';
+
+  @override
+  String get registrationWaiting => 'Waiting for confirmation';
+
+  @override
+  String registrationPillarRegistered(String name) {
+    return '$name is registered';
+  }
+
+  @override
+  String get registrationPillarReady =>
+      'It joins the producers within a few momentums.';
+
+  @override
+  String get registrationTokenCreated => 'Token created';
+
+  @override
+  String get registrationViewPillar => 'View pillar';
+
+  @override
+  String get registrationViewSentinel => 'View sentinel';
+
+  @override
+  String get registrationViewToken => 'View token';
+
+  @override
+  String get registrationDone => 'Done';
+
+  @override
+  String get registrationBlock => 'Block';
+
+  @override
+  String get registrationChain => 'Chain';
+
+  @override
+  String get launchSkipHint => 'Click or press a key to skip';
+
+  @override
+  String get plasmaFuseFor => 'For';
+
+  @override
+  String get plasmaFuseAnotherAddress => 'Another address';
+
+  @override
+  String plasmaFuseAction(String amount) {
+    return 'Fuse $amount QSR';
+  }
+
+  @override
+  String get plasmaFuseLockNote => 'Cancel unlocked fuses to recover QSR.';
+
+  @override
+  String get tokensFlags => 'Flags';
+
+  @override
+  String get tokensTransferOwnership => 'Transfer ownership';
+
+  @override
+  String get tokensDomain => 'Domain';
+
+  @override
+  String get tokensUtility => 'Utility';
+
+  @override
+  String get tokensMintableByOwner => 'Yes, by owner';
+
+  @override
+  String get tokensBurnableByHolder => 'By any holder';
+
+  @override
+  String get tokensBurnableByOwner => 'By owner';
+
+  @override
+  String get tokensYes => 'Yes';
+
+  @override
+  String get tokensNo => 'No';
+
+  @override
+  String get tokensThisAddress => 'This address';
+
+  @override
+  String get tokensCopyStandard => 'Copy token standard';
+
+  @override
+  String get tokensCopyOwner => 'Copy owner address';
+
+  @override
+  String tokensRemainingSupply(String amount) {
+    return '$amount left under the max supply.';
+  }
+
+  @override
+  String get tokensTransferNote => 'Only the new owner can give it back.';
+
+  @override
+  String get tokensActionUnavailable => 'Unavailable';
+
+  @override
+  String get tokensActionSubmitting => 'Submitting';
+
+  @override
+  String get tokensActionSubmitted => 'Submitted';
+
+  @override
+  String get tokensActionUnknown => 'Unknown';
+
+  @override
+  String get tokenCreateNameAndSymbol => 'Name and symbol';
+
+  @override
+  String get tokenCreateOptions => 'Options';
+
+  @override
+  String get tokenCreateIssue => 'Issue';
+
+  @override
+  String get tokenCreateFee => 'Fee';
+
+  @override
+  String get tokenCreateHave => 'Have';
+
+  @override
+  String get tokenCreatePreview => 'Preview';
+
+  @override
+  String get tokenCreateBurned => 'burned';
+
+  @override
+  String get tokenCreateSymbol => 'Symbol';
+
+  @override
+  String get tokenCreateDomain => 'Domain';
+
+  @override
+  String get tokenCreateDomainNote => 'Optional. Where the token is described.';
+
+  @override
+  String get tokenCreateBack => 'Back';
+
+  @override
+  String get tokenCreateReviewSupply => 'Review supply';
+
+  @override
+  String get tokensBurnable => 'Burnable';
+
+  @override
+  String get tokensAnotherAction => 'Another';
+
+  @override
+  String get plasmaFuseAnotherAction => 'Another';
+
+  @override
+  String get nodeSettingsTitle => 'Nodes';
+
+  @override
+  String get nodeSettingsAdd => 'Add node';
+
+  @override
+  String get nodeSettingsEmbedded => 'Embedded node';
+
+  @override
+  String get nodeSettingsConnected => 'Connected';
+
+  @override
+  String get nodeSettingsUnknown => 'Not checked';
+
+  @override
+  String get nodeSettingsChainTitle => 'Chain identifier';
+
+  @override
+  String nodeSettingsClientChain(int chain) {
+    return 'Client chain $chain';
+  }
+
+  @override
+  String nodeSettingsNodeChain(int chain) {
+    return 'Chain $chain';
+  }
+
+  @override
+  String get nodeSettingsMomentum => 'Momentum';
+
+  @override
+  String get nodeSettingsPeers => 'Peers';
+
+  @override
+  String get nodeSettingsPeerIp => 'IP';
+
+  @override
+  String get nodeSettingsPeerKey => 'Public key';
+
+  @override
+  String get nodeSettingsNone => 'None yet';
+
+  @override
+  String get nodeSettingsSporks => 'Sporks';
+
+  @override
+  String get nodeSettingsSporksMode => 'Sporks mode';
+
+  @override
+  String get nodeSettingsMismatchTitle => 'Chain identifier mismatch';
+
+  @override
+  String nodeSettingsMismatchBody(int nodeChain, int clientChain) {
+    return 'Node chain $nodeChain. Client chain $clientChain. Proceed?';
+  }
+
+  @override
+  String get nodeSettingsProceed => 'Proceed anyway';
+
+  @override
+  String get nodeSettingsChanged => 'Node connected';
+
+  @override
+  String get nodeSettingsAdded => 'Node added';
+
+  @override
+  String get nodeSettingsUpdated => 'Node saved';
+
+  @override
+  String get nodeSettingsDeleted => 'Node deleted';
+
+  @override
+  String get nodeSettingsChainChanged => 'Chain changed';
+
+  @override
+  String get nodeSettingsFailed => 'Node change failed. Try again.';
+
+  @override
+  String get nodeSettingsSaveFailed => 'Could not save. Try again.';
+
+  @override
+  String get nodeSettingsSessionChanged => 'Session changed. Try again.';
+
+  @override
+  String get nodeSettingsChainHint => 'Used to sign transactions';
+
+  @override
+  String get nodeSettingsChainInvalid => 'Enter a positive whole number';
+
+  @override
+  String get nodeSettingsUpdating => 'Connecting';
+
+  @override
+  String get nodeSettingsDeleteQuestion => 'Delete this node?';
+
+  @override
+  String get nodeSettingsSynced => 'Synced';
+
+  @override
+  String get nodeSettingsSyncing => 'Syncing';
+
+  @override
+  String get securitySettingsLockAfter => 'Lock after';
+
+  @override
+  String get securitySettingsInactivity => 'Of inactivity';
+
+  @override
+  String securitySettingsMinutes(int minutes) {
+    return '$minutes min';
+  }
+
+  @override
+  String get securitySettingsHour => '1 h';
+
+  @override
+  String get securitySettingsOnClose => 'On close';
+
+  @override
+  String securitySettingsBiometricUnlock(String method) {
+    return 'Unlock with $method';
+  }
+
+  @override
+  String get securitySettingsWindowsHello => 'Windows Hello';
+
+  @override
+  String get securitySettingsTouchId => 'Touch ID';
+
+  @override
+  String get securitySettingsBiometricHint =>
+      'The password still works. Later.';
+
+  @override
+  String get securitySettingsWrongPasswordLimit =>
+      'Remove this wallet after wrong passwords';
+
+  @override
+  String get securitySettingsWrongPasswordHint =>
+      'On by default. Deletes this wallet file and shared app data after the limit. Back up the seed first.';
+
+  @override
+  String get securitySettingsOff => 'Off';
+
+  @override
+  String get securitySettingsChange => 'Change';
+
+  @override
+  String get securitySettingsPasswordUnavailable =>
+      'Password changes are not available yet.';
+
+  @override
+  String get securitySettingsBackup => 'Backup';
+
+  @override
+  String get securitySettingsSeedPhrase => 'Seed phrase';
+
+  @override
+  String get securitySettingsSeedPhraseHint => 'Shown on screen, in clear';
+
+  @override
+  String get securitySettingsSeedVault => 'Seed Vault';
+
+  @override
+  String get securitySettingsSeedVaultHint => 'An encrypted file of the seed';
+
+  @override
+  String get securitySettingsShow => 'Show';
+
+  @override
+  String get securitySettingsExport => 'Export';
+
+  @override
+  String get securitySettingsHardwareBackupHint => 'Not on a hardware wallet';
+
+  @override
+  String get securitySettingsSignMessage => 'Sign a message';
+
+  @override
+  String get securitySettingsVerifySignature => 'Verify a signature';
+
+  @override
+  String get securitySettingsRemoveWallet => 'Remove wallet';
+
+  @override
+  String get securitySettingsRemoveWalletHint =>
+      'Needs the seed or a Seed Vault';
+
+  @override
+  String get securitySettingsMessage => 'Message';
+
+  @override
+  String get securitySettingsSignature => 'Signature';
+
+  @override
+  String get securitySettingsPublicKey => 'Public key';
+
+  @override
+  String get securitySettingsPaste => 'Paste';
+
+  @override
+  String get securitySettingsSign => 'Sign';
+
+  @override
+  String get securitySettingsVerify => 'Verify';
+
+  @override
+  String get securitySettingsFile => 'File';
+
+  @override
+  String get securitySettingsSignFile => 'Sign file';
+
+  @override
+  String get securitySettingsVerifyFile => 'Verify file';
+
+  @override
+  String get securitySettingsFileSignature => 'File signature';
+
+  @override
+  String get securitySettingsMessageVerified => 'Signature verified';
+
+  @override
+  String get securitySettingsInvalidMessageSignature =>
+      'Message, signature or public key is invalid';
+
+  @override
+  String get securitySettingsFileVerified => 'File signature verified';
+
+  @override
+  String get securitySettingsInvalidFileSignature =>
+      'File signature or public key is invalid';
+
+  @override
+  String get securitySettingsSignFailed => 'Could not sign. Try again.';
+
+  @override
+  String get securitySettingsVerifyFailed => 'Could not verify. Try again.';
+
+  @override
+  String get securitySettingsSaveFailed =>
+      'Could not save this setting. Try again.';
+
+  @override
+  String get securitySettingsSessionChanged => 'Session changed. Try again.';
+
+  @override
+  String get securitySettingsLockChanged => 'Lock interval changed';
+
+  @override
+  String get securitySettingsLimitChanged => 'Wrong-password limit changed';
+
+  @override
+  String get securitySettingsChangePassword => 'Change password';
+
+  @override
+  String get securitySettingsPasswordRules =>
+      'At least 8 characters, with upper and lower case letters, a number and a symbol.';
+
+  @override
+  String get securitySettingsCurrentPassword => 'Current password';
+
+  @override
+  String get securitySettingsNewPassword => 'New password';
+
+  @override
+  String get securitySettingsRepeatPassword => 'Repeat new password';
+
+  @override
+  String get securitySettingsPasswordChangeFailed =>
+      'Password change did not complete.';
+
+  @override
+  String get securitySettingsSeedPrompt =>
+      'Enter the wallet password to show it.';
+
+  @override
+  String get securitySettingsSeedWarning =>
+      'Anyone with these words can spend from this wallet. Point at a word to read it, or press its number to keep it shown.';
+
+  @override
+  String get securitySettingsSeedFailed =>
+      'Could not show the seed phrase. Try again.';
+
+  @override
+  String get securitySettingsVaultInfoTitle => 'Export Seed Vault';
+
+  @override
+  String get securitySettingsVaultInfo =>
+      'A Seed Vault is a file of the seed, encrypted with a key you choose next. Keep the file and the key apart and offline. Lose either and the funds are lost.';
+
+  @override
+  String get securitySettingsVaultPromise =>
+      'I will keep the Seed Vault and its key safe';
+
+  @override
+  String get securitySettingsVaultKey => 'Seed Vault key';
+
+  @override
+  String get securitySettingsVaultKeyRules =>
+      'The key that opens the file. At least 8 characters, with upper and lower case letters, a number and a symbol.';
+
+  @override
+  String get securitySettingsRepeatVaultKey => 'Repeat key';
+
+  @override
+  String securitySettingsExportStep(int step) {
+    return 'Step $step of 2';
+  }
+
+  @override
+  String get securitySettingsVaultFileType => 'JSON file';
+
+  @override
+  String get securitySettingsVaultExported => 'Seed Vault exported';
+
+  @override
+  String get securitySettingsVaultExportFailed =>
+      'Could not export the Seed Vault. Try again.';
+
+  @override
+  String get securitySettingsDone => 'Done';
+
+  @override
+  String get securitySettingsBack => 'Back';
+
+  @override
+  String get securitySettingsResetWallet => 'Reset wallet';
+
+  @override
+  String get securitySettingsResetWarning =>
+      'Deletes this wallet file and shared app data from this computer. Keep the seed phrase, or a Seed Vault and its key, before continuing.';
+
+  @override
+  String get securitySettingsReset => 'Reset';
+
+  @override
+  String get walletSettingsAutoReceive => 'Auto-receive';
+
+  @override
+  String get walletSettingsAutoReceiveHint =>
+      'Off: receive each transaction by hand';
+
+  @override
+  String get walletSettingsDesktopNotifications => 'Desktop notifications';
+
+  @override
+  String get walletSettingsLaunchAtStartup => 'Launch at startup';
+
+  @override
+  String get walletSettingsModes => 'Modes';
+
+  @override
+  String get walletSettingsModesHint =>
+      'Auto: shown when the selected address owns one';
+
+  @override
+  String get walletSettingsAuto => 'Auto';
+
+  @override
+  String get walletSettingsOn => 'On';
+
+  @override
+  String get walletSettingsOff => 'Off';
+
+  @override
+  String get walletSettingsWallets => 'Wallets on this computer';
+
+  @override
+  String get walletSettingsWalletsHint => 'Rename, remove, add';
+
+  @override
+  String get walletSettingsMaintenance => 'Maintenance';
+
+  @override
+  String get walletSettingsClipboard => 'Clipboard watcher';
+
+  @override
+  String get walletSettingsClipboardHint =>
+      'Offers to connect when a WalletConnect link is copied';
+
+  @override
+  String get walletSettingsSaveFailed => 'Could not save. Try again.';
+
+  @override
+  String get walletSettingsApplyFailed => 'Saved. Could not apply.';
+
+  @override
+  String get walletSettingsUnavailable => 'Unavailable';
+
+  @override
+  String get walletSettingsDelete => 'Delete';
+
+  @override
+  String get walletSettingsCacheHint =>
+      'Clears network cache and closes the app';
+
+  @override
+  String get securitySettingsVaultExportUncertain =>
+      'Export result unknown. Check the selected file.';
+
+  @override
+  String get securitySettingsPolicyUnavailable => 'Setting unavailable';
+
+  @override
+  String get appsSettingsWebApps => 'Web apps';
+
+  @override
+  String get appsSettingsWebAppsHint =>
+      'Pages on this computer may ask to connect.';
+
+  @override
+  String get appsSettingsConnected => 'Connected';
+
+  @override
+  String get appsSettingsSite => 'Site';
+
+  @override
+  String get appsSettingsLastUsed => 'Last used';
+
+  @override
+  String get appsSettingsVia => 'Via';
+
+  @override
+  String get appsSettingsUnknown => 'Unknown';
+
+  @override
+  String get appsSettingsNone => 'None yet';
+
+  @override
+  String get appsSettingsWebApp => 'Web app';
+
+  @override
+  String get appsSettingsLink => 'Link';
+
+  @override
+  String get appsSettingsWalletConnect => 'WalletConnect';
+
+  @override
+  String get appsSettingsConnectByLink => 'Connect by link';
+
+  @override
+  String get appsSettingsWalletConnectLink => 'WalletConnect link';
+
+  @override
+  String get appsSettingsConnect => 'Connect';
+
+  @override
+  String get appsSettingsDisconnect => 'Disconnect';
+
+  @override
+  String get appsSettingsDisconnectPairing => 'Disconnect pairing';
+
+  @override
+  String get appsSettingsSessions => 'Sessions';
+
+  @override
+  String get appsSettingsPairings => 'Pairings';
+
+  @override
+  String get appsSettingsSession => 'Session';
+
+  @override
+  String get appsSettingsPairing => 'Pairing';
+
+  @override
+  String get appsSettingsTopic => 'Topic';
+
+  @override
+  String get appsSettingsUrl => 'URL';
+
+  @override
+  String get appsSettingsExpires => 'Expires';
+
+  @override
+  String get appsSettingsActive => 'Active';
+
+  @override
+  String get appsSettingsAcknowledged => 'Acknowledged';
+
+  @override
+  String appsSettingsSummary(int sessions, int pairings) {
+    String _temp0 = intl.Intl.pluralLogic(
+      sessions,
+      locale: localeName,
+      other: '$sessions sessions',
+      one: '1 session',
+    );
+    String _temp1 = intl.Intl.pluralLogic(
+      pairings,
+      locale: localeName,
+      other: '$pairings pairings',
+      one: '1 pairing',
+    );
+    return '$_temp0 · $_temp1';
+  }
+
+  @override
+  String get appsSettingsOff => 'Off';
+
+  @override
+  String get appsSettingsStarting => 'Starting';
+
+  @override
+  String get appsSettingsNoFreePort => 'No free port';
+
+  @override
+  String get appsSettingsNotSaved => 'Not saved';
+
+  @override
+  String get appsSettingsUnavailable => 'Unavailable';
+
+  @override
+  String get appsSettingsFailed => 'Could not complete. Try again.';
+
+  @override
+  String get appsSettingsOutcomeUnknown => 'Outcome unknown. Check the list.';
+
+  @override
+  String get appsSettingsInvalidLink => 'Enter a WalletConnect link';
+
+  @override
+  String get appsSettingsScanScreen => 'Scan screen';
+
+  @override
+  String get appsSettingsCamera => 'Camera';
+
+  @override
+  String get appsSettingsInvalidQr => 'Invalid QR code';
+
+  @override
+  String get appsSettingsScreenPermission =>
+      'Allow screen recording to scan a QR code.';
+
+  @override
+  String get addressesYourAddresses => 'Your addresses';
+
+  @override
+  String get addressesContacts => 'Contacts';
+
+  @override
+  String get addressesAddAddress => 'Add address';
+
+  @override
+  String get addressesAddContact => 'Add contact';
+
+  @override
+  String get addressesSelected => 'Selected';
+
+  @override
+  String get addressesContactName => 'Name';
+
+  @override
+  String get addressesContactAddress => 'Address';
+
+  @override
+  String get addressesEditContact => 'Edit contact';
+
+  @override
+  String addressesSent(String time) {
+    return 'Sent $time';
+  }
+
+  @override
+  String get addressesNoRecord => 'No record';
+
+  @override
+  String addressesAccountChain(String label) {
+    return 'Account chain of $label';
+  }
+
+  @override
+  String addressesBlockCount(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count blocks',
+      one: '1 block',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get addressesBalancesUnavailable => 'Balances unavailable. Try again.';
+
+  @override
+  String get addressesAccountChainUnavailable =>
+      'Account chain unavailable. Try again.';
+
+  @override
+  String get addressesSaveFailed => 'Changes were not saved. Try again.';
+
+  @override
+  String get addressesGenerationFailed => 'Address was not added. Try again.';
+
+  @override
+  String get addressesGenerationUncertain =>
+      'Check Addresses before adding another.';
+
+  @override
+  String get addressesSavedReopen => 'Saved. Reopen Addresses.';
+
+  @override
+  String get addressesNameEmpty => 'Enter a name';
+
+  @override
+  String get addressesNameTooLong => 'Name is too long';
+
+  @override
+  String get addressesNameTaken => 'Name already exists';
+
+  @override
+  String get addressesAddressTaken => 'Address already exists';
+
+  @override
+  String get addressesInvalidAddress => 'Enter a valid address';
+
+  @override
+  String get addressesLabelTooLong => 'Label is too long';
+
+  @override
+  String get aboutSyrius => 'Syrius';
+
+  @override
+  String get aboutEmbeddedNode => 'Embedded node';
+
+  @override
+  String get aboutBuild => 'Build';
+
+  @override
+  String get aboutUnknown => 'Unknown';
+
+  @override
+  String get aboutBuildNumber => 'Build number';
+
+  @override
+  String get aboutLinks => 'Links';
+
+  @override
+  String get aboutLinksHint => 'Docs, explorers, community';
+
+  @override
+  String get aboutComputer => 'This computer';
+
+  @override
+  String get aboutComputerHint => 'Paths, platform, wallet type';
+
+  @override
+  String get aboutLicences => 'Licences';
+
+  @override
+  String get aboutWhatChanged => 'What changed';
+
+  @override
+  String get aboutDownloadVerify => 'Download and verify';
+
+  @override
+  String get aboutVersion => 'Version';
+
+  @override
+  String get aboutWalletType => 'Wallet type';
+
+  @override
+  String get aboutSdk => 'SDK';
+
+  @override
+  String get aboutBranch => 'Branch';
+
+  @override
+  String get aboutCommit => 'Commit';
+
+  @override
+  String get aboutCommitMessage => 'Commit message';
+
+  @override
+  String get aboutCommitDate => 'Commit date';
+
+  @override
+  String get aboutOrigin => 'Origin';
+
+  @override
+  String get aboutHostname => 'Hostname';
+
+  @override
+  String get aboutLocalIp => 'Local IP address';
+
+  @override
+  String get aboutOperatingSystem => 'Operating system';
+
+  @override
+  String get aboutProcessors => 'Processors';
+
+  @override
+  String get aboutPaths => 'Paths';
+
+  @override
+  String get aboutZenonData => 'Zenon data';
+
+  @override
+  String get aboutCache => 'Cache';
+
+  @override
+  String get aboutWallet => 'Wallet';
+
+  @override
+  String get aboutOpenLink => 'Open link';
+
+  @override
+  String get aboutOpenFolder => 'Open folder';
+
+  @override
+  String get aboutLicencesLoading => 'Loading';
+
+  @override
+  String get aboutLicencesFailed => 'Could not load licences. Try again.';
+
+  @override
+  String get aboutRetry => 'Retry';
+
+  @override
+  String get aboutWebsites => 'Websites';
+
+  @override
+  String get aboutExplorers => 'Explorers';
+
+  @override
+  String get aboutSocial => 'Social';
+
+  @override
+  String get aboutDocumentation => 'Documentation';
+
+  @override
+  String get aboutZenonNetwork => 'Zenon Network';
+
+  @override
+  String get aboutCommunityForum => 'Community forum';
+
+  @override
+  String get aboutZenonTools => 'Zenon Tools';
+
+  @override
+  String get aboutZenonOrg => 'Zenon ORG';
+
+  @override
+  String get aboutZenonHub => 'Zenon Hub';
+
+  @override
+  String get aboutExplorer => 'Explorer';
+
+  @override
+  String get aboutHubExplorer => 'Hub explorer';
+
+  @override
+  String get aboutTwitter => 'Twitter';
+
+  @override
+  String get aboutDiscord => 'Discord';
+
+  @override
+  String get aboutTelegram => 'Telegram';
+
+  @override
+  String get aboutMedium => 'Medium';
+
+  @override
+  String get aboutGithub => 'GitHub';
+
+  @override
+  String get aboutBitcoinTalk => 'Bitcoin Talk';
+
+  @override
+  String get aboutReddit => 'Reddit';
+
+  @override
+  String get aboutYoutube => 'YouTube';
+
+  @override
+  String get aboutWiki => 'Wiki';
+
+  @override
+  String get aboutCommunityWiki => 'Community wiki';
+
+  @override
+  String get aboutWhitepaper => 'Whitepaper';
+
+  @override
+  String get originalsTitle => 'Originals';
+
+  @override
+  String get originalsSince => 'Since Syrius 0.0.5, April 2022';
+
+  @override
+  String get originalsPlayLaunch => 'Play launch';
+
+  @override
+  String get originalsLaunch => 'Launch';
+
+  @override
+  String get originalsLaunchPlace => 'Every start, then the lock card';
+
+  @override
+  String get originalsGlobe => 'Globe';
+
+  @override
+  String get originalsGlobePlace => 'Welcome';
+
+  @override
+  String get originalsMap => 'Map';
+
+  @override
+  String get originalsMapPlace => 'Wallet ready';
+
+  @override
+  String get originalsPillar => 'Pillar';
+
+  @override
+  String get originalsPillarPlace => 'Your pillar, Spawn';
+
+  @override
+  String get originalsSentinel => 'Sentinel';
+
+  @override
+  String get originalsSentinelPlace => 'Your sentinel, Spawn';
+
+  @override
+  String get originalsZts => 'ZTS';
+
+  @override
+  String get originalsZtsPlace => 'Tokens, Create token';
+
+  @override
+  String get originalsPlasma => 'Generating plasma, in the strip';
+
+  @override
+  String get originalsHidden => 'Hidden balances';
+
+  @override
+  String get originalsEmpty => 'Empty lists';
+
+  @override
+  String get originalsHover => 'Hover to play';
+
+  @override
+  String get welcomeTitle => 'Welcome';
+
+  @override
+  String get welcomeSubtitle => 'One wallet, every address you will need.';
+
+  @override
+  String get welcomeCreate => 'Create wallet';
+
+  @override
+  String get welcomeCreateHint => 'A new seed of 12 or 24 words';
+
+  @override
+  String get welcomeImport => 'Import wallet';
+
+  @override
+  String get welcomeImportHint => 'A seed, or a wallet file dropped here';
+
+  @override
+  String get welcomeHardware => 'Hardware wallet';
+
+  @override
+  String get welcomeHardwareHint => 'Ledger, with the Zenon app open';
+
+  @override
+  String get welcomeSettingsHint =>
+      'Node and chain can be changed later in Settings.';
+
+  @override
+  String get swapListTitle => 'Swaps';
+
+  @override
+  String get swapListAll => 'All';
+
+  @override
+  String get swapListActive => 'Active';
+
+  @override
+  String get swapListCompleted => 'Completed';
+
+  @override
+  String get swapListReclaimable => 'Reclaimable';
+
+  @override
+  String get swapListToReclaim => 'To reclaim';
+
+  @override
+  String get swapListWaiting => 'Waiting';
+
+  @override
+  String get swapListStarting => 'Starting';
+
+  @override
+  String get swapListUnsuccessful => 'Unsuccessful';
+
+  @override
+  String get swapListYouSend => 'You send';
+
+  @override
+  String get swapListYouReceive => 'You receive';
+
+  @override
+  String get swapListCounterparty => 'Counterparty';
+
+  @override
+  String get swapListExpires => 'Expires';
+
+  @override
+  String get swapListStarted => 'Started';
+
+  @override
+  String get swapListYourDepositId => 'Your deposit ID';
+
+  @override
+  String get swapListCounterpartyDepositId => 'Counterparty deposit ID';
+
+  @override
+  String get swapListRate => 'Rate';
+
+  @override
+  String get swapListUnknown => 'Unknown';
+
+  @override
+  String get swapListWaitingNotice =>
+      'Waiting for the counterparty. Keep Syrius open.';
+
+  @override
+  String get swapListExpiryNotice => 'Reclaim after the deposit expires.';
+
+  @override
+  String get swapListJoin => 'Join swap';
+
+  @override
+  String get swapListStart => 'Start swap';
+
+  @override
+  String get swapListOpen => 'Open swap';
+
+  @override
+  String get swapListReclaim => 'Reclaim';
+
+  @override
+  String get swapListRecover => 'Recover deposit';
+
+  @override
+  String get swapListTutorial => 'Swap tutorial';
+
+  @override
+  String get swapListClearHistory => 'Clear history';
+
+  @override
+  String get swapListDelete => 'Delete swap';
+
+  @override
+  String get swapListDeleteWarning => 'This cannot be undone.';
+
+  @override
+  String get swapListClearWarning =>
+      'Active swaps are kept. This cannot be undone.';
+
+  @override
+  String get swapListUnavailable => 'Swaps unavailable. Try again.';
+
+  @override
+  String get swapListSourceChanged => 'Wallet or node changed. Refresh swaps.';
+
+  @override
+  String get swapListRefresh => 'Refresh';
+
+  @override
+  String get swapListMore => 'More';
+
+  @override
+  String get swapListHistoryFull => 'History full';
+
+  @override
+  String get swapListHistoryFullHint =>
+      'Completed swaps may be removed when a new swap starts.';
+
+  @override
+  String get swapListCopyForThem => 'Copy for them';
+
+  @override
+  String get swapListDetails => 'Details';
+
+  @override
+  String get swapListSender => 'Sender';
+
+  @override
+  String get swapListRecipient => 'Recipient';
+
+  @override
+  String get swapListDepositId => 'Deposit ID';
+
+  @override
+  String get swapListInitialDepositId => 'Initial deposit ID';
+
+  @override
+  String get swapListHashlock => 'Hashlock';
+
+  @override
+  String get swapListYourAddress => 'Your address';
+
+  @override
+  String get swapListTokenStandard => 'Token standard';
+
+  @override
+  String get swapListExpired => 'Expired';
+
+  @override
+  String get swapListVerified => 'Verified';
+
+  @override
+  String get swapListFavorites => 'In your favorites';
+
+  @override
+  String get swapListUnverified => 'Not in your favorites';
+
+  @override
+  String get swapListPlasmaWait => 'Wait for plasma to generate.';
+
+  @override
+  String get acceleratorFund => 'Fund';
+
+  @override
+  String get acceleratorVoting => 'Voting';
+
+  @override
+  String get acceleratorNeedYourPillar => 'need your pillar';
+
+  @override
+  String get acceleratorDonate => 'Donate';
+
+  @override
+  String get acceleratorCreateProject => 'Create project';
+
+  @override
+  String get acceleratorActive => 'Active';
+
+  @override
+  String get acceleratorMine => 'Mine';
+
+  @override
+  String get acceleratorAll => 'All';
+
+  @override
+  String get acceleratorSearch => 'Search';
+
+  @override
+  String get acceleratorNewest => 'Newest';
+
+  @override
+  String get acceleratorOldest => 'Oldest';
+
+  @override
+  String get acceleratorProject => 'Project';
+
+  @override
+  String get acceleratorBudget => 'Budget';
+
+  @override
+  String get acceleratorVotes => 'Votes';
+
+  @override
+  String get acceleratorQuorum => 'Quorum';
+
+  @override
+  String get acceleratorStatus => 'Status';
+
+  @override
+  String get acceleratorYourVote => 'Your vote';
+
+  @override
+  String get acceleratorAccepted => 'Accepted';
+
+  @override
+  String get acceleratorPaid => 'Paid';
+
+  @override
+  String get acceleratorCompleted => 'Completed';
+
+  @override
+  String get acceleratorRejected => 'Rejected';
+
+  @override
+  String get acceleratorUnknown => 'Unknown';
+
+  @override
+  String get acceleratorReadFailed => 'Network error. Try again.';
+
+  @override
+  String acceleratorByOwner(String owner, String age) {
+    return 'by $owner · $age';
+  }
+
+  @override
+  String acceleratorVoteTally(int yes, int no, int abstain) {
+    return '$yes · $no · $abstain';
+  }
+
+  @override
+  String get acceleratorNoneYet => 'None yet';
+
+  @override
+  String get acceleratorRefresh => 'Refresh';
+
+  @override
+  String get swapListStatus => 'Status';
+
+  @override
+  String get walletReadyTitle => 'Your wallet is ready';
+
+  @override
+  String get walletReadyFirstAddress => 'Address 1';
+
+  @override
+  String get walletReadyOpen => 'Open wallet';
+
+  @override
+  String get walletReadyCopy => 'Copy address';
+
+  @override
+  String get walletReadyUnknown => 'Unknown';
+
+  @override
+  String get walletReadySeed => 'Seed';
+
+  @override
+  String get walletReadyConfirm => 'Confirm';
+
+  @override
+  String get walletReadyPassword => 'Password';
+
+  @override
+  String get walletReadyReady => 'Ready';
+
+  @override
+  String get walletReadyDevice => 'Device';
+
+  @override
+  String get entryBack => 'Back';
+
+  @override
+  String get entryReady => 'Ready';
+
+  @override
+  String get importWalletTitle => 'Import your wallet';
+
+  @override
+  String get importSeedOrFile => 'Seed or file';
+
+  @override
+  String get importSeedHint => 'Type your seed, or drop a wallet file';
+
+  @override
+  String get importFileHint =>
+      'Any file name. It is accepted if it decrypts as a Syrius keyfile.';
+
+  @override
+  String get importFileSelected => 'Wallet file selected';
+
+  @override
+  String get importFileInvalid => 'Not a Syrius wallet file';
+
+  @override
+  String get importSeedInvalid => 'Check the seed words and their order.';
+
+  @override
+  String importWordCount(int count, int total) {
+    return '$count of $total';
+  }
+
+  @override
+  String get importUnlockTitle => 'Unlock the wallet file';
+
+  @override
+  String get importUnlockHint => 'Enter the password it was saved with';
+
+  @override
+  String get importPasswordIncorrect => 'Incorrect password';
+
+  @override
+  String get importDecryptFailed => 'Could not unlock this file. Try again.';
+
+  @override
+  String get importPasswordTitle => 'Create a wallet password';
+
+  @override
+  String get importPasswordHint => 'You will need it to unlock the wallet';
+
+  @override
+  String get importConfirmPassword => 'Confirm password';
+
+  @override
+  String get seedQuizTitle => 'Confirm your seed';
+
+  @override
+  String get seedQuizSeed => 'Seed';
+
+  @override
+  String get seedQuizConfirm => 'Confirm';
+
+  @override
+  String seedQuizWord(int position) {
+    return 'Word $position';
+  }
+
+  @override
+  String seedQuizProgress(int count) {
+    return '$count of 3 done.';
+  }
+
+  @override
+  String get seedQuizInvalid => 'Check your seed before continuing.';
+
+  @override
+  String get entryPasswordRule =>
+      'At least 8 characters, with an upper and a lower case letter, a number and a symbol';
+
+  @override
+  String get acceleratorProjects => 'Projects';
+
+  @override
+  String get acceleratorArticle => 'Article';
+
+  @override
+  String get acceleratorExplorer => 'Explorer';
+
+  @override
+  String get acceleratorOwner => 'Owner';
+
+  @override
+  String get acceleratorCreated => 'Created';
+
+  @override
+  String get acceleratorPhases => 'Phases';
+
+  @override
+  String get acceleratorCreatePhase => 'Create phase';
+
+  @override
+  String get acceleratorUpdatePhase => 'Update phase';
+
+  @override
+  String acceleratorVoteAs(String name, String target) {
+    return 'Vote as $name, $target';
+  }
+
+  @override
+  String acceleratorPhaseNumber(int number) {
+    return 'Phase $number';
+  }
+
+  @override
+  String get acceleratorYes => 'Yes';
+
+  @override
+  String get acceleratorNo => 'No';
+
+  @override
+  String get acceleratorAbstain => 'Abstain';
+
+  @override
+  String get acceleratorProof => 'Proof';
+
+  @override
+  String get acceleratorVotingClosed => 'Voting closed';
+
+  @override
+  String get acceleratorVoteUnavailable => 'Voting unavailable';
+
+  @override
+  String get acceleratorSessionChanged => 'Wallet changed. Reopen this view.';
+
+  @override
+  String get acceleratorActionUnknown => 'Outcome unknown. Check activity.';
+
+  @override
+  String get acceleratorActionSubmitted => 'Submitted';
+
+  @override
+  String get acceleratorActionRefused =>
+      'Action refused. Refresh and try again.';
+
+  @override
+  String get acceleratorActionHeld => 'Original action pending';
+
+  @override
+  String get acceleratorNewAction => 'New action';
+
+  @override
+  String get acceleratorDetails => 'Details';
+
+  @override
+  String get acceleratorSubmit => 'Submit';
+
+  @override
+  String get acceleratorName => 'Name';
+
+  @override
+  String get acceleratorDescription => 'Description';
+
+  @override
+  String get acceleratorUrl => 'URL';
+
+  @override
+  String get acceleratorZnnBudget => 'ZNN budget';
+
+  @override
+  String get acceleratorQsrBudget => 'QSR budget';
+
+  @override
+  String get acceleratorDonationZnn => 'ZNN donation';
+
+  @override
+  String get acceleratorDonationQsr => 'QSR donation';
+
+  @override
+  String get acceleratorContinue => 'Continue';
+
+  @override
+  String get acceleratorCancel => 'Cancel';
+
+  @override
+  String get acceleratorBack => 'Back';
+
+  @override
+  String acceleratorCreateFee(String amount) {
+    return 'Fee: $amount';
+  }
+
+  @override
+  String get acceleratorChangeVote => 'Your vote can be changed.';
+
+  @override
+  String get importFileOpenFailed =>
+      'Could not open the file picker. Try again.';
+
+  @override
+  String get swapActionCreateDeposit => 'Create deposit';
+
+  @override
+  String get swapActionNewDeposit => 'New deposit';
+
+  @override
+  String get swapActionFindDeposit => 'Find deposit';
+
+  @override
+  String get swapActionEnterDepositId => 'Enter the deposit ID';
+
+  @override
+  String get swapActionEnterAddress => 'Enter a counterparty';
+
+  @override
+  String get swapActionEnterAmount => 'Enter an amount';
+
+  @override
+  String get swapActionNotEnough => 'Not enough balance';
+
+  @override
+  String get swapActionSending => 'Sending';
+
+  @override
+  String get swapActionSearching => 'Searching';
+
+  @override
+  String get swapActionSubmitted => 'Submitted';
+
+  @override
+  String get swapActionUnlock => 'Unlock';
+
+  @override
+  String get swapActionUnlockSubmitted => 'Unlock submitted';
+
+  @override
+  String get swapActionReclaimSubmitted => 'Reclaim submitted';
+
+  @override
+  String get swapActionUnknown =>
+      'Result unknown. Check this deposit before another action.';
+
+  @override
+  String get swapActionRefused => 'Action refused. Refresh swaps.';
+
+  @override
+  String get swapActionReadFailed => 'Deposit unavailable. Refresh swaps.';
+
+  @override
+  String get swapActionDepositOnly =>
+      'Only your deposit is created. Agree the other side separately.';
+
+  @override
+  String swapActionTiming(int initialHours, int counterHours) {
+    return '$initialHours h initial · $counterHours h counter';
+  }
+
+  @override
+  String swapActionDiscovery(int hours, int minutes) {
+    return '$hours h discovery · $minutes min completion margin';
+  }
+
+  @override
+  String get swapActionExperimental =>
+      'Experimental. Check both tokens and amounts before unlocking.';
+
+  @override
+  String get swapActionNoRequestedTerms => 'No requested amount is recorded.';
+
+  @override
+  String get swapActionRecorded => 'Recorded';
+
+  @override
+  String get swapActionChainPending => 'Chain status unknown';
+
+  @override
+  String get swapActionDepositVerified => 'Deposit verified';
+
+  @override
+  String get swapActionCanReclaim => 'Deposit expired. Reclaim it explicitly.';
+
+  @override
+  String get swapActionDepositLive => 'Deposit is live';
+
+  @override
+  String get swapActionConfirmAmount =>
+      'Check the counterparty token and amount before unlocking.';
+
+  @override
+  String get swapActionFreshDetails => 'Refresh deposit';
+
+  @override
+  String get swapActionPaste => 'Paste';
+
+  @override
+  String get swapActionTitle => 'Swap';
+
+  @override
+  String get receiveOperationFailed => 'Could not receive. Refresh activity.';
+
+  @override
+  String get walletCreationUnavailable =>
+      'Wallet setup is unavailable. Your original attempt has been kept.';
 }

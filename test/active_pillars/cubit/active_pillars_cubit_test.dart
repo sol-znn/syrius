@@ -44,6 +44,7 @@ void main() {
       when(
         () => mockPillarInfoList.list,
       ).thenReturn(<PillarInfo>[MockPillarInfo(), MockPillarInfo()]);
+      when(() => mockPillarInfoList.count).thenReturn(97);
       when(
         () => mockPillar.getAll(),
       ).thenAnswer((_) async => mockPillarInfoList);
@@ -56,7 +57,7 @@ void main() {
     });
 
     blocTest<ActivePillarsCubit, ActivePillarsState>(
-      'emits loading then success with pillar count',
+      'uses the response total rather than the returned page length',
       build: () => cubit,
       act: (ActivePillarsCubit cubit) => cubit.fetchDataPeriodically(),
       verify: (_) {
@@ -64,7 +65,33 @@ void main() {
       },
       expect: () => <ActivePillarsState>[
         const ActivePillarsState(status: TimerStatus.loading),
-        const ActivePillarsState(status: TimerStatus.success, data: 2),
+        const ActivePillarsState(status: TimerStatus.success, data: 97),
+      ],
+    );
+
+    blocTest<ActivePillarsCubit, ActivePillarsState>(
+      'an empty page does not erase a known response total',
+      setUp: () {
+        when(() => mockPillarInfoList.list).thenReturn(<PillarInfo>[]);
+      },
+      build: () => cubit,
+      act: (ActivePillarsCubit cubit) => cubit.fetchDataPeriodically(),
+      expect: () => <ActivePillarsState>[
+        const ActivePillarsState(status: TimerStatus.loading),
+        const ActivePillarsState(status: TimerStatus.success, data: 97),
+      ],
+    );
+
+    blocTest<ActivePillarsCubit, ActivePillarsState>(
+      'preserves an actual zero total',
+      setUp: () {
+        when(() => mockPillarInfoList.count).thenReturn(0);
+      },
+      build: () => cubit,
+      act: (ActivePillarsCubit cubit) => cubit.fetchDataPeriodically(),
+      expect: () => <ActivePillarsState>[
+        const ActivePillarsState(status: TimerStatus.loading),
+        const ActivePillarsState(status: TimerStatus.success, data: 0),
       ],
     );
 

@@ -6,11 +6,12 @@ window. It exists so that an agent or a script can unlock the wallet, walk
 every page and carry out any action, and see what a user would see when one
 fails.
 
-It is two parts. `harness/app/` is an entrypoint that starts the unchanged app
+It is two parts. The default `harness/app/` entrypoint starts the app
 (`lib/main.dart`) with an agent beside it: a loopback HTTP server inside the
 Flutter process. `harness/bin/harness.dart` is the command line that builds,
-launches and talks to it. Nothing under `lib/` is changed, and the agent is
-not linked into an ordinary build.
+launches and talks to it. An explicit read-only presentation mode instead starts
+an independent view before any production wallet owner. The agent is not linked
+into an ordinary build.
 
 ```mermaid
 sequenceDiagram
@@ -50,10 +51,40 @@ PowerShell). Windows only for now.
 ```sh
 harness/h build                 # flutter build windows, entrypoint harness/app/main.dart
 harness/h start                 # launch in the profile .harness/default
-harness/h import --mnemonic "<24 words>" --password '<password>' --node ws://127.0.0.1:45998
+harness/h import --mnemonic "<24 words>" --password '<password>' --node ws://127.0.0.1:45998 --chain 321
 harness/h chain 321             # the chain identifier the wallet signs with
+harness/h lab-address           # derive once if needed; select and verify index 1
 harness/h stop
 ```
+
+Import requires an explicit positive `--chain` before entering any private
+input. It uses the current keyed importer, accepts one genuine node mismatch
+only when its original node and signing facts match that requested chain,
+opens the original Ready once, then saves the signing policy through Settings.
+Success requires both the SDK signing identifier and its saved effective policy,
+plus the original connected and saved node. `state.chainId` is the node's chain;
+`state.signingChainId` is the SDK's signing policy. An absent stored signing
+preference is reported only as the application's known default when its
+original preferences box is already open.
+
+The import, node and signing-policy recipes use a three-minute total budget,
+ten-second command limits and finite scroll and observation counts. Ambiguous
+or replaced controls, unknown policy, mismatched questions, transport errors
+and late acknowledgements stop the recipe without another action. A standalone
+`node` command never accepts a chain mismatch. Refusal retains any wallet or
+transition already created; it does not reset the profile. Recipe replies and
+diagnostics omit private field contents. Native import and signing acceptance
+still require execution against the intended isolated profile and node.
+
+`lab-address` requires the exact connected and saved loopback lab endpoint,
+node/signing chain 321 and a consistent original wallet selection. It opens
+Settings and Addresses through the normal controls, derives one missing member
+through Add address, and selects index 1 through its actual choice button.
+The original member order, Boxes, transports, wallet and context generations
+are retained. Success independently requires the original notifier and saved
+preference to agree. Unknown writes retire the driver; no derivation or
+selection is retried. Its finite receipt omits member strings and paths.
+This prepares P09; it submits no account block and proves no send or seed state.
 
 Later runs find the wallet in the profile and start at the lock screen:
 
@@ -62,6 +93,14 @@ harness/h start
 harness/h unlock '<password>'
 harness/h tour                  # every page: screenshot, error widgets, errors logged
 ```
+
+The page tour explicitly opens Notifications over Home and selects Node for
+Settings before capture. WalletConnect selects Apps through Settings. These
+choices are repeated on every visit, so a section retained from an earlier
+page or theme cannot substitute for the intended capture. Standalone
+`goto notifications` still opens the bell over its caller's current page; ordinary
+application section retention is unchanged. A missing Home or Node control
+fails the original tour operation without retry or relabelling an image.
 
 The loop for anything else is `tree`, act, `tree`:
 
@@ -77,6 +116,60 @@ harness/h wait "Sent 1.5 ZNN" --timeout 60
 
 `harness/h run <file>` runs such lines from a file and stops at the first that
 fails.
+
+## Read-only presentation
+
+The same harness binary has a separate component preview mode. It is selected
+before `app.main`, so it does not open a wallet, preferences, a node, WalletConnect,
+an embedded process or a signing owner. Its theme is memory-only. A visible
+fixture banner remains on screen, all component input is disabled and every
+callback refuses. Quiz words are visibly synthetic and do not form wallet
+material. This mode does not establish an original initialization, restoration,
+chain effect, renderer frame pin or visual match.
+
+After native provisioning and a harness build, use an unused explicit instance:
+
+```text
+harness/h start --instance presentation-01 --presentation welcome
+harness/h presentation import --instance presentation-01
+harness/h theme light --instance presentation-01
+harness/h state --instance presentation-01
+harness/h stop --instance presentation-01
+```
+
+Supported components are `welcome`, `import`, `seed-quiz`, `lock-screen`,
+`lock-wrong` and `wallet-picker`. The last is a picker component, rather than
+the complete `lock-pick` screen. Ready, cold launch, transition frames and
+full-shell fixtures retain their original prerequisites. Existing profiles and
+`--fresh` are refused for presentation; inherited presentation flags are removed
+from ordinary launches. A running instance must report the exact requested host
+mode and component before reuse.
+
+Only anonymous state, theme, window, tree, assertion, wait, logs, stalls,
+component selection and quit commands are admitted. Input, clipboard, seed,
+publication and both `shot` and `screens` refuse. No presentation output can be
+written as a numbered wallet capture or a match. Theme responses require the
+attached theme after frame settlement; observed source loss permanently retires
+the host. The first attached host Element stays the owner, so an unseen remount
+under the same key and controller also refuses. Presentation assertions inspect
+only that owner's visible content through its unchanged read-only input barrier;
+covered or hidden targets refuse and no assertion qualifies capture evidence.
+
+Quit acknowledges one queued close attempt. After its original delay, admission
+rechecks the captured host and scene before invoking native close once. Its exact
+Future and terminal error stay retained; subsequent requests inspect that same
+attempt and do not retry it. State exposes the anonymous close phase, without
+raw errors. A completed close Future does not establish process exit.
+
+Source and finite offline coverage are separate from native execution,
+which is recorded in [the environment record](../docs/environment.md).
+
+`capture_protocol.dart` separately retains an immutable plan, original operation
+Futures, actual frame observations and positive restoration receipts. Its default
+native adapter is unavailable. Source loss or uncertain restoration holds that
+original scope permanently; recreating a protocol is not a recovery procedure.
+Injected contract tests and presentation commands do not enable the pending
+entry or full-shell capture recipes.
 
 ## The tree
 
@@ -118,6 +211,8 @@ decide. `type` looks at fields only.
 |---|---|
 | `build [--mode release\|profile\|debug]` | builds, and copies the result to `.harness/app/<mode>` |
 | `start [--instance <name>] [--fresh] [--port <n>]` | launches in that profile; `--fresh` deletes the profile first |
+| `start --instance <unused-name> --presentation <surface>` | starts a separate read-only component host before wallet startup; existing profiles and `--fresh` refuse |
+| `presentation <surface>` | changes only an existing presentation host's component; ordinary wallet hosts refuse |
 | `stop`, `status`, `state` | `state` is the route, tab, node, chain, address and lock state |
 | `tree [--kind <k>] [--json]` | what is on screen |
 | `tap <sel> [--double] [--right] [--long] [--force]` | a click; `--force` skips the reach check |
@@ -128,18 +223,110 @@ decide. `type` looks at fields only.
 | `drag <sel> <dx,dy>` | press, move, release |
 | `drop <sel> <file>` | a file dragged in from the desktop and released there |
 | `wait <sel> [--gone] [--timeout <s>]` | until it is on screen, or gone |
+| `assert <sel>` | immediately verifies an exact, reachable selector and refuses any visible error widget |
 | `reveal <sel>` | scrolls down until it is on screen |
-| `shot [--out <file>]` | a PNG of the window's contents |
+| `shot [--out <file>]` | the Flutter client as a PNG at one output pixel per logical pixel |
+| `theme dark\|light` | changes the existing app theme notifier and saved Display preference, then verifies the rendered brightness |
 | `logs [--levels SEVERE,WARNING] [--since <seq>]` | the app's log records and Flutter errors |
 | `stalls [--reset] [--min <ms>] [--brief]` | each time the UI isolate ran nothing for over 24 ms (`loop`) and each frame whose build or raster took over 16 ms, and the longest; `--reset` empties the list after printing, `--brief` prints one line |
 | `clipboard [<text>]` | reads or sets the clipboard |
-| `window [show\|minimize\|maximize\|restore] [--width <w> --height <h>]` | the OS window |
+| `window [show\|minimize\|maximize\|restore] [--width <w> --height <h>]` | sizes the Flutter client in logical pixels; reports requested and observed client dimensions, physical pixels, DPR and outer window geometry |
 | `goto <tab>`, `lock`, `unlock <password>` | the main tabs and the lock screen |
 | `import`, `node <ws url>`, `chain <id>` | onboarding, node selection, client chain identifier |
+| `lab-address` | original UI derivation and persisted index-1 selection on the isolated chain-321 lab |
+| `seed <id>`, `seed fixture <kind>` | guarded isolated lab recipes and read-only fixtures; see [seed preparation](seed/README.md) for required profile, origins and checkpoint evidence |
+| `lab-send --ws ws://127.0.0.1:45998 --http http://127.0.0.1:45997` | one fixed original index-1 to owned index-0 UI send in an explicit isolated profile; no custom amount, recipient or retry |
 | `tour [--dir <dir>]` | every page in turn |
+| `screens <id>\|all [--dir .harness/<fresh-directory>]` | runs each catalog screen script in dark and light, verifies state and 1280 by 780 client dimensions, then saves actual app captures |
 | `run <file>` | a script of the above |
 
-Any command takes `--tree` to print the tree after it, and `--instance`.
+UI commands take `--tree` to print the tree after them. Commands can select
+their isolated profile with `--instance`.
+
+Unlock first makes a read-only `wait` request with `ready: true` and a
+five-second timeout for the existing password field. This requires one
+enabled, reachable field; ordinary presence waits retain their meaning.
+The driver then makes one original write and one submit, retaining both
+input guards and the twenty-second post-submit wait. A readiness refusal
+exports only `UNLOCK_FIELD_READY_REFUSED`; it does not retry a password or
+profile, format private replies or diagnose an older refusal.
+
+## Redesign captures
+
+F04 supplies the capture source and adapter tests. Native Windows P08 execution
+remains pending. No capture, visual match or native window behavior is
+established by those tests. Page owners supply the scripts; the runner does
+not create missing pages, seed data or substitute mockup images.
+
+`harness/bin/screen_capture.dart` catalogs the 47 mockup IDs in their numbered
+order. `screens <id>` reads `harness/screens/<id>.txt`; `screens all` preflights
+all 47 scripts before changing the app. Both themes run the script separately,
+starting from unlocked Home with the rail collapsed. A missing script, unmet prerequisite, locked
+profile or unreachable Home stops the run. Launch, lock and onboarding shots
+still need explicit reversible preparation from F06 and the entry tasks.
+The runner does not guess passwords, restart the wallet or inject fixtures.
+
+A page script uses UI commands and ends with a stable positive assertion:
+
+```text
+# prerequisite: unlocked-home
+goto transfer
+tap Receive
+assert --key receive_screen_marker
+```
+
+The key in this example is a placeholder for the page owner's actual marker.
+`assert` accepts the text, key, type, kind, tab and nth selectors; text is exact.
+Refs, coordinates, `--gone` and `--force` cannot establish a capture state.
+The screenshot command repeats the final assertion at capture and after PNG
+encoding. A visible error widget, covered marker, changed theme or changed
+view metrics refuses that frame.
+
+Available script commands are `goto`, `tap`, `hover`, `type`, `key`, `scroll`,
+`drag`, `wait`, `reveal`, `lock` and `assert`. Lifecycle, nested scripts, drops,
+theme, window, screenshot and instance overrides are refused. To retain an
+entry script without claiming readiness, declare its prerequisite:
+
+```text
+# prerequisite: pending F06/N01 reversible launch preparation
+assert --key launch_screen_marker
+```
+
+Any prerequisite other than `unlocked-home` is a preflight refusal. Comments
+and blank lines are allowed; quotes group words, with no shell expansion.
+
+For sizing, the agent measures the Flutter View's physical size divided by
+its device pixel ratio. Native `setSize` can include borders and a title bar,
+so the agent corrects its request by the observed client delta, up to five
+times. It returns both requested and observed geometry and fails if they do
+not agree. The root render layer already contains the physical DPI transform;
+capture cancels it to produce a complete 1280 by 780 image at logical scale 1.
+Both agent metadata and PNG header dimensions must agree before saving.
+
+The default output is `.harness/shots/NN-id-theme.png`, where `NN` comes from
+the catalog. Existing targets and links are refused. For another run, choose
+a new directory beneath `.harness/` and point the comparison tool at it:
+
+```sh
+harness/h screens all --dir .harness/capture-02
+python tool/redesign_compare.py --actual-dir .harness/capture-02
+```
+
+An explicit `--dir` must not exist. Absolute paths, traversal, links and
+Windows device aliases are refused. Captures use exclusive file creation;
+the directory must remain under this run's sole ownership because Dart's
+subsequent path-based write does not protect against concurrent hostile path
+replacement. Interrupted or failed output stays in place for inspection.
+There is no cleanup or overwrite command.
+
+On success or failure, the runner attempts to restore the original theme
+mode, preference, original rail expansion, outer window position and size,
+and minimized/maximized
+mode. An unset theme preference retains its default meaning. Restoration
+failures are reported alongside the original failure, and earlier captures
+are retained. It does not restore page state or unlock a profile a script
+locked. Authentication, the isolated profile and the single owned process
+remain required for every command.
 
 ## Profiles
 
@@ -173,6 +360,9 @@ up.
   itself at zero. It is the harness profile's wallet that goes.
 - An icon without a tooltip is listed by font and code point
   (`MaterialIcons:e402`).
+- The pinned Flutter still routes focused shortcuts through its deprecated
+  key-message bridge. The harness retains that bridge alongside hardware key
+  state updates; removing it would lose shortcuts, traversal and text editing.
 - `build` leaves the harness binary in `build/windows/x64/runner/` under the
   name `syrius.exe` until the next ordinary build. It will not start outside a
   profile, but do not package it.
@@ -181,5 +371,833 @@ up.
 
 `tools/devnet/lab` is a go-zenon devnet on `ws://127.0.0.1:45998`, chain 321
 (`tools/devnet/lab/lab.sh up`; its README has the mnemonic). The devnet mnemonic's index 1 is funded:
-import it, `chain 321`, add a second address in Settings and select it. Do not
+import it, `chain 321`, then `lab-address` to add and select the second address
+through Settings. A confirmed UI send remains a separate prerequisite. Do not
 activate a spork there as a test.
+
+## Focused hosted harness checks
+
+The manual Public Contribution Qualification workflow has a default-off
+`harness_tests_only` input. Select it with the other execution lanes disabled
+to run the isolated controller suite, locked dependency restoration, selected
+analysis and the exact source-bound harness gate on a fresh Windows runner. It uses one
+pinned Flutter SDK and does not build a native wallet or allocate lab nodes.
+Before SDK allocation, it also observes the unchanged original in-memory asset
+byte controls through a bounded command wrapper. Only runtime version, actual
+exit/completeness, output digests and fixed failure labels are public; raw
+output remains private. Missing tools or failed controls stop before the SDK.
+
+Startup observation can include `opening`, `first-frame-pending`,
+`frame-visible`, `last-frame`, `ended`, `frames-suspended` or `ticker-muted`.
+These labels read the current registered original film and controller; held,
+closed or unmounted owners expose none. `ended` records the controller's
+existing completion bit, including its existing error path. It does not prove
+wallet initialization. A refusal retains only the latest valid label; asset
+names, frame payloads, exception text and private input are never projected.
+
+### Fixed P09 send qualification
+
+`lab-send` requires an explicitly selected isolated instance with the public
+chain-321 lab fixture unlocked, actual index 1 selected and exact original
+loopback transports. The default profile is refused. The authenticated serial
+command uses normal Transfer inputs and the actual one-ZNN confirmation,
+retaining the original form sender, worker lease, review request and Accept
+Element/center. It checks the same admission at pointer down/up and observes
+only that original request and its exact positive chain confirmation.
+
+Unknown original outcomes remain held across restart and also block F06. No
+retry or custom transfer terms are accepted. The ordinary app has no harness
+command. This command does not create an F06 checkpoint or qualify visuals.
+Its source and new UI regressions need hosted qualification before native
+original-send acceptance can be claimed.
+
+Original-send failures expose only validated source-defined phase/reason
+labels. Native CI rejects unknown or extra diagnostic fields and never emits
+raw HTTP/SDK errors, paths, addresses or hashes. A failure diagnostic is not a
+send receipt or original actor-closure proof. Earlier null-code failures keep
+their original unknown scope.
+
+
+## Native inspection startup
+
+The harness entrypoint recognizes `SYRIUS_CI_READONLY_INSPECTION=true` only
+on Windows GitHub Actions with presentation absent. Other supplied values
+refuse before native startup. The original agent reserves before `app.main`
+and reports only pending `ping` until the initialized process/registered SDK
+and original preference service/open Hive box have been sealed and attached.
+Publication admission pauses before the original automatic-receive preference
+write. Each later command checks the retained SDK scope before and after its
+original handler. Financial commands are unavailable in this mode.
+
+The receipt covers `readonly_native_sdk_admission`. Inspection can change
+local UI preferences inside its owned profile; the receipt does not prove
+wallet, client, socket, image or chain acceptance. Those owners need separate
+checks after wallet opening. Ordinary `harness/h start` strips inherited
+inspection flags and refuses to reuse an inspection host as an ordinary
+wallet. The mode is not an ordinary launcher option. A separately admitted
+fresh CI controller and actual native qualification remain pending; the
+original mandatory-send tour, seed recipes and F06 are unchanged.
+
+`WalletRecipe.inspection` drives `readonly-entry` through the original keyed
+onboarding and Settings callbacks. It requires explicit owned loopback
+chain-321 input and validates the actual PID and current SDK receipt on every
+reply. Ordinary `wallet-recipe`, financial commands and copied-profile paths
+remain unavailable in inspection.
+
+After opening and selecting index one, `readonly-wallet-bind` captures the
+actual file, stores, selected membership, SDK/API/WebSocket objects, native
+window and Flutter root/navigator/view. A fresh original native frame must
+complete. Subsequent commands check that same scope before/after their awaits;
+lost owners, duplicate binding and uncertain binding cannot be restored into
+success. Its finite `readonly_native_wallet_admission` receipt contains no
+private identity or path and supplies no screenshot or chain-effect proof.
+Fresh engine tests and actual native controller/runtime qualification remain
+required. The full visual, motion, seam, minimum-window and Arabic pass stays
+open.
+
+Source229's first hosted analysis retains one undefined-identifier error and
+four style infos; Dart is skipped. The follow-up preserves actual SDK ledger
+identity/client checks while removing the invalid redundant local name, and
+adds equivalent braces/callback types. Exact 615/617 selections and every
+assertion remain; fresh engine/zero-findings and native qualification are
+required. No earlier failed or uncertain outcome is changed.
+
+
+### Retained native-agent request analysis failure (2026-10-30T21:20Z)
+
+Source225 8e029cfe3437 / [41129467499](https://github.com/edgepillar/syrius/actions/runs/41129467499) passes 868 Python controls with three existing skips and both assets/fourteen phases. Its complete original analysis exits three with 29 errors, one info, zero warnings and no overflow; Dart is skipped. The first sixteen finite locations repeat INVALID_IMPLEMENTATION_OVERRIDE at request-fixture line 74. The unexported info location remains NOT_ESTABLISHED.
+
+Source226 uses the [HttpRequest Stream<Uint8List> contract](https://api.dart.dev/dart-io/HttpRequest-class.html) for the same owned UTF-8/JSON request and authenticated original handler. Every Dart case/assertion and exact 588/590 selection remains. Analyzer location samples are deduplicated under the same sixteen-location cap; all diagnostic occurrences still count and the zero-findings gate is retained. A new controller regression covers repeated errors, a later info and the finite cap. Fresh 869-Python/404-memory and hosted engine/analysis qualification are required. Actual native startup, separate controller admission and wallet/client/socket/UI acceptance remain pending. Original failures and financial UNKNOWNs are preserved; Native104 is not admitted.
+
+
+### Equivalent native-agent fixture cascade (2026-10-30T21:29Z)
+
+Source226 f0d7b1f4650f / [41130761869](https://github.com/edgepillar/syrius/actions/runs/41130761869) passes 869 Python/three existing skips and both assets/fourteen phases. All 29 request-stream type errors are resolved. Complete analysis exits zero with zero errors/warnings and one CASCADE_INVOCATIONS info at fixture line 199; the strict gate fails and Dart is skipped. Source225 original 29-error/one-info failure and unexported original info remain preserved.
+
+Source227 expresses only the same presentation-fixture construction and immediate usePresentation call as one cascade. All arguments, ordering, existing assertions, Uint8List body bytes, runtime source, analysis/sample bounds and exact 869-Python/588/590-Dart registrations remain. Fresh 404-case memory controls and hosted analysis/engine qualification are required. Actual native controller and wallet/client/socket/UI acceptance remain pending; old financial UNKNOWNs and every broader acceptance gate remain.
+
+
+### Explicit programmatic native inspection launch (2026-10-31T05:57Z)
+
+Source227 2b7caf9b9bbd / [41131744481](https://github.com/edgepillar/syrius/actions/runs/41131744481) qualifies 869 Python/three existing skips, all 588 ordinary Dart cases without failures/errors/skips, assets/fourteen phases, zero selected findings and 404 memory controls. Six mode and fifteen original-agent/owned in-memory HTTP cases execute. Its 590-case startup variant and actual native SDK/whole-wallet acceptance remain separate. Source225/226 original failures and skipped Dart are preserved.
+
+A separate CI controller may now call cli.start with readonlyNative: true. This is a programmatic option, absent from the ordinary command line. Windows GitHub Actions, a new ci-inspect identifier and an unused profile are required before access; fresh deletion and presentation are refused. Inspection skips existing-instance reuse and profile deletion, strips inherited mode values and requires the actual spawned PID/readiness plus exact current SDK admission receipt. Ordinary startup retains its defaults and mode boundary. Seven new regression cases prepare exact 595/597 ordinary/startup selections; Python/memory registrations remain 869/404 and fresh hosted analysis/engine qualification is required. Actual native controller admission and wallet/client/socket/UI owners after opening remain pending. Original financial UNKNOWNs, all 94 visual matches and every broader acceptance gate remain.
+
+
+### Fresh readonly Windows wallet inspection (2026-10-31T07:33Z)
+
+Source230 `1e4161819226` / [focused run 41178101993](https://github.com/edgepillar/syrius/actions/runs/41178101993) qualifies 869 Python controls with three existing skips, all 615 ordinary Dart cases without failures/errors/skips, assets/fourteen phases, zero selected findings and 404 memory controls. All twenty opened-wallet/entry cases execute. Source229 original one-error/four-info analysis refusal and skipped Dart remain retained. Actual native wallet execution and the 617-case startup variant are separate.
+
+Source231 adds a retained-process inspection session, `harness/bin/ci_wallet_inspection.dart` and `tool/ci/windows_wallet_inspection.py`. The explicit `windows_wallet_inspection` input defaults to false, requires the corrected native owned chain-321 lab with diagnostics and refuses the financial tour flag. The entry is job-owned before START. The original spawned app PID, endpoint and current SDK receipt are bound before the parent revalidates five nodes and releases the committed public lab fixture plus a fresh private password through stdin. Original UI import/address selection establishes once-only opened-wallet admission; later original replies retain process, mode, SDK and wallet scope. Ordinary defaults and financial/copied/reopen flows remain.
+
+The original twelve-page tour runs in both themes. Actual English/ltr state is observed before and after each tour. Finite stall observations do not establish a motion baseline. Normal app/entry exits, complete bounded output, unchanged source, lab revalidation and known auxiliary cleanup gate success. The closed public manifest admits only fixed fields. Successful complete runs may export exactly 24 verified 1280x780 PNG references; failed runs retain a finite manifest without pixels. Capped reads preserve original plain-file identity, size and digest. Profiles, tokens, passwords, keys and raw diagnostics are excluded.
+
+Twenty new Dart cases prepare exact 635/637 selections; seventeen Python cases prepare 886 registrations and 421 selected memory controls. Original memory catalog-order and fixture-loader failures are retained without dropping assertions. Fresh complete-source controls and hosted analysis/engine qualification are required before native admission. No native run or local binary transfer occurs here. Independent artifact inspection, minimum-window/Arabic, motion/shaders, nineteen preparations, ninety missing catalog outputs, all 94 visual matches and P03/P09/F06/V01-V06 remain open. Financial UNKNOWNs remain. Main progress stays 71/80.
+
+
+### Portable inspection artifact fixture (2026-10-31T07:39Z)
+
+Source231 `eba967120d71` / [focused run 41181365639](https://github.com/edgepillar/syrius/actions/runs/41181365639) retains one failed finite-manifest selection fixture within 886 Python cases, zero errors and three existing skips. Assets, SDK allocation, analysis and Dart are skipped. The original failure is preserved; its inner failure text is unexported. Source review and deterministic pure Windows/Posix paths expose a host-separator expectation mismatch: the artifact selector emits portable forward-slash references, while the failed fixture expected the host-specific Path string.
+
+Source232 changes only that expected path to the exact portable manifest reference and adds pure Windows/Posix assertions within the same case. The original manifest-only, one-read and no-PNG checks remain. All application, native controller, export, SDK, financial, workflow, Dart and asset bytes are unchanged. Exact 886-Python/635/637-Dart selections and all 421 memory controls remain. Fresh complete-source memory and hosted confirmation are required. This does not establish actual native wallet, artifact, motion or visual acceptance. The ledger stays 71/80 with zero accepted matches; all earlier failures, financial UNKNOWNs and nine main open gates remain.
+
+
+### Equivalent inspection line wrapping (2026-10-31T07:46Z)
+
+Source232 `3a66cd7c3e2b` / [focused run 41181630374](https://github.com/edgepillar/syrius/actions/runs/41181630374) passes all 886 Python cases with three existing skips, both asset commands/fourteen phases and 421 memory controls. The portable manifest-only artifact case, including pure Windows/Posix expectations, now passes. Source231 original fixture failure remains. Complete 319-byte analysis exits zero with zero errors/warnings, two long-line infos and no overflow. The strict zero-info gate correctly fails; Dart execution is skipped.
+
+Source233 wraps only the same native-entry signing-policy condition and the same synthetic wallet receipt fields. Non-whitespace tokens, original operations, every test/assertion, all owner/input/close/artifact/privacy guards, bounds and exact 635/637 selections remain. No lint suppression, numeric-policy change, SDK query, clock, profile, financial action or runtime retry is added. Fresh 421-memory, hosted engine and zero-findings qualification are required. Actual native controller/runtime, full-root/DLL/chain, motion/shader, minimum/Arabic, nineteen preparations, ninety missing outputs and 94 matches remain open. Financial UNKNOWNs and all nine main gates remain; main progress stays 71/80.
+
+
+### Independent readonly inspection reader (2026-10-31T08:11Z)
+
+Source233 `e95d99990dfa` / [original Windows run 41182125486](https://github.com/edgepillar/syrius/actions/runs/41182125486) completes successfully. All 886 Python cases/three existing skips, 635 ordinary Dart cases without failures/errors/skips, assets/fourteen phases, zero selected analysis findings and 421 memory controls pass. Both original entry refusals are complete and unforced before build; the gate, SDK and inspection startup checks exit normally with open stdin and empty owned jobs. Its 637-case startup-asset variant remains unexecuted. Source231 original fixture failure and Source232 original two-info analysis refusal/skipped Dart remain retained.
+
+The same producer reports 24 captured/visited states across the original twelve-page tour in both themes, actual SDK/opened-wallet receipts, index-one selection, two lab revalidations and normal complete app/entry zero exits. Known VCTIP termination is labelled separately from the unforced required actors. This is a producer observation; independent parent/artifact qualification, actual image viewing, catalog admission and visual matching remain pending. The earlier 90-missing catalog inventory is not silently replaced by these differently named page files.
+
+Source234 adds `tool/ci/inspect_wallet_inspection.py` and explicit default-empty retained-run/head inputs, bringing dispatch inputs to 24. The Linux reader allocates no SDK, wallet, node or profile and repeats no producer. It binds attempt-one workflow/job/preflight/runtime metadata, the original source tree and 22 producer-file blobs, the owned native lab manifest, the child manifest digest and exactly the successful 24 PNG references. Every image size, SHA-256 and 1280x780 PNG structure is checked in bounded memory; duplicate child-manifest fields, private wallet fields and foreign/alias/archive members are refused. Both metadata snapshots must agree. Original five-node normal closure, app/entry exits, complete output, current scoped receipts and English locale gate positive inspection. Known auxiliary termination remains explicit. Failed or unavailable child archives preserve failure/UNKNOWN without inferred coverage. Financial/copied/restored scopes remain separate. Existing lab readers retain their ordinary default mode.
+
+Twenty new synthetic cases prepare 906 Python registrations and 441 selected memory controls. The first memory attempts preserve eight legacy-phase fixture errors and eight native-versus-Docker-count refusals. The fixture now uses the real readonly phase, while actual native ownership is counted through its five ordered original exit receipts, without Docker-only counters. Every assertion and existing bound remains. No new Dart case, application, SDK policy, native controller, original financial/send/seed/reopen path, asset or clock changes. Fresh complete-source controls and hosted independent inspection are required. No local archive is downloaded. New page-family local transport needs its concrete storage admission; the earlier four-entry-family allowance is not reused. P03/P09/F06/V01-V06, minimum/Arabic, motion/shader, nineteen literal preparations and all 94 visual matches remain open. Main progress stays 71/80.
+
+
+### Reader discovery independent of the global test package (2026-10-31T08:26Z)
+
+Source234 `e52ad2b2aa3c` / [reader run 41184048304](https://github.com/edgepillar/syrius/actions/runs/41184048304) fails its test step before archive inspection. Its actual hosted case count and exact inner cause remain NOT_ESTABLISHED; raw logs are not consumed. The original Source233 successful native producer and both retained archives are unchanged and are not replayed. Source234 complete candidate passes 441 local memory controls with all 906 Python methods registered; those local results are not substituted for the failed hosted step.
+
+Source review identifies a portability issue: the checkout has namespace test directories, while package-qualified test.ci imports may resolve through a foreign regular test package. A bounded synthetic package reproduces both legacy load failures. This predicts a cause; it does not reconstruct the original unexported exception. Source235 discovers the exact test files and uses direct fixture module names. All 66 retained-lab and 20 new archive cases/bodies remain. Three additional runner regressions cover fresh imports under a foreign regular package, finite failure projection and private import-origin exclusion. The hosted gate increases from 86 to 89 cases; short suites, load errors, failures, errors, skips and unexpected outcomes fail. Test output remains in memory with a digest and finite known case labels; no raw exception, stack, origin or private search path is printed. A fixed package category is an observation, not an original-cause claim.
+
+Expected complete registrations/selected memory become 909/444. The reader, original parent/PNG/source/job requirements, data limits, application/Dart/SDK/native/financial/seed/reopen/asset bytes and 635/637 Dart selections remain. The discovery regression restores temporary module bindings and runs no SDK, native actor, network or scratch. Fresh complete-source controls and a new reader-only hosted run are required. This is not a native retry or local binary transfer. Source234 failure, all earlier FAILURE/UNKNOWN outcomes, P03/P09/F06/V01-V06, all 94 matches and nineteen preparations remain open. Main progress stays 71/80.
+
+
+### Independently verified readonly native page artifacts (2026-10-31T08:40Z)
+
+Source233 `e95d99990dfa` / [original Windows producer 41182125486](https://github.com/edgepillar/syrius/actions/runs/41182125486) is independently qualified by Source235 `7a154cef4200` / [reader run 41185011461](https://github.com/edgepillar/syrius/actions/runs/41185011461). The reader passes all 89 retained-lab/archive/discovery cases without failures, errors, skips, load errors or unexpected outcomes. The complete Source235 candidate also passes 444 selected local memory controls with 909 Python methods registered; the hosted reader does not claim execution of all 909. Source233 supplies the actual 886 Python/three existing skips, 635 ordinary Dart, assets/fourteen phases and zero selected findings. Its 637-case startup-asset selection remains unexecuted.
+
+The independent reader verifies both original archives, the source tree and 22 producer-file blobs, original attempt-one job/preflight/runtime binding, repeated metadata, parent/child manifest cross-binding and every one of 24 PNG hashes and 1280x780 structures. The root archive is 29748 bytes with SHA-256 `30f3b4cd92b140cd4620aa3ad593f116f516e8af89bbaad57b1a89ddb79b3865`; the wallet archive is 2162347 bytes with SHA-256 `4adb795ee28995446ddedd270efc6dea442090b89cc570097e64bfc03c8115a1`. All nineteen original checks, two lab revalidations, both English/LTR theme tours and current SDK/opened-wallet scoped receipts pass. Index one is generated, persisted and selected. Original app/entry and all five original nodes exit normally, completely and zero without forced termination. The known VCTIP auxiliary helper is terminated after required actors complete; its distinct receipt remains explicit. Registered SDK/WebSocket/API identity continuity is not physical TCP-epoch proof.
+
+No SDK, Windows, wallet or node producer is repeated for this inspection. Actual image viewing, 47-state catalog mapping and accepted visual matches remain pending; differently named page files do not silently replace the earlier 90-missing catalog inventory. Local review of this new page-image family has a concrete plan: the verified 2162347-byte archive, a 12 MiB task limit, 4 MiB extraction cap and 2 MiB analysis-output cap, with the production 10 GiB floor and existing policy unchanged. Its narrow storage recognition remains pending, separately from the previous four-entry-family allowance. No local binary transfer is claimed.
+
+Source234 failed reader preflight remains failure with exact inner cause NOT_ESTABLISHED. The successful namespace observation is not a reconstruction of that exception. Source231 fixture refusal, Source232 analysis refusal, all earlier FAILURE/UNKNOWN evidence, Native101/Native103 outcomes and Native104 non-admission remain. Main progress is still 71/80 (88.75 percent by rows), with P03/P09/F06/V01-V06, minimum-window/Arabic visual review, motion/shader/frame-time, seams, nineteen literal state preparations and all 94 visual matches open. This documentation update changes no product, reader, controller, workflow, asset or financial/send/seed/reopen bytes and requires no duplicate SDK/native CI allocation.
+
+
+### Native page review and reference surface corrections (2026-10-31T09:21Z)
+
+All 24 original English page images from Source233 `e95d99990dfa` / [Windows 41182125486](https://github.com/edgepillar/syrius/actions/runs/41182125486), independently verified by Source235 / [reader 41185011461](https://github.com/edgepillar/syrius/actions/runs/41185011461), have now been viewed. One bounded 2162347-byte transfer completes with original zero exit and full output. Every retained PNG and manifest binding agrees. The exact owned task closes SUCCESS; the original archive and reports remain, and only its registered reproducible extraction is removed. An older entry object's ownership HOLD, an initial shared-link admission refusal and the unestablished long-stdin delivery remain separate original evidence. A short canonical review completes in the same admitted task, without another transfer. Page-family authority now covers archives under 4 MiB, with 12 MiB task, 4 MiB extraction and 2 MiB analysis-output caps and the unchanged production 10 GiB free-space floor. No historical object is rebound or adopted.
+
+The actual pages reveal common gutter differences and a Transfer field/card surface mismatch. Generic Notifications is over Accelerator, while dark Settings shows Addresses and light Settings retains Apps. These are page observations rather than explicit 47-state catalog outputs. Figures in the mockups remain illustrative; original numeric, SDK, publication, financial, copied-wallet and seed outcomes are not replaced by visual fixtures. No complete pair is accepted, and the earlier ninety-missing catalog inventory is not silently reduced.
+
+Source237 applies the reference main-column insets 4/4/16/14 to the page/status column rather than the outside of the rail. The extra rail gap becomes zero and the page/status gap becomes twelve. Rail widths, original caption geometry, entry insets, mounted owner retention, focus/pointer guards and clocks remain. Four new actual-component layout cases cover both directions and scrolling/non-scrolling pages with literal reference rectangles after a 32-pixel caption. The older caption-origin discrepancy remains an observation, without an invented root cause or capture adjustment.
+
+Transfer removes its full-page HeroField and replaces only the main raised/frosted surface with the ordinary opaque eight-radius card. The 640-pixel form, original live forms and state retention, callbacks, dialog frost/tokens, backend bindings and numeric/publication policy remain. The existing dark/light layout cases now inspect actual rendered field, outside-edge and corner pixels, with explicit image disposal and no image file output. All fifteen existing Transfer cases and seven shell cases join the unchanged earlier engine selections, making exact ordinary/startup gates 657/659. All 909 Python methods remain registered, with 444 selected memory controls expected. Analysis adds the five changed Dart paths; the strict zero-findings rule, every prior selected path, source binding, output cap and deadline remain. Fresh complete-source memory, hosted analysis/engine and actual native captures are required. This record does not qualify the candidate UI.
+
+The main ledger remains 71/80, or 88.75 percent by rows. P03/P09/F06/V01-V06, motion/shader/frame-time, all native seams, minimum-window/Arabic review, nineteen literal preparations and all 94 visual matches remain open. The 659-case startup-asset variant is still separate. Native101/Native103 stay UNKNOWN and Native104 is not admitted. No local SDK/native execution, original financial replay or new source freeze is introduced.
+
+
+### Equivalent pixel-helper expressions and preserved PR history (2026-10-31T09:43Z)
+
+Source237 `c6769ca5104d` / [Windows run 41189079339](https://github.com/edgepillar/syrius/actions/runs/41189079339) passes all 909 Python cases with three existing skips, both asset commands/fourteen phases and 444 memory controls. Complete 451-byte analysis exits zero with zero errors/warnings, two infos and no overflow. The finite diagnostics are UNNECESSARY_IMPORT at line 2 column 8 and AVOID_REDUNDANT_ARGUMENT_VALUES at line 321 column 43, both source other. The strict zero-info controller correctly fails and all Dart, lab checkout/build and native wallet stages are skipped. The original run remains failure and no new candidate image is inferred.
+
+Source inspection identifies the redundant dart:typed_data import and explicit rawRgba default in the new real-paint helper. Source238 removes only those expressions. The original API still returns the same raw RGBA format by default; every assertion, actual image operation/disposal, test count, UI surface/layout change, SDK/numeric/publication guard, output cap and deadline remains. Python/memory registrations remain 909/444 and the exact ordinary/startup engine selections remain 657/659. Fresh complete-source controls and hosted zero-findings/engine/native qualification are required; no suppression or selected-path removal is added.
+
+The entire previous public PR body, revision 183, is preserved verbatim in [the validation history](../docs/review/redesign-validation-history.md), with its original source pin, SHA-256, all 74 prior links and every original failure/UNKNOWN limitation. The Source237 refusal is appended separately. This permits a concise current PR summary while retaining source-bound public evidence. It publishes no private paths, records, credentials, wallet files or diagnostic payloads. All 94 visual matches and nineteen preparations remain open, main progress stays 71/80, Native101/Native103 stay UNKNOWN and Native104 is not admitted.
+
+
+### Complete engine pass with a stale exact-count refusal (2026-10-31T09:57Z)
+
+Source238 `688a2ad9b25d` / [Windows run 41190130606](https://github.com/edgepillar/syrius/actions/runs/41190130606) has zero selected analysis findings and a complete, normal, unforced Dart command: 659 passing nonhidden terminal events, zero failures/errors/skips, 191.859 seconds and 334537 output bytes without overflow. All 909 Python cases with three existing skips, assets/fourteen phases and 444 local memory controls pass. Both original entry refusals and all three real startup checks pass; stdin stays open through normal zero exits and each owned job is empty. The strict controller still expects 657 ordinary terminal passes, so its TESTS_FAILED refusal skips lab checkout/build and native wallet inspection. The original run remains failed.
+
+Source239 aligns the exact ordinary count with the observed complete 659 and projects 661 for the separate two-case startup-asset file. This changes one count expression and the corresponding existing Python fixtures, adding near/stale rejected counts. All selected paths, 22 explicit newly selected widget cases, every Dart assertion/product byte, the event counter, strict zero-skip/error rules, source/refusal/startup checks, output caps and deadlines remain unchanged. The original aggregate output did not export a per-file breakdown of two additional terminal events; their detailed source is not invented. No engine test is removed or suppressed. The 661-case startup variant remains unexecuted. Fresh current-source controls and a native image run are required.
+
+The exact prior PR body and all 74 historical links remain preserved in the validation history, with the Source238 count refusal appended separately. No catalog match is accepted. Main progress stays 71/80, nineteen literal preparations and all 94 matches remain open, Native101's original send and Native103's copied Token confirmation/effect remain UNKNOWN, and Native104 is not admitted.
+
+
+## Explicit readonly page capture contexts (2026-10-31T10:55Z)
+
+Source239 `509724d138d9` / [Windows run 41190980225](https://github.com/edgepillar/syrius/actions/runs/41190980225)
+passes 909 Python cases with three existing skips, all 659 ordinary Dart
+terminal passes without failures/errors/skips, zero selected analysis findings
+and both asset commands/fourteen phases. All original entry refusals and three
+startup checks pass. [Reader 41191984658](https://github.com/edgepillar/syrius/actions/runs/41191984658)
+passes all 89 controls and independently verifies the original source tree,
+22 producer files, root/wallet manifests and 24 original 1280x780 PNGs.
+Required app/entry/five-node exits are normal, complete and unforced zero;
+the known VCTIP auxiliary termination stays explicit. All 24 images are viewed.
+The first extraction task remains CLOSED FAILURE after a metadata-lock refusal.
+A separately closed successful review reuses the verified archive with no
+second transport, command or CI execution. Only its registered reproducible
+extraction is removed. Reports, the archive, policy and prior HOLD remain.
+
+The survey confirms the intended horizontal shell insets and ordinary Transfer
+surface, while mixed 32-pixel caption origins remain NOT_ESTABLISHED. Original
+Pillars/Sentinels references use the existing underlined heading tabs. Home
+balance spacing and light Plasma's dark backing remain review work. Actual
+blank forms and fresh lab data do not establish literal prepared catalog states.
+No image is renamed, accepted as a match or used to infer financial effects.
+
+Source240 prepares two synthetic repeated-visit cases across wallet and
+readonly-native modes. Notifications explicitly navigates to Home before the
+original bell operation; Settings explicitly waits for and selects Node. Apps,
+all other pages, existing context/failure guards and standalone navigation are
+retained. Exact ordinary/startup gates become 661/663; Python/memory totals
+remain 909/444. Hosted analysis, engine and new native capture qualification
+are pending. Product UI, caption/capture geometry, fonts, assets, SDK/numeric
+policy, original financial/send/seed/reopen paths, clocks and limits do not
+change. Main progress stays 71/80 with zero accepted matches, nineteen
+unqualified preparations and ninety still-recorded missing catalog outputs.
+P03/P09/F06/V01-V06, minimum/Arabic, seams and motion/shader/frame-time remain
+open. Native101/Native103 remain UNKNOWN and Native104 is not admitted.
+
+
+## Natural Home grouping and complete existing regression selection (2026-10-31T11:26Z)
+
+Source240 `cd75998a9847` / [Windows run 41194887854](https://github.com/edgepillar/syrius/actions/runs/41194887854) passes 909 Python cases with three existing skips, all 661 ordinary Dart terminal passes without failures/errors/skips, zero selected findings, both asset commands/fourteen phases and 444 memory controls. All original entry refusals and three startup gates pass. [Independent reader 41195993859](https://github.com/edgepillar/syrius/actions/runs/41195993859) passes 89 controls and verifies 22 producer files, original manifests, 24 original 1280x780 PNGs and complete normal unforced required app/entry/five-node zero exits. Known VCTIP auxiliary termination remains separate. The 663-case startup-asset selection remains unexecuted.
+
+All 24 images are viewed. Notifications is over Home and Settings selects Node in both themes; Apps remains distinct. This sample has expected caption-relative page origins, while the earlier Source239 mixed-origin cause remains NOT_ESTABLISHED. Node frames retain a visible bundled-SHA tooltip. Home still places Plasma near x678. The one 1648460-byte archive is retained once and its owned task is CLOSED SUCCESS with registered reproducible scratch removed. The separate local controller exits one after closure because its report reader expects the wrong cleanup collection key. Read-only reconciliation verifies the original complete transport, actual task success and cleanup; that post-close reader failure is preserved. No transport, image extraction, CI or original operation is repeated. Policy, the production free-space floor and the prior ownership HOLD remain.
+
+Source241 keeps the Home balance group at its natural width within the safe remainder and places unused width before the transfer actions. The reference's 36-pixel gap, 220-pixel Plasma width and 24-pixel end inset are checked in both themes/directions at 1200 and 1280 widths. Existing numeric/hidden-money, original callbacks, price-feed ownership, generation clocks and scaled/narrow stack behavior remain. The complete existing Home test file is newly selected; two existing theme cases gain those geometry checks without removing any earlier assertion. No new Python or Dart registration is added. The 32 existing Home registrations and strict 693/695 ordinary/startup totals are source projections pending actual hosted confirmation; Python/memory totals remain 909/444. All earlier selections, strict zero-skip/error rules, source/refusal/startup guards, caps and deadlines remain.
+
+The mockup README expressly retains the large Plasma heatmap effect. Its static white-bolt illustration does not authorize replacing that effect; light-theme backing remains review work. Product palettes, shaders, assets, dependencies, caption/capture geometry, SDK/numeric policy and original financial/send/seed/reopen paths remain unchanged. Fresh candidate controls, zero selected findings, exact engine counts and native image review are required. Main progress stays 71/80 with zero accepted matches, nineteen unqualified literal preparations and ninety still-recorded missing catalog outputs. P03/P09/F06/V01-V06 and all 94 matches remain open. Prior failures, Native101/Native103 UNKNOWN and Native104 non-admission remain.
+
+## Home reference spacing after qualified page review (2026-10-31T12:12Z)
+
+Source241 `d5e640027f40` / [Windows run 41197216590](https://github.com/edgepillar/syrius/actions/runs/41197216590) qualifies 693 ordinary Dart passes without failures/errors/skips, zero selected findings, 909 Python cases/three original skips, fourteen asset phases, original refusals/startup gates and the readonly SDK/opened-wallet tour. [Independent reader 41198477793](https://github.com/edgepillar/syrius/actions/runs/41198477793) passes 89 controls and binds 22 original source files, every original PNG and complete normal required actor exits. The separate 695-case startup-asset selection remains unexecuted. All 24 images are viewed and the exact managed review closes SUCCESS with controller exit zero, one retained 1647091-byte archive and only registered reproducible scratch removed. Earlier failures, ownership HOLD, policy and the production free-space floor remain.
+
+Actual Home Plasma is now beside balances, while the 178-pixel hero and 3:2/14-pixel body remain different from the reference. Source242 prepares compact 14-pixel Home address controls, an optional eye inset whose existing default remains, and Home-only 8:5 columns with 12-pixel gaps. Existing Home cases gain two-address hit geometry and menu-open/Escape coverage in both themes/directions at 1200/1280 widths. Registered counts stay 909 Python, 444 memory and 693/695 ordinary/startup Dart. The changed Home view and shared eye join analysis; all earlier selections, assertions, exact counts, refusals, caps and deadlines remain. No original financial/send/seed/reopen operation, capture recipe, motion, asset, palette or SDK/numeric owner changes. New source requires fresh controls and native comparison. No catalog match or financial effect is accepted; all 94 matches, nineteen preparations, ninety missing outputs, P03/P09/F06/V01-V06 and prior UNKNOWNs remain. Native104 is not admitted.
+
+## Home menu exit-frame control (2026-10-31T12:18Z)
+
+Source242 `a22222e4ca4f` / [Windows run 41199804162](https://github.com/edgepillar/syrius/actions/runs/41199804162) retains 691 passes, two post-Escape menu-removal assertion failures/two error events and no skips. Both locations are `home_hero_test.dart:277`; exact remaining item count and original animation state are not exported. The complete normal exit-one command is 208.578 seconds/355537 bytes. Zero selected findings, 909 Python cases/three original skips, fourteen asset phases, both entry refusals and three normal zero-exit startup gates pass. Native/lab stages are skipped, no artifact is produced, and no full baseline is dispatched.
+
+Source243 inserts one initial pump after Escape before the existing 300 ms interval, with every assertion and registered case retained. This is a scheduling candidate informed by [frame pumping](https://api.flutter.dev/flutter/flutter_test/WidgetTester/pump.html) and [ticker start](https://api.flutter.dev/flutter/scheduler/Ticker/start.html), not a reconstruction of the original inner animation state. Product UI, durations, curves, assets, capture inputs and original financial/seed/reopen operations remain unchanged. Strict ordinary/startup gates stay 693/695 and Python/memory totals stay 909/444. Fresh selected controls and native captures are required. Prior failure/UNKNOWN/HOLD evidence, all 94 open matches and the 71/80 main ledger remain; Native104 is not admitted.
+
+## Home focus and route diagnostics (2026-10-31T12:34Z)
+
+Source243 `7a0a36548279` / [Windows run 41200758516](https://github.com/edgepillar/syrius/actions/runs/41200758516) retains both post-Escape failures after the initial-frame change: 691 passes/two failures/two error events/no skips, normal complete exit one, 203.953 seconds/355549 bytes. Clean analysis, 909 Python cases/three original skips, fourteen asset phases and refusal/startup gates pass; native/lab stages are skipped and no artifact exists. Source244 adds read-only menu-focus, handled-key and navigator-stack expectations while retaining the same Escape input, every earlier assertion and timing. No focus request, pop, extra input, product change or registration is added. Counts stay 693/695 and 909/444. See the [source-bound split diagnostic record](../docs/review/redesign-validation-history.md#source243-repeated-menu-completion-failure-and-split-diagnostics); prior failures, UNKNOWNs, HOLD and all acceptance gates remain.
+
+## Home menu final removal frame (2026-10-31T12:59Z)
+
+Source244 [Windows 41202236164](https://github.com/edgepillar/syrius/actions/runs/41202236164) passes the four focus/key/navigator assertions in both existing cases but still fails item removal at line 293. Its complete normal exit-one command records 691 passes/two failures/two error events/no skips in 198.954 seconds/355539 bytes. All preceding controls pass; native stages are skipped and no artifact exists. Source245 keeps the original 300 ms interval and adds one bounded 16 ms test frame after the navigator check, before the retained removal expectation. Every original assertion, product duration, registration, exact count and command deadline remains. Menu diagnostics are at the final 1200-wide RTL layout in each theme; geometry separately spans both directions and widths. See the [source-bound teardown record](../docs/review/redesign-validation-history.md#source244-menu-focus-and-route-removal-observed-widget-teardown-still-fails). Fresh hosted evidence is required and every earlier acceptance gate remains.
+
+## Readonly capture pointer after Windows qualification (2026-10-31T13:51Z)
+
+Source245 qualifies 693 ordinary Dart passes, zero selected findings, the readonly native tour and all 24 viewed PNGs through reader 41205164925. Full Windows 41205277479 and reader 41206855918 qualify 4824 passes/two existing skips, zero root analyzer errors/warnings, regeneration/localization, Debug/Release and DLL hash/export correspondence. Root infos and all remaining acceptance scopes stay explicit.
+
+Both Node images retain a checksum tooltip over content. Source246 moves the pointer to the client origin before the existing 2500 ms settle only when the caller explicitly supplies the readonly native process. Ordinary tour inputs remain. The fixed pointerNeutral failure stage retains the original page and refusal; no failed command is repeated. Existing cases cover every capture on repeated visits and one refused hover without adding registrations. Earlier assertions, context/negative-reply guards, 693/695 and 909/444 gates, caps and deadlines remain.
+
+The original local review failure is preserved; a later interactive task views all 24 images through the retained archive with zero additional transport and closes successfully. Only registered reproducible extraction is removed. The [source-bound record](../docs/review/redesign-validation-history.md#source245-qualified-menu-teardown-native-images-and-full-windows-baseline) preserves the separate outcomes. Fresh candidate controls and images, all 94 matches, nineteen preparations, motion/seams/minimum/Arabic and literal Docker Desktop/lab.sh remain open. Native101/Native103 stay UNKNOWN and Native104 is not admitted.
+
+
+### Readonly Node resting input (2026-10-31T14:29Z)
+
+Source246's 24 independently verified and viewed images retain a Node checksum tooltip despite the original neutral hover. Source247 adds one tap at the caption origin only after the explicit readonly tour selects Node, before the unchanged settle. The ordinary tour and all financial, seed and reopen paths retain their inputs. The finite `nodeRestingTap` failure label never permits a retry. A two-mouse widget case covers retained hover and dismissal without a drag in both themes; the complete agent-input file is newly selected. Exact ordinary/startup expectations become 699/701, with 909 Python and 444 memory controls. Current engine/native qualification is pending. Several page panels also appear within the caption band; that separate layout/capture cause remains NOT_ESTABLISHED. These generic captures accept no catalog match and leave all 94 pairs open.
+
+The first Source247 pure-memory control retains one fixture failure: the newly valid ordinary total 699 was still in an old-count refusal list. The corrected fixture checks adjacent invalid totals 698/700 instead; old 693/695 and opposite-profile refusals remain. No native, CI, shared-store or artifact operation occurred in that failed control. Fresh complete-source controls are required.
+
+
+## Source247 analysis refusal and pinned test-pointer API (2026-10-31T14:39Z)
+
+Source247 `956d10fbe754` / [Windows 41210641185](https://github.com/edgepillar/syrius/actions/runs/41210641185) retains its strict analysis failure. The normal complete 163-byte command exits three with one UNDEFINED_NAMED_PARAMETER at `agent_input_test.dart:78:40`, zero warnings and zero infos. All 909 Python cases/three original skips, both asset commands/fourteen phases and 444 corrected memory controls pass. The engine selection, entry/startup gates, node checkout, lab and native wallet stages are skipped; no artifacts exist. Neither a Node fix nor current engine success is inferred.
+
+The pinned [Flutter 3.47.7 gesture controller](https://raw.githubusercontent.com/flutter/flutter/3.47.7/packages/flutter_test/lib/src/controller.dart) accepts `pointer`, not `device`, in `createGesture`. Its [test-pointer implementation](https://raw.githubusercontent.com/flutter/flutter/3.47.7/packages/flutter_test/lib/src/test_pointer.dart) defaults a mouse to device one, distinct from the harness's device 97. Source248 changes only the test argument from `device: 7` to `pointer: 7`. Both themes, the retained-tooltip assertions, one original origin tap, no-drag assertion and all earlier tests remain. Application/harness actions, SDK and financial/seed/reopen code, numeric and timing policy, selections, privacy limits and exact 699/701 ordinary/startup plus 909/444 Python/memory gates remain. Fresh complete-source memory, zero selected findings, engine completion and native images are required. The failed producer is not retried.
+
+The preceding [Source247 validation history](https://github.com/edgepillar/syrius/blob/956d10fbe754c3d0b07819207995ba6f9fab5935/docs/review/redesign-validation-history.md) and all prior body links remain. Source246's viewed tooltip and caption-band observations remain under X403/X405 with original inner cause NOT_ESTABLISHED. Source245's broad Windows baseline remains pinned to its original source. The first local Source247 obsolete-count fixture failure, every earlier FAILURE/UNKNOWN and ownership HOLD are preserved. Main progress remains 71/80, with zero accepted matches out of 94, nineteen preparations and ninety missing catalog outputs. P03/P09/F06/V01-V06 remain open. Native101 send and Native103 Token confirmation/effect remain UNKNOWN; Native104 is not admitted.
+
+
+## Source248 no-drag refusal and readonly client-edge input (2026-10-31T14:59Z)
+
+Source248 `6e7704acb98b` / [Windows 41211423990](https://github.com/edgepillar/syrius/actions/runs/41211423990) passes strict analysis with zero errors, warnings or infos, all 909 Python cases/three original skips, both asset commands/fourteen phases and 444 memory controls. Its complete normal exit-one engine command records 698 passes, one failure/one error event and no skips in 213.703 seconds/356416 bytes. All 699 cases are observed. Both original entry refusals and three normal zero-exit startup gates pass. Node checkout, lab and native wallet stages are skipped; there are no artifacts.
+
+The retained finite failure location is the new no-drag expectation at `agent_input_test.dart:96`, after the reached iteration's three tooltip visibility expectations. The actual counter and reached theme are unexported. Source inspection ties the counter only to the synthetic caption's PanStart callback; no actual native drag or wallet execution is observed. [Flutter's drag-threshold contract](https://api.flutter.dev/flutter/gestures/DragGestureRecognizer/onlyAcceptDragOnThreshold.html) explains why winning a gesture arena can dispatch a drag callback before movement when that option is false. This is not proof of a native window effect. The caption origin is not admitted as an inert capture point.
+
+Source249 moves only the explicit readonly Node resting tap to the left client edge at (0,779), outside the caption and rail controls in the 1280x780 client. The earlier neutral hover and 2500 ms settle remain. The same two-theme case keeps all visibility and zero-drag expectations at this new point. It then exercises the old caption point solely inside its synthetic fixture as a negative control, requires a PanStart callback, and resets that fixture counter only after both checks. Its client size is explicit. Existing repeated-visit and failed-original-tap cases retain their assertions and use the new edge point once. Ordinary tour input, product UI, SDK/numeric/timing policy, original financial, seed and reopen sequences and every owner/context/negative-reply guard remain. No test registration changes: exact ordinary/startup gates stay 699/701 and Python/memory gates stay 909/444. Fresh complete-source controls, zero selected findings, engine and native images are required.
+
+The preceding [Source248 validation history](https://github.com/edgepillar/syrius/blob/6e7704acb98bad0f3d3615bece544e1e88490412/docs/review/redesign-validation-history.md) and every earlier body link remain. Source247's analysis refusal, Source248's no-drag refusal and all earlier failures are separate immutable outcomes. Source246's 24 viewed images, visible Node tooltip and caption-band observations retain their source binding; their inner causes remain NOT_ESTABLISHED. Source245's broad Windows baseline does not qualify this revision. Main progress stays 71/80, with zero accepted matches out of 94, nineteen preparations and ninety missing catalog outputs. P03/P09/F06/V01-V06 remain open. Native101 send and Native103 Token confirmation/effect remain UNKNOWN; Native104 is not admitted.
+
+
+## Source250: readonly shot layout observations (pending hosted qualification)
+
+2026-10-31T16:05Z preserves the complete acceptance scope. Parent Source249 b84799ee4d3c is independently qualified: [producer 41213569624](https://github.com/edgepillar/syrius/actions/runs/41213569624) passes 699 ordinary cases, clean selected analysis, 909 Python cases/three original skips, fourteen asset phases and refusal/startup gates. [Reader 41214940004](https://github.com/edgepillar/syrius/actions/runs/41214940004) verifies 24 PNGs and required app/entry/five-node normal unforced zero exits. Its separate 701-case startup selection is unexecuted. [Full Windows 41215021211](https://github.com/edgepillar/syrius/actions/runs/41215021211) and [reader 41217328796](https://github.com/edgepillar/syrius/actions/runs/41217328796) qualify 4825 passes/two existing skips, twelve checks, unchanged regeneration/localization, Debug/Release in 123.016/148.406 seconds and three agreeing source/Debug/Release DLL map/hash checks. Root analysis has zero errors/warnings and 1296 infos; vendored analysis is clean. DLL initialization and unfiltered chain tests remain separate.
+
+Source249's local review was refused by metadata contention before task creation, binary transport or extraction. Its original controller exit one remains a failed local admission, separate from hosted success. The other owner was not interrupted. No Source249 image has been viewed locally. Source246's viewed tooltip/caption observations and all earlier failures remain source-bound; X403/X405 and the original layout/capture cause remain NOT_ESTABLISHED.
+
+Source250 observes numeric layout inside the original readonly shot immediately before raster readback and after retained PNG encoding. Only fifteen fixed widget keys, bounded integer rectangles and fixed MISSING/OBSERVED/DUPLICATE/UNAVAILABLE/LIMIT statuses are retained. Unknown keys, text, field values, addresses, endpoints, paths, process identities and original error text are not exported. These boundaries do not establish an atomic paint frame. An uncaptured partial page retains null layout; a captured readonly page requires the finite record. Ordinary shot inputs, original tour/financial/seed/reopen sequences, the (0,779) Node tap, neutral hover and 2500 ms settle remain.
+
+The independent reader pins both observer and logical capture modules, retaining all prior source files (24 total) and all 24 PNGs plus the manifest. A separate, at-most-3800-byte English numeric notice binds page/control top coordinates and statuses to that verified archive, manifest, source and original job. It is emitted only after independent PNG/metadata verification and successful native admission. It starts no runtime and accepts no visual match or original cause. Coordinates can be read through retained Actions annotations while local binary review is queued; image review remains separate.
+
+All existing five DPR registrations keep their direct capture/pointer assertions and add a synthetic nested caption, clipping, repaint-boundary and overlay pixel regression, testing the 32-pixel offset at original/displaced positions. Duplicate/hidden/private-key and changed-boundary cases remain observations; this fixture does not qualify the actual application frame. All old test methods/assertions and refusal guards remain. Five existing engine cases are newly selected once: fresh ordinary/startup expectations are 704/706, with 909 registered Python methods, 444 memory controls and 89 reader cases. The code-identical candidate passes all 444 memory controls without failures/errors/skips, SDK, network, native execution, filesystem scratch or shared-store access. Source250 requires fresh hosted analysis, engine and native/reader qualification; Source249 success does not qualify this revision.
+
+The preceding [Source249 validation history](https://github.com/edgepillar/syrius/blob/b84799ee4d3c265684817ea8760e78ef3f1da665/docs/review/redesign-validation-history.md), exact revision-183 body and all prior public links remain. Main progress stays 71/80, with zero accepted matches out of 94, nineteen unqualified preparations and ninety missing catalog outputs. P03/P09/F06/V01-V06, native seams, minimum-window/Arabic, motion/shader/frame-time and the written Docker Desktop/lab.sh route remain open. Native101 original send and Native103 Token confirmation/effect remain UNKNOWN; Native104 is not admitted. Product palettes, shaders, assets, SDK/numeric policy, original financial authority, storage policy and ownership HOLD remain unchanged.
+
+
+## Source251: retain strict analysis while correcting declarations (pending hosted qualification)
+
+2026-10-31T16:23Z retains [Source250 41218794956](https://github.com/edgepillar/syrius/actions/runs/41218794956) as an original strict-analysis refusal. Its analyzer exits normally with code zero and a complete 841-byte output (SHA-256 dafc8e8971df081cc172880f1fd6dc8f5845cbd0b316b0cd2d9a512c318f1d29), zero errors/warnings and five infos. The zero-findings gate fails honestly: DIRECTIVES_ORDERING at harness_agent:91:1, UNNECESSARY_IMPORT at readonly_shot_layout:3:8, UNNECESSARY_CONST at logical_capture_test:113:32, and CAST_NULLABLE_TO_NON_NULLABLE at tour_test:254:35 and :265:35. All 909 Python methods/three original skips and fourteen asset phases pass. Engine, entry/startup and native/lab stages are skipped, with zero artifacts. This producer is not retried.
+
+Source251 changes only those declarations: sort the agent's observer import, remove the redundant rendering import, drop the redundant const inside the constant fixture column, and require the visited lists to be non-null before casting them. Every existing expectation and test registration remains; no ignore, suppression, skipped case or gate relaxation is added. The layout observer, finite numeric reader notice, original capture algorithm, PNG/manifest membership, and ordinary/financial/seed/reopen commands and timings remain. Expected ordinary/startup counts remain 704/706, with 909 registered Python methods, 444 memory controls, 89 reader cases and 24 pinned producer source files. Fresh analysis and engine/native qualification are still required.
+
+The [Source250 validation history](https://github.com/edgepillar/syrius/blob/1e721a4813817e7444c123b97e4258cf9ff20ca0/docs/review/redesign-validation-history.md) and every earlier link remain. Parent Source249's 699-case native and 4825-pass/two-skip full Windows qualification stays source-bound. Its local image review remains deferred after the original pre-admission metadata-lock refusal; zero tasks, transfers or images were created/viewed, and the other owner was not interrupted. Source246's tooltip/caption observations and all prior failures remain; their original causes are NOT_ESTABLISHED. Numeric bounds do not qualify a paint frame, a visual match, minimum-window/Arabic, motion or a financial effect. Main progress remains 71/80, zero accepted matches out of 94, nineteen unqualified preparations and ninety missing catalog outputs. P03/P09/F06/V01-V06 stay open. Native101 send and Native103 Token confirmation/effect remain UNKNOWN; Native104 is not admitted. Product palettes, assets, SDK/numeric/financial authority, storage policy and original ownership HOLD remain.
+
+
+## Source252: positive readonly Home and rail preparation (pending hosted qualification)
+
+2026-10-31T17:19Z records the qualified parent Source251 829fe446dbf3. [Windows 41220083078](https://github.com/edgepillar/syrius/actions/runs/41220083078) passes 704 ordinary Dart cases, zero selected errors/warnings/infos, 909 Python cases/three original skips, fourteen asset phases and refusal/startup gates. Its actual engine command exits normally and unforced with complete 357733-byte output in 203.610 seconds (SHA-256 d2e6027e743c2ad2bbf14a278cb6a9edff8e3a5ebe6ba3ad46e881f59b8f9449). The separate 706-case startup selection remains unexecuted. [Reader 41221571770](https://github.com/edgepillar/syrius/actions/runs/41221571770) passes 89 controls and verifies 24 original PNGs, 24 producer source files and required app/entry/five-node normal unforced zero exits. Auxiliary VCTIP cleanup remains separate.
+
+All 24 PNGs are opened from one 1655981-byte archive, SHA-256 f7e25a4022ceff44e885e85dacbf9f539d5bffcf133cd7a80b6d50764aec8f22. Its owned review closes SUCCESS and its controller actually exits zero. The temporary image paths are retired; the original verified object remains. Source249's earlier pre-admission metadata-lock failure, Source251's first local reader-suffix refusal before task/transport, and the readonly observer's command-prefix refusal remain distinct records. The completed original transport is reused without another binary transfer, native test or CI retry. Policy, production free-space floor and the original ownership HOLD remain.
+
+Source251 Node checksum tooltips are absent in both themes. The independent layout notice has 24 unchanged before/after observations, body top/caption bottom y32, 21 observed target positions and three DUPLICATE targets. A bounded standard-library PNG reader checks original hashes, CRCs and filters without editing images. All 24 sampled caption rectangles [100,0,1140,32] contain zero non-background pixels, and column x350 first changes at y36. The Transfer [342,36,982,324] rectangle agrees with its sampled raster. The initial approximate y4 estimate is withdrawn for Source251; the prior Source246 pixels have not been remeasured. These finite samples are neither full-width nor atomic-frame or visual-match qualification. No application offset change is justified. Dark Swap has a transient node-sync notice; light Swap is clear, and Notifications retains four ordinary messages over Home. The genesis Received row still shows Unknown/Units unavailable; no seeded or financial effect is qualified.
+
+The source review finds that the original agent folds rail text into its clickable navigation button. A separate rail_label_dashboard node therefore cannot be assumed from a successful tree reply. The readonly session now reads the unique enabled toggle's original logical [left,top,width,height] integers: widths 40/184 derive from the existing 56/200 rail widths and two 8-pixel insets; height is 32. Invalid, duplicate, intermediate, malformed, foreign or unbound observations permanently hold the lane before another request. No negative absence probe or label-key wait is used.
+
+Readonly Home preparation requires the original wallet binding, English/LTR initialized unlocked Home and its valid tab list before input and after rail restoration. It uses the existing original toggle tap and then a positive width observation. A failed script left on another page is held instead of automatically navigating. The ordinary shared Home/rail functions, all original financial/send/seed/reopen paths, capture algorithm, clocks, assets, product UI and SDK/numeric authority are byte-identical. The original session send/bind operations and negative-reply/exception behavior remain. Two existing real-rail cases gain original tree width and folded-label checks; five new session cases cover both widths, restoration, missing binding and uncertain reply/state/geometry. Strict fresh ordinary/startup expectations become 709/711; all prior selected files, existing cases, assertions and old-count refusals remain. Registered Python/memory/reader expectations remain 909/444/89, and producer-source pins remain 24.
+
+The unapplied code-identical candidate passes all 444 selected memory controls without failure, error, skip, network, SDK/native execution, filesystem scratch or shared-store access. Fresh applied-source controls and hosted zero-findings analysis/709-case engine qualification are required. Native catalog capture integration is still pending; the first planned literal capture is home-rest in both themes, not a relabelled generic page. The home-open label-key wait needs separate preparation. No new native wallet run or original financial/profile replay is admitted by this source preparation.
+
+The preceding [Source251 validation history](https://github.com/edgepillar/syrius/blob/829fe446dbf3a72e0fe0fb603663c6331befcc5e/docs/review/redesign-validation-history.md), exact revision-183 body and all prior links remain. Parent Source249's 4825-pass/two-skip full Windows result, 1296 root infos and successful Debug/Release remain source-bound; they do not qualify this revision. Main progress stays 71/80 (88.75 percent by rows), zero accepted matches out of 94, nineteen unqualified preparations and ninety missing catalog outputs. P03/P09/F06/V01-V06, the written Docker/lab route, native seams, minimum-window/Arabic, motion/shader/frame time and independent comparison remain open. All original failures and UNKNOWNs remain; Native101 send and Native103 Token confirmation/effect remain UNKNOWN and Native104 is not admitted.
+
+
+## Source253: collection elements in rail fixtures (pending hosted qualification)
+
+2026-10-31T17:33Z records the original Source252 9a6179c8a149 [Windows controls 41224615651](https://github.com/edgepillar/syrius/actions/runs/41224615651). All 909 Python controls pass with three original skips, and all fourteen asset phases pass. The selected analyzer exits normally and unforced at zero with complete 567-byte output (SHA-256 6da0ddc3bb623dd09509c43692d1305089d24aef45b5c71b8b849523b6695f00), but the strict zero-findings gate correctly fails on three PREFER_IF_ELEMENTS_TO_CONDITIONAL_EXPRESSIONS infos. The engine and refusal/startup stages are skipped; native wallet/lab stages were not selected and no artifacts are produced. The original run remains FAILURE.
+
+Source253 converts only the three conditional values inside expected rail rectangle lists to equivalent collection if elements: two in the readonly-session fixtures and one in the real-rail fixture. Both widths, height, original assertions, five newly registered Source252 session cases, all older cases, and every analysis/test selection remain. There is no suppression, skipped case, count relaxation, runtime change or product UI change. The positive readonly Home preparation remains unused by the native entry until separate catalog integration. Expectations stay 709 ordinary/711 startup Dart, 909 registered Python, 444 memory and 89 independent reader controls; the 711-case selection is not executed. Fresh hosted zero-findings analysis and 709-case engine qualification remain required.
+
+The last native/image evidence remains Source251 829fe446dbf3, including its 24 actually viewed generic page PNGs, closed successful review and withdrawn approximate y4 caption estimate. Source249 retains its separate 4825-pass/two-skip full Windows qualification. The exact revision-200 PR body and all forty links remain in the source-bound validation history. No generic image is relabelled as a literal catalog state. Main progress remains 71/80 (88.75 percent by rows), with zero accepted matches out of 94, nineteen unqualified preparations and ninety missing catalog outputs. P03/P09/F06/V01-V06, Docker/lab, native seams, minimum-window/Arabic, motion/shaders/frame time and independent comparison remain open. Every original failure, ownership HOLD and UNKNOWN remains; Native101 send and Native103 Token confirmation/effect remain UNKNOWN and Native104 is not admitted.
+
+
+## Source254: passive readonly catalog regions (pending hosted qualification)
+
+2026-10-31T17:44Z records Source253 634afe55a7ac [Windows controls 41225254168](https://github.com/edgepillar/syrius/actions/runs/41225254168): 709 ordinary Dart passes, zero selected errors/warnings/infos, 909 Python controls/three original skips, fourteen asset phases, two entry refusals and three startup gates. The actual engine command exits normally and unforced at zero with complete 359686-byte output in 181.938 seconds (SHA-256 da075748bae7363dfb67e8462c20b2b985522a72bf801df4cbb8211d623650e7). The 711-case startup selection is unexecuted. Native wallet/lab stages are not selected and no artifacts are produced. The original Source252 three-info analysis refusal remains FAILURE; this later success does not replace it.
+
+The catalog scripts name non-interactive keyed regions such as home_hero. The original control snapshot folds text into buttons and does not guarantee a separate node for these keys. Source254 adds a passive positive selector only to readonly assert/wait for the fixed home_hero, home_znn and rail_label_dashboard keys. It reads the original onstage widget tree, caps traversal at 16384 elements and matches at two, requires a unique mounted positive finite rectangle inside the original view, and retains the ordinary assertion/readiness hit test. Missing, hidden, zero-area, ambiguous, covered or unsupported selector observations cannot establish positive state. No negative absence selector is added. Passive regions enter neither the original control snapshot nor its reference cache or pointer matching. Ordinary mode follows its original methods. Original SDK/wallet owner checks, client retirement, Home/rail preparation, financial/seed/reopen inputs, capture/raster algorithm, clocks, product UI and assets remain.
+
+Three new widget cases cover actual keyed observation, hidden/duplicate/zero-area refusals and covered/non-input/unsupported selectors. Two existing real HomeHero theme cases gain direct key/bounds assertions while retaining every original expectation. All original registrations, selected files and gates remain. Exact ordinary/startup expectations become 712/714; old 709/711 counts are explicit refusals. Python/memory/reader expectations remain 909/444/89, with 24 pinned producer source files. The unapplied text candidate passes 444 memory controls with no failure, error, skip, blocked write/network/native attempt, scratch or shared-store access. An earlier unapplied candidate is refused for two overlong test-title lines before any source change or candidate output; that local refusal remains separate. Fresh applied-source controls, hosted zero-findings analysis and 712-case engine qualification remain required.
+
+Native catalog integration remains pending. No new native wallet run or original financial/profile replay is admitted by this preparation, and no generic page PNG is relabelled as a literal catalog state. Latest native/image evidence stays bound to Source251 and its closed successful 24-image review; latest broad Windows evidence stays bound to Source249 with 4825 passes/two skips. Source251 caption samples withdraw its initial approximate y4 estimate; Source246 pixels remain unmeasured. Main progress remains 71/80 (88.75 percent by rows), zero accepted matches out of 94, nineteen unqualified preparations and ninety missing catalog outputs. P03/P09/F06/V01-V06, Docker/lab, native seams, minimum-window/Arabic, motion/shaders/frame time and independent comparison remain open. All prior failures, ownership HOLD and UNKNOWNs remain. Native101 send and Native103 Token confirmation/effect remain UNKNOWN; Native104 is not admitted.
+
+
+## Source255: one cascade for the Home fixture (pending hosted qualification)
+
+2026-10-31T18:01Z records original Source254 dba2b285ba51 [Windows controls 41226419771](https://github.com/edgepillar/syrius/actions/runs/41226419771). All 909 Python controls pass with three original skips and all fourteen asset phases pass. Selected analysis exits normally and unforced at zero with complete 132-byte output (SHA-256 b0151788a2fd9b7792db31cf226e9407d2c667fe379a093db0b9cc13defb5d02), but the strict zero-findings gate correctly refuses one CASCADE_INVOCATIONS info at the real Home fixture setup, line 207:7. There are zero selected errors/warnings. Engine and refusal/startup stages are skipped; native wallet/lab stages are not selected and no artifacts are produced. This original run remains FAILURE.
+
+Source255 joins the existing Home test agent reservation, awaited readonly SDK attachment and booted assignment in one cascade, in their original order. The fixture values, original owner checks, both real Home theme cases, three new passive-region cases and every original assertion and registration remain. No suppression, count relaxation, selected-file change, runtime/input/timing or product UI change occurs. Expectations stay 712 ordinary/714 startup Dart, 909 registered Python, 444 memory and 89 reader controls, with 24 pinned producer source files. Fresh hosted zero-findings analysis and 712-case engine qualification remain required; the separate 714-case startup selection is unexecuted.
+
+The passive readonly selector remains source preparation until hosted engine qualification. Native literal Home capture wiring is an unpublished, unapplied candidate with no producer, reader or artifact integration; it is deferred while this fixture style correction is qualified. No new native wallet run or original financial/profile replay is admitted. Latest executed engine evidence remains Source253 with 709 passes; latest native/image evidence stays bound to Source251 and its closed successful 24-image review; latest broad Windows evidence stays bound to Source249 with 4825 passes/two skips. Source251 caption samples withdraw its initial approximate y4 estimate; Source246 pixels remain unmeasured. Main progress stays 71/80 (88.75 percent by rows), zero accepted matches out of 94, nineteen unqualified preparations and ninety missing catalog outputs. P03/P09/F06/V01-V06, Docker/lab, native seams, minimum-window/Arabic, motion/shaders/frame time and independent comparison remain open. All prior failures, ownership HOLD and UNKNOWNs remain; Native101 send and Native103 Token confirmation/effect remain UNKNOWN and Native104 is not admitted.
+
+
+## Source256: literal Home catalog capture (pending hosted qualification)
+
+2026-10-31T18:31Z records parent Source255 0da94f71732c [Windows controls 41227619516](https://github.com/edgepillar/syrius/actions/runs/41227619516): 712 ordinary Dart passes, zero selected errors/warnings/infos, 909 Python controls/three original skips, fourteen asset phases, two entry refusals and three startup gates. Its actual engine command exits normally and unforced at zero with complete 361162-byte output in 201.468 seconds (SHA-256 1eb85fccaa736f5646654ed8bd64bf072475523f070ff06b582e31fc7c3e6a95). The separate 714-case startup selection is unexecuted. Native wallet/lab stages were not selected and no artifacts were produced. Original Source254 and Source252 strict-analysis failures remain distinct.
+
+Source256 connects only the real home-rest script to the existing ScreenCapture runner through the original bound readonly session. Its adapter never opens an alternate instance receipt and caps original command waits at thirty seconds. Positive Home/rail preparation and the original rail/theme/window restoration remain. The two new original captures use the literal 01-home-rest-dark.png and 01-home-rest-light.png names; no generic page file is relabelled. The original 24-PNG generic archive stays at 25 members. A separate Home archive has exactly its manifest and two PNGs, with a four-MiB total pixel-file cap and a 64-KiB manifest cap. Fresh destination admission and cooperative workspace samples include the new family.
+
+All original nineteen generic checks remain; successful generic completion additionally requires a closed Home manifest reference. The capture bundle cannot qualify its later parent closure, an atomic frame, visual matches or financial/seed behavior. Artifact selection checks original source/run/script pins, strict metadata, every PNG digest and finite paths. Unknown members, links, duplicate JSON members and mismatched source/state/geometry are refused. The independent reader verifies 28 producer source files, both original generic/lab parents and the separate Home archive, then revalidates metadata before emitting a fifth finite Home scope. Original app/entry/five-node normal unforced exits remain required; auxiliary VCTIP cleanup stays separate. The original capture/raster algorithm, UI, assets, neutral Node input, all ordinary/financial/seed/reopen inputs and timings remain. No original financial/profile replay or Native104 is admitted.
+
+One synthetic Dart wiring case and two Python controls are added while preserving every original case and assertion. Exact ordinary/startup expectations become 713/715, registered Python/memory/reader expectations 911/446/90. All 446 selected unapplied memory controls pass without failure, error, skip, blocked write/network/native attempt, scratch or shared-store access. The header-only Dart transport fixture has not run and is not an actual rendered image. An earlier local memory admission still expected 909 registrations and refused before executing its suite; that failure and its missing original blocked-attempt detail remain recorded. Fresh applied-source controls, hosted zero-findings analysis/713-case engine qualification, original native capture and independent archive inspection remain required. No new Home pixels are yet produced or viewed.
+
+The latest actual native/image evidence remains Source251 and its successful closed 24-image review; the latest broad Windows baseline remains Source249 with 4825 passes/two skips and 1296 root infos. Source251 caption samples withdraw its initial approximate y4 estimate; older Source246 pixels remain unmeasured. Main progress stays 71/80 (88.75 percent by rows), zero accepted matches out of 94, nineteen unqualified preparations and ninety missing catalog outputs. P03/P09/F06/V01-V06, Docker/lab, native seams, minimum-window/Arabic, motion/shaders/frame time and independent comparison remain open. All prior failures, ownership HOLD and UNKNOWNs remain; Native101 send and Native103 Token confirmation/effect remain UNKNOWN. Local transport of this separate literal Home image family requires its own concrete storage authority; the earlier generic-page family approval does not cover it.
+
+
+### Source257 synthetic CLI output boundary
+
+2026-10-31T18:48Z: [Source256 controls](https://github.com/edgepillar/syrius/actions/runs/41230365167) have zero selected findings and 911 Python controls/three skips. The normal zero-exit Dart command is refused as TEST_EVENTS_INVALID and counts remain unqualified. The real Home-script test now captures CLI stdout in a test-only IOOverrides zone and verifies its original zero/six/twelve-line boundary. The production CLI, strict parser, script, original requests and 713/715 selection remain unchanged. Fresh engine qualification is required; no native run or literal Home pixels are yet admitted. Original failures and financial UNKNOWNs remain.
+
+
+### Source258 independent workflow source binding
+
+2026-10-31T19:22Z: Source257 focused controls qualify 713 Dart passes and zero selected findings. Its native 41231991847 fails lab_revalidation before onboarding input release; reader 41233307044 passes 90 controls but refuses producer_source. Both failures remain. The reader now obtains the workflow omitted by sparse checkout from its exact producer-tree blob. Bounded canonical Base64, declared size and Git-blob SHA-1 must agree; the other 27 producer files and all archive checks remain. One new control prepares 912/447/91 Python/memory/reader counts; 447 candidate memory controls pass. No producer, Dart, SDK, workflow or financial/seed/reopen bytes change. Fresh applied qualification and a reader-only inspection are required; no new native runtime or local binary transfer is admitted. All original UNKNOWNs and visual gates remain.
+
+
+## Source259: bounded lab error labels and full-reader request budget
+
+2026-10-31T19:38Z: Source258 c21ec0aacb98 [reader 41234273027](https://github.com/edgepillar/syrius/actions/runs/41234273027) passes 91 independent reader controls and verifies both original Source257 failure archives, all 28 producer source files and revalidated artifact metadata. The five original nodes have normal complete unforced zero exits, but the original wallet job required forced cleanup of active actors. No generic or literal Home PNG is qualified. The original native and producer_source reader failures remain FAILURE; their unexported exact inner causes remain NOT_ESTABLISHED. The corrected reader inspects retained bytes without starting a wallet/node or repeating an original runtime.
+
+Two separate source controls identify concrete gaps without reconstructing the original failure. First, the actual HTTP Client accepts twelve requests and refuses the thirteenth before opening it; the complete successful three-archive reader fixture now needs fourteen requests, including the immutable workflow blob. The default stays twelve and only the full wallet reader explicitly requests fourteen; booleans, other integers and non-integers are refused. The original time, byte, redirect, authentication, source and metadata limits remain. The complete synthetic reader now enforces the configured real budget, so its fixture cannot silently hide that limit. Second, 39 existing lab error labels were absent from the wallet controller catalog and collapsed into INTERNAL_ERROR. The controller retains these already finite labels and maps only six built-in exception families in lab_revalidation to fixed labels. It exports no exception text, dynamic class name, traceback, endpoint, path or private value. Unknown failures remain INTERNAL_ERROR.
+
+Both original lab revalidation calls, their input values/order, owner checks, success assertions, deadlines and required closure stay fixed. The second call now correctly reports lab_revalidation as its phase too. No retry, financial/profile replay, product UI, Dart, SDK, asset, dependency, workflow or capture/raster change occurs. Two new Python methods retain all original cases and assert the real request boundary and private-safe fixed-label projection, including negative success checks. There are 914 registered Python cases, 449 selected memory controls and 92 reader controls; all 449 unapplied memory controls pass with no failures/errors/skips, blocked operation, scratch, shared-store or local native/SDK execution. Ordinary/startup Dart selections remain 713/715. Fresh applied-source controls and a separately qualified hosted diagnostic native run remain required; prior source-bound engine evidence is not qualification of this revision.
+
+Latest focused engine evidence remains Source257 with 713 passes and zero selected findings; latest successful native/images remain Source251 and latest broad Windows Source249 with 4825 passes/two original skips and 1296 root infos. Source251 caption samples withdraw its approximate y4 estimate; Source246 pixels remain unmeasured. The minimum-window/Arabic candidate is unapplied. Main progress remains 71/80 (88.75 percent by rows), zero accepted matches out of 94, nineteen unqualified preparations and ninety missing catalog outputs. P03/P09/F06/V01-V06, original failures, ownership HOLD and UNKNOWNs remain. Native101 send and Native103 Token confirmation/effect stay UNKNOWN; Native104 is not admitted. Local transfer of literal Home pixels still needs its own concrete archive authority.
+
+
+## Source260: portable sparse-workflow test paths
+
+2026-10-31T19:44Z: Original Source259 d40409251dee [Windows inspection 41235368397](https://github.com/edgepillar/syrius/actions/runs/41235368397) remains FAILURE before SDK allocation. The 914 Python tests report one error, zero failures and three original skips, naming test_original_workflow_blob_is_bound_outside_the_sparse_checkout. All fourteen asset phases pass. Flutter allocation, dependency restoration, selected analysis, engine tests, node checkout/compiler, wallet/lab execution and capture export are skipped. There are no artifacts and no native wallet/node starts. This is a preflight failure, not a negative wallet observation. The original inner exception text is unexported and its exact hosted cause remains NOT_ESTABLISHED.
+
+A separate source-only control executes that original test with a pure Windows path and reproduces one error: its mock local-file selector compares backslash-separated paths with a slash-separated workflow suffix, so it does not simulate the intended missing sparse file. The fixture now compares path.as_posix() and runs its complete original assertion sequence for both the original platform Path and a PureWindowsPath. All missing-workflow, exact original blob, malformed/oversized/foreign response, partial tree and no-remote-call-before-admission checks remain. No case is removed, added, skipped or relaxed. The source model is not a reconstruction of an unexported hosted exception.
+
+Only this fixture and documentation change. All 28 producer files, the production reader, explicit twelve/fourteen request policy, finite lab labels, workflow, Dart selections, product UI, SDK, assets, dependencies, capture/raster, deadlines and original financial/profile/seed/reopen inputs are byte-identical to Source259. Expectations stay 914 registered Python, 449 selected memory, 92 reader and 713/715 ordinary/startup Dart. All 449 unapplied candidate memory controls pass with zero failures/errors/skips or blocked operation, scratch, shared-store, native or SDK execution. Fresh applied qualification and hosted Windows preflight remain required before the still-pending diagnostic native observation. No original financial/profile replay or local binary transfer is admitted.
+
+Latest successful focused/native/broad evidence remains Source257/Source251/Source249. Source258 independently qualifies both retained Source257 failure archives without replay; it does not qualify captures. Source251 caption samples withdraw its approximate y4 estimate; Source246 pixels remain unmeasured. The minimum-window/Arabic candidate remains unapplied. Main progress stays 71/80 (88.75 percent by rows), zero accepted matches out of 94, nineteen unqualified preparations and ninety missing catalog outputs. P03/P09/F06/V01-V06 and every original failure, ownership HOLD and UNKNOWN remain. Native101 send and Native103 Token confirmation/effect stay UNKNOWN; Native104 is not admitted.
+
+
+## Source261: original minimum-window and Arabic observations (pending hosted qualification)
+
+2026-10-31T20:08Z: Parent Source260 82e29feb67e1 [Windows producer 41235727833](https://github.com/edgepillar/syrius/actions/runs/41235727833) qualifies 713 ordinary Dart passes without failures/error events/skips, zero selected findings, 914 Python controls/three original skips, fourteen asset phases, both entry refusals and three startup gates. Its engine command exits normally and unforced at zero in 129.859 seconds with complete 361274-byte output (SHA-256 db011d63a7bd8d2b4ba1b737bc505c010ad1b43d3f1a8527a4ef26e649b28c4d). The separate 715-case startup selection is unexecuted. Independent [reader 41236776174](https://github.com/edgepillar/syrius/actions/runs/41236776174) passes all 92 controls, verifies three original archives/all 28 producer source files and revalidates metadata without another wallet/node runtime. All nineteen generic checks, two lab revalidations, 24 original generic PNGs and normal complete unforced required app/entry/five-node zero exits qualify; auxiliary VCTIP termination remains separate. The literal home-rest script also produces its two original named 1280x780 PNGs in a separate 333231-byte archive. Their source/run/script/digest and original parent closure qualify; actual Home image review is pending. No generic PNG is relabelled. Zero of 94 visual matches are accepted; missing catalog outputs become 88.
+
+Source261 adds four separate V04 Home observations through the same original bound readonly session after the existing Home pair: dark/light at 1200x600 in English/LTR, then dark/light at 1280x780 in Arabic/RTL. The actual Settings Display language menu selects Arabic and then English. Original theme/window/rail and rendered locale are checked after restoration. Saved locale-preference restoration is explicitly unqualified; no original saved-value restoration is inferred. A negative or uncertain capture propagates without another shot or UI restoration replay. The original capture/raster algorithm is used, without image resizing or pixel editing. These filenames are V04 observations, never aliases for the 94 catalog pairs.
+
+A separate fresh output family admits exactly its manifest and four fixed PNGs, with a four-MiB combined PNG cap and 64-KiB manifest cap. Original cooperative workspace sampling accounts for it. The producer requires strict closed metadata, source/run/probe pins, original byte counts/SHA-256, CRC/dimension validation and unchanged required parent closure. Failure exports no new image family. The independent reader validates the exact five members and all four originals, then revalidates producer metadata before emitting a separate finite viewport scope. Its thirty source pins add only the original probe and its closed capture module; the existing workflow is still fetched by its immutable producer-tree blob. The default HTTP budget remains twelve, the prior explicit fourteen remains allowed, and this four-archive reader explicitly requests sixteen. All original time, byte, redirect, authentication, source, owner, financial and closure checks remain. The PNG decoder keeps its 1280x780 default and admits only the explicit 1200x600 alternate with unchanged metadata/CRC/decompression/row guards.
+
+One new Dart session case covers completed restoration and six original failure paths using header-only synthetic transport data, not rendered images. Two real Display menu theme cases exercise locale/direction and preferences without requests. Selecting the complete existing Display file also retains all six older cases. Exact ordinary/startup expectations become 722/724; prior 713/715 and partial 716/718 selections remain refusals. Three new Python methods cover bounded explicit PNG dimensions and strict viewport manifest/archive privacy, including failed-parent, wrong-size, changed-pixel, foreign-member and source/run refusals. Totals are 917 registered Python, 452 selected memory and 94 independent reader cases. All 452 unapplied complete memory controls pass with zero failures/errors/skips or blocked operation, scratch, shared-store, native/SDK or Dart execution. Two new Python registrations and the new Dart test basename were projected through finite virtual discovery. The original 451-versus-452 admission refusal and later two failed controls are retained: the new decoder case is now explicitly selected, the root failure-name catalog adds its real new test basename, and virtual Python discovery includes its real new file. No test, assertion, negative guard or old registration is removed.
+
+Fresh applied-source controls, hosted zero-findings/722-case engine qualification, original four-image capture, independent inspection and actual viewing remain required. No new native runtime or local viewport transport is admitted by these source controls. Product UI, SDK/publication policy, ordinary/financial/profile/seed/reopen inputs, numeric policy, assets, dependencies and original deadlines stay fixed. Source259 pre-SDK and Source257 original native/reader failures remain FAILURE with unexported exact causes NOT_ESTABLISHED; Source256 invalid events and every earlier failure/HOLD/UNKNOWN remain. Source251 remains the last completed generic image review and its y4 caption estimate is withdrawn; Source246 pixels remain unmeasured. Source249 retains its separate 4825-pass/two-skip broad Windows baseline and 1296 root infos. Main progress stays 71/80 (88.75 percent by rows); P03/P09/F06/V01-V06, nineteen unqualified preparations, motion/shaders/frame time, seams and Docker Desktop/lab.sh remain open. Native101 send and Native103 Token confirmation/effect remain UNKNOWN; Native104 is not admitted.
+
+
+## Source262: braces around the eight multiline viewport guards
+
+2026-10-31T20:23Z: Original Source261 f3a9564f7d34 [Windows inspection 41237919395](https://github.com/edgepillar/syrius/actions/runs/41237919395) passes all 917 Python controls with three original skips and all fourteen asset phases. The selected analyzer exits normally and unforced at zero with complete 1410-byte output (SHA-256 c9c13f3c9f6238e4c913438f1860084d1f862bfdb5e49f8119bb0210baa55a31), but the strict gate correctly refuses eight CURLY_BRACES_IN_FLOW_CONTROL_STRUCTURES infos. There are zero selected errors/warnings. The finite location projection records seven multiline guards in the new viewport probe and one in its new test. The first 722-case engine selection, entry/startup gates, node checkout/compiler, native wallet/lab and image export are skipped. No artifacts or native wallet/node execution exist for this run. This original run remains FAILURE.
+
+Source262 wraps only the seven single refusal statements and the one synthetic negative-reply return in braces. Their complete non-brace/non-whitespace tokens, conditions, inputs, statement order, return/refusal values and all assertions remain byte-identical. There is no suppression, count relaxation, removed test, new registration, dependency, product UI, SDK, profile, financial, seed, reopen, timing, capture/raster, producer/reader policy or workflow change. Expectations remain 722/724 ordinary/startup Dart, 917 registered Python, 452 selected memory and 94 independent reader controls, with thirty producer source files. Fresh complete applied-source controls, hosted zero-findings/722-case engine qualification, native four-image viewport capture, independent inspection and actual viewing remain required. No original runtime is retried by these source-only corrections.
+
+Latest successful engine/native evidence remains Source260 82e29feb67e1 / 41235727833 and reader 41236776174: 713 ordinary passes, zero selected findings, 914 Python controls/three skips, 92 reader controls, three archives/all 28 producer files, 24 generic PNGs and the first two literal Home PNGs with original required app/entry/five-node normal complete unforced zero exits. Auxiliary VCTIP termination is separate. Actual Home review is pending. Source251 remains the last completed generic image review; its approximate y4 caption estimate is withdrawn and Source246 pixels remain unmeasured. Source249 retains its separate 4825-pass/two-skip broad Windows baseline and 1296 root infos.
+
+Main progress remains 71/80 (88.75 percent by rows), zero accepted matches out of 94, nineteen unqualified preparations and 88 missing catalog outputs. P03/P09/F06/V01-V06 and original failures/HOLD/UNKNOWNs remain. Native101 send and Native103 Token confirmation/effect stay UNKNOWN; Native104 is not admitted. The viewport observations and saved locale-preference restoration remain unqualified. The original 451-versus-452 memory admission refusal and two candidate control failures also remain preserved; later passing controls do not replace their original outcomes.
+
+
+## Source263: finite viewport failure steps
+
+2026-10-31T20:53Z: Original Source262 e3989669a940 [Windows inspection 41238977735](https://github.com/edgepillar/syrius/actions/runs/41238977735) passes 917 Python controls with three original skips, fourteen asset phases, selected analysis with zero errors/warnings/infos and its first 722-case ordinary Dart selection. There are 82 hidden events, 804 terminal events and no Dart failures/errors/skips. The original engine exits normally, completely and unforced at zero in 187.250 seconds with 367025 bytes (SHA-256 3e03967ce734f1f066787498b46f5a6129abe98971a69a1a2267693897d8e349). Both entry refusals and all three startup gates pass; the 724-case asset-fidelity selection remains unexecuted. The eight Source261 brace infos are corrected in this source; the original Source261 failure remains.
+
+Source262 native inspection remains FAILURE. Its original entry exits one after both twelve-page tours, at the new viewport stage, with a null finite inner code. Its complete 44714-byte entry output has SHA-256 f99ea4cdd69826b10bfce18987a7d2f2bbbc21b62f97c65e0908c0e575362c9d. The exact original command and inner cause are NOT_ESTABLISHED; no raw wallet output is retrieved. One lab revalidation, readonly SDK admission and generated/persisted index-one selection are reported, but required wallet actor closure is not qualified. Application cleanup observes zero separately; it does not supply the missing qualified application/entry closure. The owned job still observes a VCTIP member and takes the original forced cleanup path. All five original lab nodes later exit normally, completely and unforced at zero, with seven stop regressions passing. That does not heal the wallet failure. No generic, Home or V04 PNG is exported or accepted from this run.
+
+Separate [reader 41240488104](https://github.com/edgepillar/syrius/actions/runs/41240488104) passes all 94 controls, binds all thirty producer files including the immutable workflow blob, revalidates metadata and independently qualifies the two original negative archives. It starts no wallet/node, repeats no producer and retrieves no binary locally. The root archive is 27487 bytes with SHA-256 c9fca5cf448d5cdc061c4f0b6ea8c79f2fb1ed2959abb7521b394eb14a40296c; the wallet archive is 45106 bytes with SHA-256 46e5210016693beb4ce6a614bb8f9b92f0451c15acfacee2d271960acd5d481b. They establish a retained original failure and zero verified images.
+
+Source263 adds only optional source-defined progress callbacks to the viewport observer and a closed failure diagnostic containing schema, kind and last_entered_step. Forty enum labels identify the entered source step; they do not assert that the step completed or identify the original cause. The original exception, failed outcome, UI commands/arguments, waits, byte limits, source binding, parent closure and no-replay rules remain. No exception text/class, displayed label, command argument, profile, address, path or credential enters this diagnostic. Python admission accepts it only on the viewport failure branch with its exact fields and finite labels. The new metadata control belongs to the independent reader suite. Expectations become 918 registered Python, 453 memory and 95 reader controls; Dart remains 722/724 and producer sources remain thirty. All original cases and negative controls remain.
+
+The first candidate memory run executes 453 cases with one reader-suite count failure and no errors/skips or blocked operations: the new control was outside that finite reader selection. It remains FAILURE. Moving that control into the actual independent reader suite retains every original assertion and produces 453 passing candidate controls. This does not qualify new Dart/native execution or replace the original failure. Fresh complete applied controls and hosted analysis/engine qualification remain required before any new isolated viewport observation.
+
+Latest positive native/Home evidence remains Source260 and its independent reader: 24 generic originals, two literal Home originals, two lab revalidations and required app/entry/five-node normal complete unforced zero exits; auxiliary VCTIP termination is separate. Home viewing remains pending. Source251 remains the last completed generic review; its approximate y4 caption estimate is withdrawn and Source246 pixels remain unmeasured. Source249 retains its separate 4825-pass/two-skip broad Windows baseline and 1296 root infos. Main progress stays 71/80 (88.75 percent by rows), zero accepted matches out of 94, nineteen unqualified preparations and 88 missing catalog outputs. P03/P09/F06/V01-V06 and every earlier failure/HOLD/UNKNOWN remain. Native101 send and Native103 Token confirmation/effect stay UNKNOWN; Native104 is not admitted. Minimum-window/Arabic viewing, exact saved locale-preference restoration, motion, seed effects and financial qualification remain open.
+
+
+## Source264: await the language option and exercise the real pointer
+
+2026-10-31T21:38Z: Original Source263 899f55bce6d8 [Windows inspection 41241250391](https://github.com/edgepillar/syrius/actions/runs/41241250391) passes 918 Python controls with three original skips, fourteen asset phases, selected analysis with zero errors/warnings/infos and 722 ordinary Dart cases, with no Dart failures/errors/skips. Both entry refusals and all three startup gates pass; its 724-case fidelity selection remains unexecuted. Native inspection remains FAILURE after both twelve-page tours. The finite diagnostic identifies the last entered viewport step as arabicChoice, immediately before the original exact-label pointer selection. The inner code is null; the exact original exception, selector condition and selection effect are NOT_ESTABLISHED. No original pointer input is replayed. The complete 44810-byte entry output has SHA-256 744baa77a3f719f433f112e03dfbe071ac434eed551d9dc087313015db3b0faf. Required wallet closure stays unqualified; separate cleanup application zero and five normal complete unforced zero node exits do not heal the failed entry.
+
+Independent [reader 41242681521](https://github.com/edgepillar/syrius/actions/runs/41242681521) passes all 95 controls, verifies all thirty producer source files including the immutable workflow blob, revalidates metadata and qualifies only the two original negative archives, without runtime replay or local binary transport. The root ZIP is 27476 bytes with SHA-256 d7cc19871dd799238b50afca53755819958e57a5e1e785ec9c600f59c83161d2; the wallet ZIP is 45202 bytes with SHA-256 1f45222b05ad563ab21676ae17681e1bbc3eb598ba03a48b4cf5dfdf4637eeca. Zero generic, Home or V04 PNGs are verified from this failure. Its original failure and Source262's untyped viewport failure remain source-bound.
+
+Source264 adds one exact-label readiness wait after opening the original language menu, capped at five seconds, before the original single pointer selection. A negative readiness reply permanently holds that original bound session before selection. Two additional enum labels distinguish Arabic/English option readiness; all 42 labels remain closed and contain no original error text, selector arguments or private data. Existing commands, wait limits, source binding, publication pause, automatic-receive refusal, parent closure and no-replay rules remain. This is an unqualified readiness correction, not a root-cause claim about either earlier failure.
+
+One new widget case uses the real HarnessAgent pointer dispatcher, exact-label wait and original selection in both themes, at 1200x600 and an additional 1200x540 component viewport. It asserts the actual language, direction and saved choice. Their Flutter execution remains hosted; no native wallet or node process is launched by the isolated component fixture. The original direct-widget menu cases and every earlier assertion remain. Expected ordinary/fidelity Dart counts become exactly 723/725; old Source263 722/724 counts are explicit stale counterexamples. Registered Python, selected memory and independent reader cases remain 918/453/95. The first candidate executes 453 controls with one stale-count collision: 723 had become the new exact ordinary expectation while an old negative loop still treated it as stale. That original FAILURE remains. The corrected loop excludes only its exact current mode count and retains both old Source263 counts as stale; all 453 candidate controls pass. Fresh applied controls, selected analysis and the actual 723-case engine result remain required before any new native observation.
+
+The separately authorized Source260 Home review is complete. Both original 01-home-rest-dark.png and 01-home-rest-light.png were actually viewed against their original references, from the independently qualified 333231-byte archive with SHA-256 eda4b2a4a5f39c8fa6f21fcfe284814e0ac5805a68a4219a2672ea56122ef1ae. The owned task closes SUCCESS and its original controller exits zero normally. The archive remains retained; only that task's registered disposable extraction is removed. The existing storage policy, original ownership HOLD and prior evidence remain. This review establishes no match or qualification of later source.
+
+The two actual Home captures omit the reference Notifications tooltip and show the selected-address Activity scope where the reference shows All addresses. These capture-state differences are open under X411. Filled activity/collection/pending example states still need their own seed qualification. The actual hero frames show different field placement and colour distribution; motion phase, contrast and baseline equivalence remain unqualified, with no shader cause or patch inferred from a single pair. Exact pixel geometry and font equivalence were not measured in this review. The approved RULES.md brand-colour exception remains. Source251 remains the last completed generic 24-image review; its approximate y4 caption estimate is withdrawn and Source246 pixels remain unmeasured. Source249 retains its separate 4825-pass/two-skip broad Windows baseline and 1296 root infos.
+
+Main progress stays 71/80 (88.75 percent by rows), zero accepted matches out of 94, nineteen unqualified preparations and 88 missing catalog outputs. P03/P09/F06/V01-V06 and all earlier failures/HOLD/UNKNOWNs remain. Native101 send and Native103 Token confirmation/effect stay UNKNOWN; Native104 is not admitted. Minimum-window/Arabic viewing, saved locale-preference restoration, motion, seed effects and financial qualification remain open.
+
+
+## Source265: exclude menu children used only for measurement
+
+2026-10-31T21:57Z: Original Source264 42547d049c17 [Windows 41245052686](https://github.com/edgepillar/syrius/actions/runs/41245052686) remains FAILURE. All 918 Python controls pass with three original skips, fourteen asset phases pass and selected analysis has zero errors/warnings/infos. The original Flutter engine exits one normally, completely and unforced after 208.110 seconds, with 369502 output bytes and SHA-256 620bc684db73306412dd9b51c0cc8cfb04692d9052f4c7902849f172599722c7. Its event stream contains 722 passes, one failed case, one error event, zero skips, 82 hidden and 805 terminal events. The new real harness pointer case reaches agent.dart line 3343 from display_settings_test.dart line 244: the source-defined covered-target refusal. This proves the isolated component failure location; it does not expose or backfill either earlier native exception. Wallet build, lab and native entry are skipped and zero artifacts are produced. There is no archive to inspect and no native input to replay.
+
+The [material_ui 1.6.0 source tag](https://raw.githubusercontent.com/flutter/packages/material_ui-v1.6.0/packages/material_ui/lib/src/dropdown_menu.dart) lays out additional DropdownMenu children to measure its width. The body paints and hit-tests only the first child, the actual field; real open options live in the overlay. The harness visitor currently traverses the measurement children too, before the overlay. This is a source-supported explanation for the reproduced component failure. Exact resolved package archive bytes have not been independently retrieved locally, and the original Source263 native inner cause remains NOT_ESTABLISHED.
+
+Source265 limits traversal of that versioned private multi-child body to its first child. Other widgets and the separately rendered menu overlay retain their original traversal. The original hit-test, enabled-target, actor/session and input-admission guards remain. No force/nth selector, coordinate substitute, alternate session, retry or direct callback is introduced. Product UI, assets, dependencies, SDK authority, native probe request maps, five-second option wait, financial/profile/seed/reopen inputs, source/time/byte checks and workflow are unchanged.
+
+The existing real pointer case retains every original request and assertion and adds read-only tree checks: Flutter still builds its measurement labels, the closed menu exposes no matching button to the harness, and the opened menu exposes exactly one. Both themes and 1200x600/1200x540 component viewports still exercise Arabic then English through real pointer input. No test registration or selected path changes; ordinary/fidelity expectations remain exactly 723/725, with 918 registered Python, 453 memory and 95 independent reader controls. Fresh applied and hosted qualification is required. Source264 original failure is retained, and the prepared Home capture-state candidate remains unapplied.
+
+X411 is clarified from source: Notifications hover preparation is missing, while Activity has an inert selected-address badge rather than an All addresses selector. A capture script cannot change that scope. The completed two-image Source260 review accepts zero matches; no seed/example content, atomic frame, motion phase or later revision is qualified. Source251 retains the last generic 24-image review and withdrawn approximate y4 estimate; Source249 retains its separate broad Windows baseline. Main progress remains 71/80, zero accepted matches out of 94, nineteen unqualified preparations and 88 missing catalog outputs. All earlier failures/HOLD/UNKNOWNs remain; Native101 send and Native103 Token confirmation/effect remain UNKNOWN and Native104 is not admitted.
+
+
+## Source266: retain Home state between theme captures
+
+2026-10-31T22:42Z: Source265 27bcbd462d61 now has four terminal successful runs: [native Windows 41246130776](https://github.com/edgepillar/syrius/actions/runs/41246130776), [independent native reader 41247342231](https://github.com/edgepillar/syrius/actions/runs/41247342231), [full Windows baseline 41246690485](https://github.com/edgepillar/syrius/actions/runs/41246690485), and [independent baseline inspector 41248885882](https://github.com/edgepillar/syrius/actions/runs/41248885882). These qualify Source265 only. All 918 Python controls pass with three original skips; fourteen asset phases and selected analysis pass with zero findings. The focused Flutter engine records 723 passes, zero failures/errors/skips and normal complete unforced exit zero after 146.500 seconds, 367365 bytes and SHA-256 c476e51b7b28919c41de216e6f581d43a7cfd75bba7c1d73ae208e8155e8a5f5. Two original entry refusals and three startup gates pass; the 725-case fidelity selection is not executed.
+
+The independent reader passes 95 controls, verifies all thirty producer source files plus the immutable workflow, and checks four original archives with 24 generic, two literal Home and four V04 PNGs. Required application, entry and all five nodes exit normally, completely, unforced and zero. Auxiliary VCTIP telemetry cleanup is separately forced and leaves zero helpers; it is not a required wallet actor. SDK publication remains paused, automatic receive is disabled, and generated/persisted selection is index one of two. The four V04 observations are metadata/PNG verified but have not been visually reviewed. Rendered locale/theme/window/rail restoration is observed; exact saved locale preference and atomic frame restoration are separate unqualified observations. Event-loop gaps are not frame-time or motion-baseline evidence.
+
+The Source265 broad non-chain Windows suite has 4838 passes, two original skips, zero failures/errors, 562 hidden and 5402 terminal events. All twelve checks pass; locked restoration, generated source and localization stay unchanged. Root analysis has zero errors/warnings and 1296 infos; vendored analysis has zero findings. Debug and Release complete normally, unforced and zero in 131.813 and 182.000 seconds. The root test command completes normally, unforced and zero in 1017.843 seconds with 2580147 bytes. Library correspondence and map exports do not qualify DLL initialization, an unfiltered chain suite, financial activity or release readiness. Original Source264 failure and earlier native failures remain; the Source263 native inner cause stays NOT_ESTABLISHED. The original local baseline-qualification ref-kind failure and observer-exit UNKNOWN remain distinct from later successful API/CI observations.
+
+Source266 applies optional after-capture UI metadata only after a validated PNG has been durably retained. The existing command whitelist and instance refusal are retained. All scripts are preflighted before any UI effect; metadata must follow the completed assertion and cannot be followed by ordinary capture commands. The hidden-balance script reopens visibility after each positive shot so the next theme starts from its required state. A failed shot performs no post-shot inputs, is retained as failure and is never replayed. Original theme/window/rail finally restoration is unchanged. Three new transport-double cases cover the successful two-theme pair, refusal on the second shot, and invalid metadata before UI effects. Synthetic PNG headers are not rendered evidence. Actual hidden-balance native capture is not wired or qualified.
+
+The literal home-rest script moves the real pointer away before hovering Notifications in each theme and waits for the visible exact tooltip text before its existing Home assertion. This prepares the reference hover state without opening the panel. The final native frame remains unqualified until a fresh original run and independent reader. Activity has an inert selected-address badge; no All addresses selector, alternate data scope or fabricated sample content is added. X411 retains that scope/content difference and visual equivalence remains unqualified.
+
+All twenty existing screen-capture cases and the three new cases join the focused engine selection. Fresh ordinary/fidelity expectations are exactly 746/748; registered Python/memory/reader controls remain 918/453/95 with thirty producer source pins. Strict analysis now includes the capture runner and its full test file. All original cases/assertions and stale numeric counterexamples remain. No workflow, new file, product UI, asset, dependency, SDK authority, financial/profile/seed/reopen input, force/nth target or source/time/byte guard changes. Fresh applied memory, focused hosted and original native/independent-reader qualification are required. Source265 broad evidence is not qualification of Source266.
+
+Main progress remains 71/80 rows, zero accepted matches out of 94, nineteen unqualified preparations and 88 missing catalog outputs. Source260 retains the completed two-image Home review with zero matches; Source251 retains the generic 24-image review and withdrawn approximate y4 estimate. All original failures/HOLD/UNKNOWNs remain source-bound. Native101 send and Native103 Token confirmation/effect remain UNKNOWN; Native104 is not admitted. The PR remains Draft.
+
+
+## Source267: bind Home transport expectations to the actual hover script
+
+2026-10-31T22:54Z: Source266 a690215820e1 [Windows 41249583868](https://github.com/edgepillar/syrius/actions/runs/41249583868) remains FAILURE before native admission. All 918 Python controls pass with three original skips, fourteen asset phases pass and selected analysis has zero errors/warnings/infos. Its original engine has 744 passes, one failed case, one original Windows symlink skip and one error event, with normal complete unforced exit one after 214.188 seconds, 377720 bytes and SHA-256 58382194cb9a1d8cf0a60640b1584fb6239f3915e3e22e33045aeb588897466d. The finite source location points to the old captured-output count in the existing bound Home transport test. The real Home script has three additional pointer/text-wait commands per theme, while that test still expects six output lines per theme and excludes hover from its allowed observed command set. Wallet build, lab and native entry are skipped; zero artifacts or new PNGs exist. This is the original component failure, not a failed financial or native action. No archive reader or runtime retry can qualify an unexecuted native stage.
+
+Source267 retains the same existing transport test and every original unbound/negative reply, binding, shot, identity, theme/window/rail and output-privacy assertion. The expected output counts become nine for the failed first-shot scenario and eighteen for the successful pair. The test additionally checks the exact neutral pointer request (at 0,0 with settleMs zero), the exact Notifications-key hover and the exact text/kind/exact/five-second wait map, once before the negative shot and once per positive theme. Hover is added to the observed command set. The existing link-refusal test retains every original real link operation and target-preservation assertion. It runs in hosted Windows with GITHUB_ACTIONS true and RUNNER_ENVIRONMENT github-hosted, as already supplied by the isolated engine environment. Missing symlink privilege fails the real case. Nonhosted Windows retains its original explicit skip. The strict zero-skip CI gate and exact 746/748 expected counts are unchanged. No production source, input map, script, asset, dependency, SDK policy, workflow, new test registration or selected path changes. Ordinary/fidelity expectations remain 746/748 with 918/453/95 Python/memory/reader controls and thirty unchanged producer source pins. New applied/hosted qualification is required; actual tooltip frames and hidden-balance native capture remain unqualified.
+
+Source265 retains the latest independent positive native evidence (723 focused passes, 24 generic plus two literal Home plus four V04 PNGs, and required normal complete unforced app/entry/five-node closure) and the separately qualified 4838-pass/two-skip broad Windows baseline. Source260 retains the completed actual two-image Home review with zero matches. V04 actual minimum-window/Arabic viewing remains pending; saved locale preference is a separate observation, not an added V04 requirement. Source264 original covered-target failure and all earlier failures/HOLD/UNKNOWNs remain. Source263 original native inner cause is NOT_ESTABLISHED. Main progress stays 71/80 with zero accepted matches out of 94, nineteen unqualified preparations and 88 missing catalog outputs. Native101 send and Native103 Token confirmation/effect remain UNKNOWN; Native104 is not admitted. The PR remains Draft.
+
+
+## Source268: observe visible tooltip text and complete the V04 viewing gate
+
+2026-10-31T23:34Z: Source267 b5f9b34f3a40 [Windows 41250424634](https://github.com/edgepillar/syrius/actions/runs/41250424634) qualifies 918 Python controls with three original skips, fourteen asset phases, zero selected errors/warnings/infos and all 746 ordinary Dart cases with zero failures/errors/skips. The original engine exits zero normally, completely and unforced in 209.844 seconds with 377230 bytes and SHA-256 24cc1e559bc7889aaf146c4c67edb9f214b856251f8947ca615d104e289dc533. Hidden/terminal events are 83/829; both entry refusals and all three startup gates pass. The 748-case fidelity selection is unexecuted. This closes the stale transport and hosted symlink component issues; the native result is separate.
+
+The original native entry then exits one at home_catalog after twenty-four visited pages. Its finite inner code is null and the exact original cause remains NOT_ESTABLISHED. Entry output is complete at 44153 bytes with SHA-256 c75d640de915b406c709c8db4bb8b0f1a7ca0b7dccb66f7a8c423dca8266105f. Zero generic, literal Home or V04 PNGs are exported. Required wallet actors are forced and closure remains unqualified; normal complete unforced zero exits from all five nodes and the separate cleanup application do not heal it. Independent [reader 41251749359](https://github.com/edgepillar/syrius/actions/runs/41251749359) passes all 95 controls and verifies both original negative archives and all thirty source files plus the immutable workflow without runtime replay or local binary transport. Original failure, stage, byte evidence and closure limits are retained.
+
+The actual four Source265 V04 images have now been viewed in both themes: minimum client 1200x600 and Arabic-locale client 1280x780. The owned review closes SUCCESS with actual controller exit zero, the verified archive retained and only registered disposable extraction removed. Main controls fit in the minimum frames without obvious clipping; the RTL rail and content mirror. English Home/status copy remains visible in the Arabic-locale frames, and the corresponding Arabic resource keys are absent; X414 retains this localization gap and Arabic glyph quality remains unqualified. The original V04 requirement is to look once and retain defects in X rows. That viewing gate is complete; exact saved locale preference and atomic restoration are separate unqualified observations. Main progress becomes 72/80, or 90 percent by rows rather than effort. No screenshot match or catalog alias is accepted.
+
+Source268 changes only harness text extraction for an empty semantic container span with children. Other spans and plain Text data retain their original extraction. Rail tooltips use this shape. The existing real rail case is strengthened in both themes at 1280x780 and 1200x600: real neutral/bell pointer input, a rendered tooltip, the parent extraction counterexample, one exact harness text node and the original five-second text wait. Four ordinary span/data controls retain legacy behavior. No test registration, selected path, UI, asset, dependency, script, SDK authority, original input map, hit-test guard, force/nth selection, workflow or byte/time bound changes. Fresh applied memory and hosted component qualification are required. This is a source-supported candidate; it does not backfill the original Source267 inner cause. First run the harness-only selection; native and broad current-source qualification follow only if it passes.
+
+Source265 retains the latest positive native thirty-PNG evidence and its separate 4838-pass/two-skip broad baseline. Source260 retains the completed actual two-image Home review, and Source251 the last generic 24-image review with its withdrawn approximate y4 caption estimate. Zero matches out of 94, nineteen unqualified preparations and 88 missing catalog outputs remain. Source267/266/264/263/262 and all earlier failures/HOLD/UNKNOWNs remain source-bound. Native101 send and Native103 Token confirmation/effect remain UNKNOWN; Native104 is not admitted. The PR remains Draft.
+
+
+## Source269: capture the original hidden Home state
+
+2026-11-01T00:17Z: Source268 2a2f04584dbc has five successful terminal hosted runs: [harness-only 41253439482](https://github.com/edgepillar/syrius/actions/runs/41253439482), [native Windows 41253886913](https://github.com/edgepillar/syrius/actions/runs/41253886913), [independent native reader 41255095090](https://github.com/edgepillar/syrius/actions/runs/41255095090), [full Windows baseline 41253919663](https://github.com/edgepillar/syrius/actions/runs/41253919663), and [independent baseline inspector 41255744645](https://github.com/edgepillar/syrius/actions/runs/41255744645). These qualify Source268 only. Both engine selections pass all 746 ordinary cases with zero failures/errors/skips and zero selected findings; each retains 918 Python controls/three original skips and fourteen asset phases. The native engine exits zero normally, completely and unforced in 220.187 seconds with 377248 bytes and SHA-256 fd60ae5a4a2650aea7dc1ae6a579d87ca6b89630ee88047d26c6c4b2f6769bc3. The 748-case fidelity selection remains unexecuted.
+
+The native reader passes 95 controls and verifies all thirty producer source files plus the immutable workflow and all four original archives: 24 generic, two literal Home and four V04 PNGs. Required application, entry and all five nodes exit zero normally, completely and unforced. Auxiliary VCTIP telemetry termination is separate and leaves zero helpers. SDK publication stays paused, automatic receive stays disabled and generated/persisted selection stays index one of two. Native entry output is complete at 45916 bytes with SHA-256 261a21af9491d85b7eefb18cd6e1f5e14924e1f61fb238c4bb5efcaadc5184c1. Exact saved locale preference, atomic capture, full motion, financial fixtures and release remain unqualified.
+
+The two actual Source268 Home images and their exact references have now been viewed. Notifications is painted in both themes. The owned review closes SUCCESS with original controller exit zero; the verified 339318-byte archive is retained and only registered disposable extraction is removed. This closes the missing hover presentation for this source. Activity still has a selected-address badge rather than the reference All addresses selector; Unknown/Units unavailable, empty collection/token content, relative time and hero field differences remain X411. No sample data, alternate scope, aligned animation phase or screenshot match is invented. The original animated eye behavior remains as specified by the repository artwork guidance.
+
+The Source268 full non-chain suite records 4842 passes, one skip, zero failures/errors, 562 hidden and 5405 terminal events. All twelve checks pass; locked restoration, generated source and localization remain unchanged. Root analysis has zero errors/warnings and 1296 infos; vendored analysis has zero findings. Debug and Release complete normally, completely, unforced and zero in 109.453 and 144.719 seconds. Library correspondence and map exports remain separate from DLL initialization, an unfiltered chain suite and release qualification. Source265 observer-exit UNKNOWN and local ref-kind failure remain preserved.
+
+Source269 adds a finite captureSelection API. It snapshots unique known ids, refuses empty/duplicate/all/unknown selections and preflights every original script before the first UI or output effect. The old capture API, fresh-directory rules, original file retention, pointer/hit-test guards, theme/window/rail restoration and all global byte/time/request bounds remain. The native readonly caller now selects the authored home-rest and home-hidden scripts in one fresh directory. Schema two binds exactly four literal filenames and both original script digests; schema one remains separately strict for the original two-image interface. The existing hidden script restores balances only after a durably retained positive shot. A failed original command holds its session and is never replayed. The reader binds 31 producer files, including the original hidden script, without adding an archive or increasing its sixteen-request full budget.
+
+Three meaningful Dart cases cover invalid selection preflight, caller-list mutation with both theme pairs, and the real bound Home scripts through positive and negative hidden capture. Existing Python cases now exercise both strict schemas, generator script/pixel binding and the original PNG_INVALID refusal before any manifest write. The earlier private in-memory negative assertion used the wrong exception class; its original failure is retained and the corrected assertion checks the original finite PNG_INVALID code. All old registrations and counterexamples remain, except the newly valid ordinary count. Expectations become 749/751 Dart with unchanged 918/453/95 Python/memory/reader counts; 746/748 are explicitly stale. Applied memory and a fresh harness-only gate are required before new native admission. Product UI, assets, dependencies, original financial/profile/password/send/seed/reopen inputs and SDK authority remain unchanged.
+
+Main progress stays 72/80, or 90 percent by rows rather than effort. The completed original V04 viewing remains bound to the four Source265 images. The Arabic resource is only a locale declaration; English fallback and unqualified Arabic glyph/localization quality remain X414. Zero accepted matches out of 94, nineteen preparations and 88 missing catalog outputs remain until new actual captures are independently qualified and reviewed. Generic pages and V04 frames are not literal catalog aliases. Original Source267/266/264/263/262 and all earlier failures/HOLD/UNKNOWNs remain; Source267 and Source263 original native inner causes remain NOT_ESTABLISHED. Native101 send and Native103 Token confirmation/effect remain UNKNOWN; Native104 is not admitted. The PR stays Draft.
+
+
+## Source270: retain equivalent test paths under the strict analysis gate
+
+2026-11-01T00:27Z: Original Source269 aa343d30ecdf [harness-only Windows 41256403443](https://github.com/edgepillar/syrius/actions/runs/41256403443) remains FAILURE. All 918 Python controls pass with three original skips and fourteen asset phases pass. The original analyzer exits zero with complete 912-byte output and SHA-256 d538af75bbf4037208f2b3ec8676e181de7ac0cc07f4d56cd04be0f2a43988a0. It has zero errors/warnings and five PREFER_INTERPOLATION_TO_COMPOSE_STRINGS infos. The strict zero-findings gate rejects them. All five finite locations are retained with their original other source classification; their positions correspond to three new test path expressions. Flutter tests are skipped; no native wallet/lab runs and zero artifacts exist. No runtime or archive retry can qualify an unexecuted stage.
+
+Source270 changes only those three path expressions in two existing Dart test files to equivalent interpolation. Their values, all assertions, registrations, source predicates and inputs remain. The finite Home selection, strict legacy/schema-two archive bindings, producer/reader code, 31 producer pins, actual hidden script, original restoration/hold rules, product UI, assets, dependencies, SDK authority, workflow and global bounds are unchanged. No lint rule is disabled. Expectations remain 749/751 ordinary/fidelity Dart with 918/453/95 Python/memory/reader controls; fresh harness-only qualification precedes native admission. The original Source269 five-info refusal stays retained.
+
+Latest positive evidence remains Source268 with five terminal successful hosted runs, 746 focused passes, a 4842-pass/one-skip non-chain baseline, clean selected analysis, all twelve baseline checks and normal complete unforced required-wallet/five-node closure. Its independent reader qualifies thirty PNGs and all thirty sources. Both actual Home originals and references are viewed in a closed SUCCESS review/controller zero, with Notifications painted in both themes. Scope/content/hero differences remain X411. Its 339318-byte original archive is retained. These results do not qualify Source270 runtime or hidden-state pixels.
+
+Main progress remains 72/80 by rows, zero accepted matches out of 94, nineteen preparations and 88 missing catalog outputs. Original V04 viewing stays complete on Source265; the locale-only Arabic resource and unqualified full localization/glyph quality remain X414. Source267/263 original native inner causes remain NOT_ESTABLISHED. All original failures/HOLD/UNKNOWNs remain source-bound. Native101 send and Native103 Token confirmation/effect remain UNKNOWN; Native104 is not admitted. The PR remains Draft.
+
+## Source271: prepare the original expanded Home state
+
+2026-11-01T00:58Z: Source270 33fa9485d6de has three terminal successful hosted runs:
+[harness-only 41257114219](https://github.com/edgepillar/syrius/actions/runs/41257114219),
+[native Windows 41257907083](https://github.com/edgepillar/syrius/actions/runs/41257907083)
+and [independent reader 41258919158](https://github.com/edgepillar/syrius/actions/runs/41258919158).
+Both engine selections pass 749 ordinary cases with zero failures/errors/skips
+and zero selected findings. Each retains 918 Python controls with three original
+skips and fourteen asset phases. The native engine completes normally, completely,
+unforced and zero in 138.609 seconds with 378105 bytes and SHA-256
+cdd5e3d3e912d54f6043f3f9cbcefce24cfbf26ff725367ae2a388db20da13e3.
+The 751-case startup-fidelity selection remains unexecuted.
+
+The independent reader passes all 95 controls and verifies 31 producer files,
+the immutable workflow and all four original archives: 24 generic, four literal
+Home rest/hidden and four V04 PNGs. Required application, entry and five nodes
+exit normally, completely, unforced and zero; auxiliary VCTIP termination is
+separate. SDK publication stays paused, automatic receive stays disabled and
+selection remains generated, persisted index one of two. Entry output is complete
+at 47427 bytes with SHA-256
+cc6800883e6803f734c0bdfef6ce8a82154f862b5e2ca632ff8c00b8331d98bf.
+The independently verified four-Home archive is 660819 bytes with SHA-256
+36d9eee8fed60fb970aabc7f80a68cc415c4fa337534bbf0cd40003949b4ebff.
+Its local transport and actual viewing remain pending, separately from the
+completed Source268 two-Home and Source265 V04 reviews. Two new hidden outputs
+reduce missing literal catalog outputs from 88 to 86; zero matches are accepted.
+
+Source271 adds a separate captureReadonlyHomeOpenStates entry point, keeping the
+original rest and rest/hidden APIs. It selects only authored home-rest, home-open
+and home-hidden in one fresh output. The original open script's inputs are
+retained; after each fully retained positive shot it closes Tokens and waits for
+its body to disappear. A failed shot or restoration holds the original session
+and is never replayed. Schema three binds exactly six ordered filenames and all
+three script digests; schemas one and two stay separately strict. The independent
+reader binds 32 producer files, including the open script, without increasing
+the archive count, sixteen-request full budget or any global byte/time bound.
+
+One new Dart case runs the real three-script selection through the same bound
+transport. It checks open state at both open shots, closed state before both
+hidden shots, durable pixels before each Tokens restoration, and first shot,
+open-shot, restoration and hidden-shot refusals without replay or success
+metadata. The fake actor retains actual tab transitions for the original goto
+wait. Existing Python cases extend strict metadata, generator and complete
+artifact-reader controls to schema three while retaining all older cases.
+The original private three-failure fixture run remains retained; corrected
+partial memory controls pass 453 cases with no scratch, network or shared-store
+access. Dart execution remains pending. Expected ordinary/fidelity counts become
+750/752, while Python/memory/reader remain 918/453/95. Applied memory controls and
+a fresh harness-only gate are required before new native admission.
+
+The last broad Windows baseline remains source-bound to Source268:
+[producer 41253919663](https://github.com/edgepillar/syrius/actions/runs/41253919663)
+and [inspector 41255744645](https://github.com/edgepillar/syrius/actions/runs/41255744645)
+qualify 4842 passes/one skip, twelve checks and Debug/Release. Root analysis has
+zero errors/warnings and 1296 infos; vendored analysis is clean. Product UI,
+assets, dependencies, financial/profile/password/send/seed/reopen inputs and SDK
+authority are unchanged. That prior exact application UI evidence is reused
+within its original scope; no new full-suite run or current full qualification
+is claimed for this controller change.
+
+Main progress remains 72/80, or 90 percent by rows rather than effort. P03, P09,
+F06, V01-V03 and V05-V06 remain open. Original V04 viewing is complete on
+Source265; the locale-only Arabic resource and unqualified glyph/localization
+quality stay X414. Zero of 94 matches, nineteen preparations and 86 missing
+outputs remain. Generic and V04 frames are not literal catalog aliases. Original
+Source269 five-info refusal, Source267/266/264/263/262 failures and all earlier
+FAILURE/HOLD/UNKNOWNs stay source-bound. Source267/263 original inner causes
+remain NOT_ESTABLISHED. Native101 send and Native103 Token confirmation/effect
+stay UNKNOWN; Native104 is not admitted. The PR remains Draft.
+
+## Source272: promote the synthetic Home tab value
+
+2026-11-01T01:06Z: Original Source271 f3405b801f16
+[harness run 41259332493](https://github.com/edgepillar/syrius/actions/runs/41259332493)
+passes 918 Python controls/three original skips and fourteen asset phases. Its
+strict selected analysis gate then refuses one CAST_NULLABLE_TO_NON_NULLABLE
+info at the new fake actor's tab cast. The analyzer exits zero with complete
+178-byte output and SHA-256
+47ccce5501ec43efde920b889d3ac861a82fde262cdd4ac8aa92984b917bcbff.
+Dart and native stages remain unexecuted, no lab is selected and zero artifacts
+exist. The original failure remains retained and its run is not retried.
+
+Source272 reads that synthetic command tab once as Object?, checks it is String
+and uses the promoted value. This removes the nullable cast without changing the
+actor's tab transitions, input maps, assertions, case registrations or counts.
+Production capture/reader/SDK code, all three strict Home schemas, positive-shot
+Tokens restoration, original financial/profile/password/send/seed/reopen inputs,
+workflow, dependencies and global bounds are unchanged. Expectations remain
+750/752 ordinary/fidelity Dart and 918/453/95 Python/memory/reader, with 32
+unchanged producer pins. Applied memory controls and a fresh harness-only gate
+are required before new native admission. The six-Home path remains unqualified.
+
+Latest positive native evidence stays bound to Source270: all three runs finish
+successfully with 749 ordinary passes, 918 Python/three skips, fourteen asset
+phases, zero selected findings and independently verified 32 PNGs/31 producer
+files. Required app/entry/five-node closure is normal, complete, unforced and
+zero; auxiliary telemetry cleanup is separate. Its 660819-byte four-Home archive
+is verified; local transport and actual viewing remain pending. Prior Source268
+closed two-Home review and 4842-pass/one-skip broad baseline retain original
+scope. Original Source265 V04 viewing stays complete and Arabic fallback stays
+X414. Product UI is unchanged; no new full-suite qualification is inferred.
+
+Main progress stays 72/80 by rows, zero of 94 matches, nineteen preparations and
+86 missing literal outputs. All original Source271/269/267/266/264/263/262 and
+earlier FAILURE/HOLD/UNKNOWNs remain source-bound. Source267/263 original inner
+causes stay NOT_ESTABLISHED. Native101 send and Native103 Token
+confirmation/effect remain UNKNOWN; Native104 is not admitted. The PR is Draft.
+
+## Source273: retain one original eye beside hidden Home balances
+
+2026-11-01T01:48Z: Source272 1e0e7da070b6 now has three successful original runs:
+[harness 41259908062](https://github.com/edgepillar/syrius/actions/runs/41259908062),
+[read-only native 41260505235](https://github.com/edgepillar/syrius/actions/runs/41260505235)
+and [independent reader 41261948468](https://github.com/edgepillar/syrius/actions/runs/41261948468).
+They establish 750 ordinary Dart passes/zero skips, 918 Python controls/three
+original skips, fourteen asset phases, zero selected findings and 95 independent
+reader cases. The reader binds 32 producer files, four original archives and all
+34 PNGs, including six literal Home rest/open/hidden captures. Required owned
+app, entry and five-node closure is normal, complete, unforced and zero.
+This is source-bound inspection evidence; no visual match or full-baseline
+qualification of this revision is inferred.
+
+The separately approved Source270 four-Home review is complete: one verified
+660819-byte archive was transported once; all four actual images and their four
+references were viewed. Its original controller exits zero and the owned review
+closes successfully. Only registered disposable extraction was removed; verified
+archive evidence and all prior HOLDs were retained. Both hidden images show two
+specific layout gaps: the eye remains in the address header, and individual fiat
+conversion masks remain beside the coin rows. Existing X411 content, selected-
+address scope and status differences remain; no backend cause is inferred.
+
+Source273 places the same original EyeToggle beside masked ZNN when a snapshot
+exists. A stable key owned by HomeHero preserves its State, animation controller
+and focus across privacy and responsive layout changes. The original asset,
+half-second transition, blink and keyboard actions are retained. Hidden per-coin
+DollarText fields are omitted while the total-fiat mask remains. Visible fiat
+fields, loading/failure access, amount arithmetic, feeds and all financial
+inputs are retained. One both-theme case checks geometry, controller identity,
+focus, Enter/Space, responsive reparenting and a missing-snapshot failure state.
+
+Expected ordinary/startup-fidelity counts become 751/753. Python/memory/reader
+remain 918/453/95. All earlier finite numeric refusals remain, except the newly
+valid ordinary 751 count; old 750/752 counts are explicitly stale. Three Home
+schemas, six filenames, 34 expected PNGs, 32 producer pins, SDK authority, original
+financial/profile/password/send/seed/reopen commands, workflow, dependencies and
+global bounds are retained. Applied source controls, a fresh harness gate,
+native/independent-reader inspection and a new broad Windows baseline with an
+independent inspector are required for this changed application UI. Source268's
+4842-pass/one-skip baseline remains qualified only on its original source.
+
+Main progress stays 72/80 by rows, zero of 94 matches, nineteen preparations and
+84 missing literal catalog outputs. Original V04 viewing retains its scope;
+Arabic fallback remains X414. All original failures, HOLDs and UNKNOWNs stay
+preserved. Native101 send and Native103 Token confirmation/effect remain UNKNOWN;
+Native104 is not admitted. The existing PR stays Draft.
+
+## Source274: correct the Home regression case's declared types
+
+2026-11-01T01:55Z: Original Source273 ffe9704f8bb5
+[harness run 41262728383](https://github.com/edgepillar/syrius/actions/runs/41262728383)
+passes 918 Python controls/three original skips and fourteen asset phases. Its
+selected analyzer then exits three with seven errors, zero warnings and zero
+infos. Complete output is 1480 bytes with SHA-256
+4b964f19bceef3d7f456674dd79b6a83eae7922baa54dc7fd5b08e4dbc7c53b8.
+Two INVALID_ASSIGNMENT and five TYPE_ARGUMENT_NOT_MATCHING_BOUNDS diagnostics
+bind only the new Home widget case. Dart/native remain unexecuted and zero
+artifacts exist. The failed original run is retained without retry.
+
+Source274 supplies State<EyeToggle> as the tester.state generic argument and
+declares the observed AppLottie controller as its exposed Animation<double>
+type. All five original State identity checks, controller identity, geometry,
+focus, Enter/Space, playback and missing-snapshot assertions are unchanged.
+No cast or weaker matcher is introduced; no case or input is removed.
+The original HomeHero privacy placement, original eye asset/player and fiat-row
+correction remain unchanged, with all financial inputs and arithmetic retained.
+
+Expectations remain 751/753 ordinary/startup-fidelity Dart and 918/453/95
+Python/memory/reader with 32 unchanged producer pins. Applied memory controls
+and a fresh harness-only gate are required before native admission. The changed
+application UI from Source273 still requires native/independent-reader capture
+and a new broad Windows producer/inspector baseline. Neither old positive
+Source272 capture nor Source268 full-suite evidence qualifies that new UI.
+
+Source272 retains three successful source-bound runs, 750 ordinary passes,
+zero skips or selected findings, reader 95, 32 source pins and 34 PNGs. Required
+app/entry/five-node closure is normal, complete, unforced and zero. Source270
+four-Home actual/reference viewing is complete and closed; its observed eye
+placement and extra fiat masks motivated the preserved Source273 production
+change. Prior Source268 broad baseline remains 4842 passes/one skip on its
+original exact UI source. Original V04 viewing retains its scope; Arabic
+fallback remains X414 and the existing X411 content/scope/status gaps remain.
+
+Main progress stays 72/80 by rows, zero of 94 matches, nineteen preparations and
+84 missing literal catalog outputs. All original FAILURE/HOLD/UNKNOWNs remain,
+including the original Source273 seven-error refusal. Native101 send and
+Native103 Token confirmation/effect remain UNKNOWN; Native104 is not admitted.
+The existing PR stays Draft.
+
+## Source275: retain the literal Go To palette after a positive capture
+
+2026-11-01T02:34Z: Source274 735fb0ccf542 has five successful source-bound runs:
+[harness 41263201527](https://github.com/edgepillar/syrius/actions/runs/41263201527),
+[native 41263824470](https://github.com/edgepillar/syrius/actions/runs/41263824470),
+[reader 41265200881](https://github.com/edgepillar/syrius/actions/runs/41265200881),
+[full Windows 41263876562](https://github.com/edgepillar/syrius/actions/runs/41263876562)
+and [independent full inspector 41265646572](https://github.com/edgepillar/syrius/actions/runs/41265646572).
+The two selected lanes pass 751 ordinary Dart cases/zero skips, 918 Python
+controls/three original skips, fourteen asset phases and zero selected findings.
+Reader 95 verifies 32 producer sources, the immutable workflow and 34 PNGs:
+24 generic pages, six literal Home rest/open/hidden and four V04. Required owned
+app/entry/five-node closure is normal, complete, unforced and zero; auxiliary
+telemetry cleanup is separate. The broad baseline qualifies 4847 passes/one skip,
+twelve checks and Debug/Release on that exact source. Root analysis has zero
+errors/warnings and 1296 infos; vendored analysis is clean. DLL initialization,
+unfiltered chain, motion and release acceptance remain separate.
+
+The Home privacy case qualifies the original eye State/controller, keyboard
+focus, half-second playback, hidden-amount geometry, per-coin fiat omission and
+retained total mask in both themes. Actual new Home image viewing remains
+separate and pending; no native visual match is accepted. Original Source270
+four-Home viewing and Source265 V04 viewing retain their source-bound scope.
+Source273's seven-error test-type refusal, skipped Dart/native and zero artifacts
+remain preserved without retry; Source274 fixes only the declared test types.
+
+Source275 adds a distinct four-state capture API for rest/open/hidden/Go To.
+The original Go To script prefix, including its empty selector placeholder and
+del query value, is retained. Escape and the bounded absent-palette check run only
+after a fully retained positive shot. They dismiss without selecting a target.
+A first negative reply holds the original session; no capture, restoration,
+financial command or failed owner is replayed. Legacy two-, four- and six-image
+APIs and schemas remain strict. Schema four binds eight ordered Home filenames
+and four exact script digests, including the two literal 05-home-goto outputs.
+The same four artifact families, 16-request reader budget and global byte/time
+caps remain. Product UI, original eye asset/player, dependencies, workflow,
+SDK publication pause, automatic-receive disablement and all original
+financial/profile/password/send/seed/reopen inputs are unchanged.
+
+One new bound transport case exercises all four real scripts, their original
+request maps, positive retained-output dismissal and first refusals. All earlier
+cases and assertions remain. Extended Python fixtures cover exact schema-four
+files, order, source pins, byte limits and negative archives while retaining all
+legacy counterexamples. A stale-count fixture exempts only the newly valid
+ordinary 752 value; old 751/753 remain explicit refusals. Expected Dart counts
+become 752/754 ordinary/startup-fidelity; Python/memory/reader remain 918/453/95.
+Producer pins become 33. The complete private code candidate passes 453 memory
+controls; applied controls and a fresh 752-case harness gate are required before
+a new native capture and independent reader. Eight Home images and 36 total
+PNGs are expected, not yet executed. Local image transport is not performed by
+this source step. Prior full-baseline proof stays bound to Source274.
+
+Main progress stays 72/80 by rows, zero of 94 matches, nineteen preparations and
+84 missing literal outputs. The two Go To outputs remain missing until fresh
+native/reader qualification. X411 and Arabic fallback X414 remain; generic/V04
+frames are not literal aliases. All original FAILURE/HOLD/UNKNOWNs are retained.
+Native101 send and Native103 Token confirmation/effect remain UNKNOWN;
+Native104 is not admitted. The existing PR stays Draft.
+
+
+See [Source275 qualification](../docs/review/source275-home-goto-qualification.md) and the validation index for
+current source-bound results and the closed eight-Home review.
+
+
+Source276 corrects the actual Go To trailing-hint defect found in the closed
+Source275 eight-Home review. Loose text now occupies one filled content slot;
+keyboard hints stay at the trailing edge, while address details have a bounded
+trailing slot. Filtering, IME, values, seams, focus, callbacks and animation
+remain unchanged. The foreground/dim behavior is retained for separate review.
+One geometry case covers both themes, LTR/RTL, long text and 2x text scaling.
+All 24 original palette cases now join the original 752 selected cases exactly
+once: expected 777/779 ordinary/startup counts. Python/memory/reader remain
+918/453/95 and producer pins remain 33. Applied memory controls pass 453 with
+no skips, errors, native/network/write attempts or shared-store accesses.
+Fresh hosted admission must precede new native Home capture and its independent
+reader. The UI change also requires a fresh full baseline; expected root counts
+are 4849 passes and one original skip, derived before execution. All bounds,
+original financial/profile/password/seed/reopen inputs and SDK policy remain.
+The prepared Settings catalog is deferred until this correction is qualified.

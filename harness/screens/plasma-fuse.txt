@@ -1,0 +1,19 @@
+# prerequisite: unlocked-home
+# Opens the retained compact form and the existing address disclosure.
+goto plasma
+key escape
+key escape
+wait --key plasma_open_fuse --timeout 30
+tap --key plasma_open_fuse
+wait --key fuse_plasma_amount_field --timeout 30
+type --key fuse_plasma_amount_field 100
+tap --key plasma_close_fuse
+wait --key fuse_plasma_amount_field --gone --timeout 30
+tap --key plasma_open_fuse
+wait --key fuse_plasma_amount_field --timeout 30
+tap --key plasma_other_addresses_toggle
+assert --key fuse_plasma_beneficiary_selector
+# after-capture: tap --key plasma_close_fuse
+# after-capture: wait --key fuse_plasma_amount_field --gone --timeout 30
+# after-capture: goto dashboard
+# after-capture: wait --key home_hero --timeout 5

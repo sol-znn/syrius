@@ -1,128 +1,80 @@
 import 'package:material_ui/material_ui.dart';
 import 'package:zenon_syrius_wallet_flutter/model/p2p_swap/htlc_swap.dart';
 import 'package:zenon_syrius_wallet_flutter/model/p2p_swap/p2p_swap.dart';
-import 'package:zenon_syrius_wallet_flutter/utils/address_utils.dart';
-import 'package:zenon_syrius_wallet_flutter/utils/app_colors.dart';
+import 'package:zenon_syrius_wallet_flutter/rearchitecture/utils/extensions/buildcontext_extension.dart';
+import 'package:zenon_syrius_wallet_flutter/rearchitecture/utils/widgets/row_detail.dart';
+import 'package:zenon_syrius_wallet_flutter/utils/app_theme.dart';
+
 import 'package:zenon_syrius_wallet_flutter/widgets/modular_widgets/p2p_swap_widgets/detail_row.dart';
-import 'package:znn_sdk_dart/znn_sdk_dart.dart';
+import 'package:zenon_syrius_wallet_flutter/widgets/modular_widgets/p2p_swap_widgets/p2p_swaps_list_item.dart'
+    show swapListShortId;
 
-/// The ids and addresses of a finished swap, behind a "Details" toggle.
-class HtlcSwapDetailsWidget extends StatefulWidget {
-  /// Creates the details of [swap].
-  const HtlcSwapDetailsWidget({
-    required this.swap,
-    super.key,
-  });
-
-  /// The swap described.
-  final HtlcSwap swap;
-
-  @override
-  State<HtlcSwapDetailsWidget> createState() => _HtlcSwapDetailsWidgetState();
-}
-
-class _HtlcSwapDetailsWidgetState extends State<HtlcSwapDetailsWidget> {
-  bool _isExpanded = false;
+/// Public identifier details, without retaining the private legacy model.
+class HtlcSwapDetailsWidget extends StatelessWidget {
+  /// Copies public addresses and deposit identifiers without retaining secrets.
+  HtlcSwapDetailsWidget({required HtlcSwap swap, super.key})
+    : _self = swap.selfAddress,
+      _counterparty = swap.counterpartyAddress,
+      _ownId = swap.direction == P2pSwapDirection.outgoing
+          ? swap.initialHtlcId
+          : swap.counterHtlcId,
+      _counterpartyId = swap.direction == P2pSwapDirection.incoming
+          ? swap.initialHtlcId
+          : swap.counterHtlcId;
+  final String _self;
+  final String _counterparty;
+  final String? _ownId;
+  final String? _counterpartyId;
 
   @override
   Widget build(BuildContext context) {
-    final TextStyle dim = Theme.of(
-      context,
-    ).textTheme.titleMedium!.copyWith(fontSize: 13);
-    return AnimatedSize(
-      duration: Durations.short4,
-      curve: Easing.standard,
-      alignment: Alignment.topCenter,
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        mainAxisSize: MainAxisSize.min,
-        children: <Widget>[
-          Center(
-            child: InkWell(
-              borderRadius: BorderRadius.circular(16),
-              mouseCursor: SystemMouseCursors.click,
-              onTap: () => setState(() {
-                _isExpanded = !_isExpanded;
-              }),
-              child: Padding(
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 12,
-                  vertical: 6,
-                ),
-                child: Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: <Widget>[
-                    Text('Details', style: dim),
-                    const SizedBox(width: 4),
-                    AnimatedRotation(
-                      turns: _isExpanded ? 0.5 : 0,
-                      duration: Durations.short4,
-                      curve: Easing.standard,
-                      child: const Icon(
-                        Icons.keyboard_arrow_down,
-                        size: 18,
-                        color: AppColors.faint,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
+    final AppTokens tokens = AppTokens.of(context);
+    return RowDetail(
+      keyPrefix: 'htlc_public_details',
+      row: Padding(
+        padding: tokens.swapCellPadding,
+        child: Row(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: <Widget>[
+            Text(
+              context.l10n.swapListDetails,
+              style: tokens.compactText.copyWith(color: tokens.dim),
             ),
-          ),
-          if (_isExpanded) ...<Widget>[
-            const SizedBox(height: 8),
-            const Divider(),
-            const SizedBox(height: 4),
-            _buildDetailsList(widget.swap),
+            SizedBox(width: tokens.fieldLabelGap),
+            const RowDetailChevron(),
           ],
-        ],
+        ),
       ),
-    );
-  }
-
-  Widget _buildDetailsList(HtlcSwap swap) {
-    final String yourDepositId = swap.direction == P2pSwapDirection.outgoing
-        ? swap.initialHtlcId
-        : swap.counterHtlcId!;
-    final String? counterpartyDepositId =
-        swap.direction == P2pSwapDirection.incoming
-        ? swap.initialHtlcId
-        : swap.counterHtlcId;
-    return Column(
-      children: <Widget>[
-        DetailRow(
-          label: 'Your address',
-          value: swap.selfAddress,
-          valueToShow: ZenonAddressUtils.getLabel(swap.selfAddress),
+      detail: (BuildContext context) => Padding(
+        padding: tokens.swapDetailPadding,
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: <Widget>[
+            DetailRow(
+              label: context.l10n.swapListYourAddress,
+              value: _self,
+              valueToShow: swapListShortId(_self),
+            ),
+            DetailRow(
+              label: context.l10n.swapListCounterparty,
+              value: _counterparty,
+              valueToShow: swapListShortId(_counterparty),
+            ),
+            if (_ownId != null)
+              DetailRow(
+                label: context.l10n.swapListYourDepositId,
+                value: _ownId,
+                valueToShow: swapListShortId(_ownId),
+              ),
+            if (_counterpartyId != null)
+              DetailRow(
+                label: context.l10n.swapListCounterpartyDepositId,
+                value: _counterpartyId,
+                valueToShow: swapListShortId(_counterpartyId),
+              ),
+          ],
         ),
-        DetailRow(
-          label: 'Counterparty',
-          value: swap.counterpartyAddress,
-          valueToShow: ZenonAddressUtils.getLabel(swap.counterpartyAddress),
-        ),
-        DetailRow(
-          label: 'Your deposit ID',
-          value: yourDepositId,
-          valueToShow: Hash.parse(yourDepositId).toShortString(),
-        ),
-        if (counterpartyDepositId != null)
-          DetailRow(
-            label: 'Counterparty deposit ID',
-            value: counterpartyDepositId,
-            valueToShow: Hash.parse(counterpartyDepositId).toShortString(),
-          ),
-        DetailRow(
-          label: 'Hashlock',
-          value: swap.hashLock,
-          valueToShow: Hash.parse(swap.hashLock).toShortString(),
-        ),
-        if (swap.preimage != null)
-          DetailRow(
-            label: 'Secret',
-            value: swap.preimage!,
-            valueToShow: Hash.parse(swap.preimage!).toShortString(),
-          ),
-      ],
+      ),
     );
   }
 }

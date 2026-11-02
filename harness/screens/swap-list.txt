@@ -1,0 +1,13 @@
+# prerequisite: unlocked-home
+# Deposit records and chain proofs are read through the selected original owner.
+# An active row opens in place; no new swap, signing or deletion is performed.
+goto p2pSwap
+wait --key p2p_swaps_strip --timeout 30
+wait --key p2p_swaps_list --timeout 30
+assert --key swap_filter
+assert --key p2p_start_swap
+assert --key p2p_join_swap
+# Example row counts and amounts depend on an authorized isolated chain fixture.
+# Missing proof remains Unknown; this script never injects terms or unlock data.
+# after-capture: goto dashboard
+# after-capture: wait --key home_hero --timeout 5

@@ -1,0 +1,14 @@
+# Source310 Windows and catalog outcomes
+
+Source `9668cdcf9159b089c7396577a0260a4a39756215`, tree `18c86738bc372d48d1f3febe5de8f03d02eeff0e`, has ten terminal original/inspection runs at attempt one. Original failures remain failures and none is retried.
+
+- Focused [run 41367911480](https://github.com/edgepillar/syrius/actions/runs/41367911480) passes 790 Dart cases, 928 Python controls with three existing skips, fourteen assets and selected analysis with zero errors, warnings or information findings.
+- Full Windows [run 41368896009](https://github.com/edgepillar/syrius/actions/runs/41368896009), independently inspected by run 41371920775, passes 4,862 tests with one existing skip. Root analysis has zero errors/warnings and 1,296 existing information findings; vendored analysis has zero findings. Debug and Release finish normally with twelve controller checks. This is baseline evidence, not DLL, financial-effect, full-chain, motion or release qualification.
+- Home run 41369002953 and independent reader 41371094586 qualify 36 PNGs: 24 generic pages, eight literal Home views and four V04 views. The new Home images have not been locally viewed. Source305's closed Home review keeps only its original scope.
+- Navigation run 41369082362 fails during the original bounded prebuild selection at 240.125 seconds. Forced cleanup is preserved; counts are unavailable. No node checkout, lab, wallet, build, capture or archive starts. Zero archives mean no artifact reader is applicable. The suite or case responsible and the inner cause remain NOT_ESTABLISHED. Fresh Navigation qualification is still required.
+- Settings run 41369203001 fails on light/set-node line ten: the original ready wait for `node_settings_add`. Its schema-two reply is unknown; the inner cause remains NOT_ESTABLISHED. Reader 41371286002 independently qualifies the failure evidence, not the page. There are zero PNGs. Wallet cleanup is forced; entry exit is one and app exit is unavailable. Five nodes stop normally. No disabled Add control is activated.
+- Details run 41369257863 and reader 41371557839 qualify 38 PNGs: 24 generic pages, ten literal Details views and four V04 views. The ten literal images and their references were individually viewed in a closed managed task; see [the actual review](source310-details-actual-review.md).
+
+Each artifact reader passes 104 controls and binds 58 source files. Home and Details finish app, entry and all five nodes normally. Two failed originals prevent all-four-family native acceptance. All prior FAILURE/HOLD/UNKNOWN evidence remains intact. Native101 and Native103 remain UNKNOWN; Native104 remains unadmitted. No original financial/profile/seed/reopen flow or retired request is replayed.
+
+Acceptance remains 72/80 rows, nineteen preparations, 36 distinct literal outputs, 58 missing and zero accepted matches. All 47 screens in both themes and every original acceptance criterion remain required.

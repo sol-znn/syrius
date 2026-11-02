@@ -1,123 +1,117 @@
-import 'package:material_ui/material_ui.dart';
-import 'package:provider/provider.dart';
-import 'package:zenon_syrius_wallet_flutter/main.dart';
-import 'package:zenon_syrius_wallet_flutter/rearchitecture/utils/widgets/motion/motion.dart';
-import 'package:zenon_syrius_wallet_flutter/rearchitecture/utils/widgets/page/page_widgets.dart';
-import 'package:zenon_syrius_wallet_flutter/utils/global.dart';
-import 'package:zenon_syrius_wallet_flutter/utils/notifiers/default_address_notifier.dart';
-import 'package:zenon_syrius_wallet_flutter/widgets/widgets.dart';
-import 'package:znn_sdk_dart/znn_sdk_dart.dart';
+import 'dart:async';
 
-/// Accelerator: the project list is the page.
-///
-/// A fixed row on top holds the fund's figures and the two actions; the
-/// list of projects takes the rest. Whether the selected address owns a
-/// Pillar decides the vote buttons and filters, so that lookup is made once
-/// per address, not on every build.
+import 'package:material_ui/material_ui.dart';
+import 'package:zenon_syrius_wallet_flutter/blocs/refresh_bloc_mixin.dart';
+import 'package:zenon_syrius_wallet_flutter/screens/stepper_screen.dart';
+import 'package:zenon_syrius_wallet_flutter/utils/wallet_context_revision.dart';
+import 'package:zenon_syrius_wallet_flutter/widgets/modular_widgets/accelerator_widgets/accelerator_action_binding.dart';
+import 'package:zenon_syrius_wallet_flutter/widgets/modular_widgets/accelerator_widgets/accelerator_action_controller.dart';
+import 'package:zenon_syrius_wallet_flutter/widgets/modular_widgets/accelerator_widgets/accelerator_donation_stepper.dart';
+import 'package:zenon_syrius_wallet_flutter/widgets/modular_widgets/accelerator_widgets/accelerator_list_binding.dart';
+import 'package:zenon_syrius_wallet_flutter/widgets/modular_widgets/accelerator_widgets/accelerator_list_presenter.dart';
+import 'package:zenon_syrius_wallet_flutter/widgets/modular_widgets/accelerator_widgets/accelerator_list_view.dart';
+import 'package:zenon_syrius_wallet_flutter/widgets/modular_widgets/accelerator_widgets/project_creation_stepper.dart';
+
+/// Accelerator reads have one original wallet, member set, node and revision.
 class AcceleratorTabChild extends StatefulWidget {
-  /// Creates the Accelerator page.
+  /// Mounts source-bound reads and admits forms only from an explicit action.
   const AcceleratorTabChild({
     required this.onStepperNotificationSeeMorePressed,
     super.key,
   });
 
-  /// Opens the notifications page from a stepper.
+  /// Original notification-details navigation callback for nested steppers.
   final VoidCallback onStepperNotificationSeeMorePressed;
 
   @override
   State<AcceleratorTabChild> createState() => _AcceleratorTabChildState();
 }
 
-class _AcceleratorTabChildState extends State<AcceleratorTabChild> {
-  String? _address;
-  Future<List<PillarInfo>>? _pillars;
-
-  /// The Pillars [address] owns, fetched again only when the address
-  /// changes. The old page asked for them in `build`, so every rebuild sent
-  /// a request and showed a spinner over the whole page.
-  Future<List<PillarInfo>> _pillarsOf(String address) {
-    if (_pillars == null || _address != address) {
-      _address = address;
-      _pillars = zenon!.embedded.pillar.getByOwner(Address.parse(address));
-    }
-    return _pillars!;
-  }
+class _AcceleratorTabChildState extends State<AcceleratorTabChild>
+    with RefreshBlocMixin {
+  final AcceleratorListPresenter _presenter = AcceleratorListPresenter();
+  bool _queued = false;
 
   @override
-  Widget build(BuildContext context) {
-    return Consumer<SelectedAddressNotifier>(
-      builder: (BuildContext context, _, _) {
-        final String address = kSelectedAddress!;
-        return FutureBuilder<List<PillarInfo>>(
-          future: _pillarsOf(address),
-          builder: (_, AsyncSnapshot<List<PillarInfo>> snapshot) {
-            // While another address's lookup runs, the snapshot still holds
-            // the previous answer; it must not be shown under this address.
-            final bool ready =
-                snapshot.connectionState == ConnectionState.done &&
-                snapshot.hasData;
-            final PillarInfo? pillarInfo = ready && snapshot.data!.isNotEmpty
-                ? snapshot.data!.first
-                : null;
-            return PageGrid(
-              rows: <PageRow>[
-                PageRow.fixed(88, <PageCell>[
-                  PageCell(
-                    AcceleratorStats(
-                      pillarInfo: pillarInfo,
-                      onStepperNotificationSeeMorePressed:
-                          widget.onStepperNotificationSeeMorePressed,
-                    ),
-                  ),
-                ]),
-                PageRow.fill(<PageCell>[
-                  PageCell(
-                    _buildProjects(snapshot, address, pillarInfo, ready: ready),
-                  ),
-                ]),
-              ],
-            );
-          },
-        );
-      },
+  void initState() {
+    super.initState();
+    WalletContextRevision.changes.addListener(_queueRefresh);
+    _queueRefresh();
+  }
+
+  void _queueRefresh() {
+    if (!mounted) return;
+    // Context revisions clear paint synchronously. Capturing in the next
+    // turn lets the source change finish before a new read is admitted.
+    _presenter.invalidate();
+    if (_queued) return;
+    _queued = true;
+    scheduleMicrotask(() {
+      _queued = false;
+      if (!mounted) return;
+      listenToWsRestart(_queueRefresh);
+      try {
+        final AcceleratorListBinding? binding =
+            AcceleratorListBinding.capture();
+        if (binding != null) unawaited(_presenter.load(binding));
+      } on Object {
+        // An unbound transport cannot establish an empty current list.
+        _presenter.invalidate();
+      }
+    });
+  }
+
+  void _openStepper(
+    AcceleratorListSnapshot source,
+    AcceleratorActionKind kind,
+  ) {
+    final AcceleratorListBinding? binding = source.binding;
+    if (!mounted ||
+        binding == null ||
+        !source.isCurrent ||
+        !identical(binding, _presenter.snapshot.binding) ||
+        !(ModalRoute.of(context)?.isCurrent ?? true) ||
+        !TickerMode.valuesOf(context).enabled) {
+      return;
+    }
+    final AcceleratorActionBinding? origin;
+    try {
+      origin = AcceleratorActionBinding.capture();
+    } on Object {
+      return;
+    }
+    if (origin == null || !origin.isCurrent || !source.isCurrent) return;
+    final Widget stepper = kind == AcceleratorActionKind.donate
+        ? AcceleratorDonationStepper(source: origin)
+        : ProjectCreationStepper(source: origin);
+    Navigator.of(context).push<void>(
+      MaterialPageRoute<void>(
+        builder: (BuildContext context) => StepperScreen(
+          stepper: stepper,
+          onStepperNotificationSeeMorePressed:
+              widget.onStepperNotificationSeeMorePressed,
+        ),
+      ),
     );
   }
 
-  Widget _buildProjects(
-    AsyncSnapshot<List<PillarInfo>> snapshot,
-    String address,
-    PillarInfo? pillarInfo, {
-    required bool ready,
-  }) {
-    final Widget state;
-    if (snapshot.hasError) {
-      state = Panel(
-        key: const ValueKey<String>('error'),
-        title: 'Projects',
-        child: RepaintBoundary(
-          child: SyriusErrorWidget(snapshot.error.toString()),
-        ),
-      );
-    } else if (!ready) {
-      state = const Panel(
-        key: ValueKey<String>('loading'),
-        title: 'Projects',
-        padding: EdgeInsets.all(16),
-        child: Align(
-          alignment: Alignment.topLeft,
-          child: SkeletonRows(rows: 4, gap: 18),
-        ),
-      );
-    } else {
-      state = AccProjectList(
-        // The list's bloc is made with the Pillar it votes as; another
-        // address needs another list, not the old one rebuilt.
-        key: ValueKey<String>('$address/${pillarInfo?.name}'),
-        onStepperNotificationSeeMorePressed:
-            widget.onStepperNotificationSeeMorePressed,
-        pillarInfo: pillarInfo,
-      );
-    }
-    return StateSwitcher(child: state);
+  @override
+  void dispose() {
+    WalletContextRevision.changes.removeListener(_queueRefresh);
+    cancelStreamSubscription();
+    _presenter.dispose();
+    super.dispose();
   }
+
+  @override
+  Widget build(BuildContext context) => AcceleratorListView(
+    presenter: _presenter,
+    onRefresh: _queueRefresh,
+    onDonate: (AcceleratorListSnapshot source) =>
+        _openStepper(source, AcceleratorActionKind.donate),
+    onCreateProject: (AcceleratorListSnapshot source) =>
+        _openStepper(source, AcceleratorActionKind.createProject),
+    onStepperNotificationSeeMorePressed:
+        widget.onStepperNotificationSeeMorePressed,
+  );
 }

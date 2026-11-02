@@ -1,0 +1,13 @@
+# Source297 scroll-fixture and script correspondence
+
+Prepared 2026-11-01 13:52 UTC from `e3266c1c4d5da0e8b7439b89849e56fc2167d35a`, tree `c72e36a65e243627b929f2a2cf44364c02c0c655`. The [original Source296 result](source296-original-scroll-test-failures.md) preserves clean selected analysis, 788 Flutter passes/two failures, zero artifacts and its unexported exact runtime errors.
+
+The actual AboutCard/registry case now supplies 121 complete synthetic package entries through one authentic LicenseEntry, including the original fixture-package label. Each receives the complete original fixture paragraph. The list is long because it contains many package rows, independent of whether individual package disclosures are open. The existing initial offscreen-end refusal, actual center hit, original physical scroll, final zero-timeout wait/end assertion, passive-input refusal, theme iterations, clipping checks and single admitted agent remain. No actual registry entry is removed from production.
+
+The existing Settings capture case retains its strict command-set assertion and all original allowed commands, adding `scroll`. Every observed scroll must equal the exact original peers-header command with dy 300, the collected list must be nonempty, and the successful two-theme capture must contain exactly two such scrolls. Other scroll targets, arguments or extra command fields fail. This changes a test's correspondence with its already admitted original script, without granting runtime input authority.
+
+Both Source296 physical capture preparations stay byte-identical. Application UI, pointers, SDK/publication authority, workflows, Python inputs, test selection, case registrations, process limits and byte ceilings remain unchanged. Totals remain 790 ordinary/792 startup Flutter, 928 Python controls/three original skips and 104 reader controls. Ten Source294 memory count controls retain their unchanged-input scope; no new local SDK or memory execution is claimed.
+
+Fresh zero-finding hosted analysis and all 790 focused cases are required before isolated Settings/Details producers and independent readers. Source295 full Windows evidence remains only for the byte-identical application/build inputs; no executed full-suite result for this revision is inferred. New native images require independent archive checks and actual viewing. The original all-94 acceptance scope remains.
+
+Main acceptance stays 72/80 rows, nineteen preparations, 26 available literal outputs, 68 missing and zero matches. Native101/103 remain UNKNOWN and Native104 is not admitted. English-only public text uses edgepillar, GitHub no-reply and UTC for both author and committer. Original history/evidence remain protected and the existing PR stays Draft.

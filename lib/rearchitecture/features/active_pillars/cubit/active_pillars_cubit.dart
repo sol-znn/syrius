@@ -26,7 +26,9 @@ class ActivePillarsCubit extends TimerCubit<int, ActivePillarsState> {
   @override
   Future<int> fetch() async {
     final PillarInfoList pillarInfoList = await zenon.embedded.pillar.getAll();
-    final int data = pillarInfoList.list.length;
+    // A response may contain one page. Its count is the network total,
+    // even when the returned list is short or empty.
+    final int data = pillarInfoList.count;
     kNumOfPillars = data;
     return data;
   }

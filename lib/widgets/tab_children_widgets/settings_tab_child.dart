@@ -1,44 +1,57 @@
+import 'dart:async';
+
 import 'package:material_ui/material_ui.dart';
 import 'package:zenon_syrius_wallet_flutter/blocs/blocs.dart';
-import 'package:zenon_syrius_wallet_flutter/rearchitecture/features/node_update/node_update.dart';
-import 'package:zenon_syrius_wallet_flutter/rearchitecture/utils/widgets/page/page_widgets.dart';
-import 'package:zenon_syrius_wallet_flutter/utils/app_colors.dart';
-import 'package:zenon_syrius_wallet_flutter/utils/app_theme.dart';
-import 'package:zenon_syrius_wallet_flutter/widgets/modular_widgets/help_widgets/about_section.dart';
-import 'package:zenon_syrius_wallet_flutter/widgets/modular_widgets/settings_widgets/settings_parts.dart';
+import 'package:zenon_syrius_wallet_flutter/widgets/modular_widgets/help_widgets/originals_card.dart';
+import 'package:zenon_syrius_wallet_flutter/widgets/modular_widgets/settings_widgets/apps.dart';
+import 'package:zenon_syrius_wallet_flutter/widgets/modular_widgets/settings_widgets/settings_frame.dart';
 import 'package:zenon_syrius_wallet_flutter/widgets/widgets.dart';
 
-/// The parts of Settings, in the order of the list at the left.
-enum _Section {
-  addresses('Addresses', Icons.account_balance_wallet_outlined),
-  node('Node', Icons.dns_outlined),
-  security('Security', Icons.shield_outlined),
-  display('Display', Icons.palette_outlined),
-  wallet('Wallet', Icons.tune),
-  about('About', Icons.info_outline);
-
-  const _Section(this.label, this.icon);
-
-  final String label;
-  final IconData icon;
-}
-
-/// Settings: a short list of sections at the left and the chosen one at the
-/// right.
-///
-/// It was nine expandable cards on one grid, each setting one click deep
-/// inside its card. Now a section shows all of its settings at once, and
-/// the About section holds what the Help page had.
+/// Seven Settings sections, including the wallet's connected apps.
+/// The last section chosen survives page changes within the session.
 class SettingsTabChild extends StatefulWidget {
+  /// Creates Settings with the existing wallet callbacks.
   const SettingsTabChild(
     this._onChangeAutoLockTime, {
     required this.onStepperNotificationSeeMorePressed,
     required this.onNodeChangedCallback,
+    required this.scanForReceives,
+    required this.onDeleteCache,
+    required this.onResetWallet,
+    this.onSend,
+    this.senderIsCurrent,
+    this.initialSection,
+    this.railCollapse,
     super.key,
   });
-  final VoidCallback _onChangeAutoLockTime;
+  final FutureOr<void> Function() _onChangeAutoLockTime;
+
+  /// Captures the root-owned receive source before the preference scan.
+  final Future<void> Function() scanForReceives;
+
+  /// Starts the root's exact owned maintenance question.
+  final Future<void> Function(bool Function() isCurrent) onDeleteCache;
+
+  /// Captures reset authority before covering the original Settings page.
+  final Future<void> Function(bool Function() isCurrent) onResetWallet;
+
+  /// Opens explicit Send after the captured contact updates the owned draft.
+  final VoidCallback? onSend;
+
+  /// The exact sender attachment, independently of section visibility.
+  final bool Function()? senderIsCurrent;
+
+  /// Opens the notification history for a multi-step operation.
   final VoidCallback onStepperNotificationSeeMorePressed;
+
+  /// Returns to the connected wallet after a node changes.
   final VoidCallback onNodeChangedCallback;
+
+  /// Opens a section directly, for a connected-site link or Go to action.
+  final SettingsSectionId? initialSection;
+
+  /// The shared rail choice controlled by Display.
+  final RailCollapse? railCollapse;
 
   @override
   State<SettingsTabChild> createState() => _SettingsTabChildState();
@@ -47,232 +60,162 @@ class SettingsTabChild extends StatefulWidget {
 class _SettingsTabChildState extends State<SettingsTabChild> {
   // The shell builds a page only while it is shown, so the section picked
   // last is kept here for the next visit.
-  static _Section _lastSection = _Section.addresses;
+  static SettingsSectionId _lastSection = SettingsSectionId.addresses;
 
-  _Section _section = _lastSection;
+  late SettingsSectionId _section = widget.initialSection ?? _lastSection;
+  int _sectionEpoch = 0;
+  final OriginalsController _originals = OriginalsController();
 
   final AccountChainStatsBloc _accountChainStatsBloc = AccountChainStatsBloc();
 
   @override
+  void initState() {
+    super.initState();
+    _lastSection = _section;
+  }
+
+  @override
   Widget build(BuildContext context) {
-    return Row(
-      crossAxisAlignment: CrossAxisAlignment.stretch,
-      children: <Widget>[
-        SizedBox(
-          width: 184,
-          child: Panel(
-            padding: const EdgeInsets.all(8),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: <Widget>[
-                for (final _Section section in _Section.values)
-                  _SectionItem(
-                    section: section,
-                    selected: section == _section,
-                    onTap: () => setState(() {
-                      _section = section;
-                      _lastSection = section;
-                    }),
-                  ),
-              ],
-            ),
-          ),
-        ),
-        const SizedBox(width: kPanelGap),
-        Expanded(
-          child: AnimatedSwitcher(
-            duration: Durations.medium1,
-            reverseDuration: Durations.short2,
-            switchInCurve: Easing.emphasizedDecelerate,
-            switchOutCurve: Easing.emphasizedAccelerate,
-            layoutBuilder: (Widget? current, List<Widget> previous) => Stack(
-              fit: StackFit.expand,
-              children: <Widget>[...previous, if (current != null) current],
-            ),
-            transitionBuilder: (Widget child, Animation<double> animation) =>
-                FadeTransition(opacity: animation, child: child),
-            child: KeyedSubtree(
-              key: ValueKey<_Section>(_section),
-              child: _buildSection(_section),
-            ),
-          ),
-        ),
-      ],
+    return SettingsFrame(
+      selected: _section,
+      onSelected: (SettingsSectionId section) {
+        if (section == _section) return;
+        setState(() {
+          _sectionEpoch++;
+          _section = section;
+          _lastSection = section;
+        });
+      },
+      child: _buildSection(_section),
     );
   }
 
-  Widget _buildSection(_Section section) {
+  @override
+  void didUpdateWidget(SettingsTabChild oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    final SettingsSectionId? initial = widget.initialSection;
+    if (initial != null && initial != oldWidget.initialSection) {
+      if (initial != _section) _sectionEpoch++;
+      _section = initial;
+      _lastSection = initial;
+    }
+  }
+
+  Widget _buildSection(SettingsSectionId section) {
     switch (section) {
-      case _Section.addresses:
-        return PageGrid(
-          rows: <PageRow>[
-            PageRow.fill(<PageCell>[
-              PageCell(
-                Addresses(accountChainStatsBloc: _accountChainStatsBloc),
-                flex: 3,
-              ),
-              PageCell(
-                AccountChainStatsWidget(
-                  accountChainStatsBloc: _accountChainStatsBloc,
-                ),
-                flex: 2,
-              ),
-            ]),
-          ],
+      case SettingsSectionId.addresses:
+        final int addressesEpoch = _sectionEpoch;
+        bool addressesCurrent() =>
+            mounted &&
+            _section == SettingsSectionId.addresses &&
+            addressesEpoch == _sectionEpoch;
+        return Addresses(
+          accountChainStatsBloc: _accountChainStatsBloc,
+          isCurrent: addressesCurrent,
+          senderIsCurrent: widget.senderIsCurrent,
+          onSend: widget.onSend == null
+              ? null
+              : () {
+                  if (addressesCurrent() &&
+                      (widget.senderIsCurrent?.call() ?? true)) {
+                    widget.onSend?.call();
+                  }
+                },
         );
-      case _Section.node:
-        // The grid keeps the height it had as its least, and the Embedded
-        // node panel, as tall as its rows, goes under it; the section
-        // scrolls as one, as Security does.
-        return SettingsSection(
-          children: <Widget>[
-            SizedBox(
-              height: 420,
-              child: PageGrid(
-                rows: <PageRow>[
-                  PageRow.fill(<PageCell>[
-                    PageCell(
-                      NodeManagement(
-                        onNodeChangedCallback: widget.onNodeChangedCallback,
-                      ),
-                      flex: 3,
-                    ),
-                    const PageCell(_NetworkColumn(), flex: 2),
-                  ], height: 420),
-                ],
-              ),
-            ),
-            const NodeUpdateCard(),
-          ],
+      case SettingsSectionId.node:
+        final int epoch = _sectionEpoch;
+        return NodeSettingsSection(
+          onNodeChangedCallback: widget.onNodeChangedCallback,
+          isCurrent: () =>
+              mounted &&
+              _section == SettingsSectionId.node &&
+              epoch == _sectionEpoch,
         );
-      case _Section.security:
+      case SettingsSectionId.security:
+        final int securityEpoch = _sectionEpoch;
+        bool securityCurrent() =>
+            mounted &&
+            _section == SettingsSectionId.security &&
+            securityEpoch == _sectionEpoch;
         return SecurityWidget(
           widget._onChangeAutoLockTime,
           onStepperNotificationSeeMorePressed:
               widget.onStepperNotificationSeeMorePressed,
+          isCurrent: securityCurrent,
+          onResetWallet: (bool Function() current) {
+            if (securityCurrent() && current()) {
+              unawaited(
+                widget.onResetWallet(
+                  () => securityCurrent() && current(),
+                ),
+              );
+            }
+          },
         );
-      case _Section.display:
-        return const DisplayWidget();
-      case _Section.wallet:
-        return const SettingsSection(
-          children: <Widget>[
-            SettingsColumns(
-              children: <Widget>[WalletOptions(), _BackupColumn()],
+      case SettingsSectionId.display:
+        return DisplayWidget(railCollapse: widget.railCollapse);
+      case SettingsSectionId.wallet:
+        final int walletEpoch = _sectionEpoch;
+        bool walletCurrent() =>
+            mounted &&
+            _section == SettingsSectionId.wallet &&
+            walletEpoch == _sectionEpoch;
+        return WalletOptions(
+          isCurrent: walletCurrent,
+          scanForReceives: widget.scanForReceives,
+          senderIsCurrent: widget.senderIsCurrent,
+          onDeleteCache: (bool Function() source) {
+            if (walletCurrent() && source()) {
+              unawaited(
+                widget.onDeleteCache(
+                  () => walletCurrent() && source(),
+                ),
+              );
+            }
+          },
+          onResetWallet: (bool Function() source) {
+            if (walletCurrent() && source()) {
+              unawaited(
+                widget.onResetWallet(
+                  () => walletCurrent() && source(),
+                ),
+              );
+            }
+          },
+        );
+      case SettingsSectionId.apps:
+        final int appsEpoch = _sectionEpoch;
+        return AppsSettingsSection(
+          isCurrent: () =>
+              mounted &&
+              _section == SettingsSectionId.apps &&
+              appsEpoch == _sectionEpoch,
+        );
+      case SettingsSectionId.about:
+        final int aboutEpoch = _sectionEpoch;
+        bool aboutCurrent() =>
+            mounted &&
+            _section == SettingsSectionId.about &&
+            aboutEpoch == _sectionEpoch;
+        return ListenableBuilder(
+          listenable: _originals,
+          builder: (BuildContext context, _) => AboutSection(
+            licencesTrailingBuilder: (_) => OriginalsDiscovery(
+              controller: _originals,
+              isCurrent: aboutCurrent,
             ),
-          ],
+            afterLicences: _originals.revealed
+                ? OriginalsCard(isCurrent: aboutCurrent)
+                : null,
+          ),
         );
-      case _Section.about:
-        return const AboutSection();
     }
   }
 
   @override
   void dispose() {
+    _originals.dispose();
     _accountChainStatsBloc.dispose();
     super.dispose();
-  }
-}
-
-/// The node's view of the network over the peers it has.
-class _NetworkColumn extends StatelessWidget {
-  const _NetworkColumn();
-
-  @override
-  Widget build(BuildContext context) {
-    return const Column(
-      crossAxisAlignment: CrossAxisAlignment.stretch,
-      children: <Widget>[
-        SizedBox(height: 168, child: GeneralWidget()),
-        SizedBox(height: kPanelGap),
-        Expanded(child: PeersWidget()),
-      ],
-    );
-  }
-}
-
-/// Backing up over the two ways to start again, each panel as tall as its
-/// rows. They used to halve a fixed 366, which came to less than two rows
-/// each, so the last row of both ended on the panel's edge.
-class _BackupColumn extends StatelessWidget {
-  const _BackupColumn();
-
-  @override
-  Widget build(BuildContext context) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.stretch,
-      mainAxisSize: MainAxisSize.min,
-      children: <Widget>[
-        const BackupWidget(),
-        SizedBox(height: AppTokens.of(context).panelGap),
-        const WalletReset(),
-      ],
-    );
-  }
-}
-
-/// A row of the section list, styled as the rail is: the chosen one on a
-/// lighter surface with a green icon.
-class _SectionItem extends StatelessWidget {
-  const _SectionItem({
-    required this.section,
-    required this.selected,
-    required this.onTap,
-  });
-
-  final _Section section;
-  final bool selected;
-  final VoidCallback onTap;
-
-  @override
-  Widget build(BuildContext context) {
-    final ThemeData theme = Theme.of(context);
-    final Color dim = theme.textTheme.titleMedium!.color!;
-    final Color fill = theme.colorScheme.primaryContainer;
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 1),
-      child: AnimatedContainer(
-        duration: Durations.short3,
-        curve: Easing.standard,
-        decoration: BoxDecoration(
-          color: selected ? fill : fill.withValues(alpha: 0),
-          borderRadius: BorderRadius.circular(kCardRadius),
-        ),
-        child: Material(
-          type: MaterialType.transparency,
-          child: InkWell(
-            // The harness finds a section by this key or by its label.
-            key: ValueKey<String>('settings_${section.name}'),
-            borderRadius: BorderRadius.circular(kCardRadius),
-            onTap: selected ? null : onTap,
-            child: SizedBox(
-              height: 38,
-              child: Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 12),
-                child: Row(
-                  children: <Widget>[
-                    Icon(
-                      section.icon,
-                      size: 18,
-                      color: selected ? AppColors.znnColor : dim,
-                    ),
-                    const SizedBox(width: 12),
-                    Expanded(
-                      child: Text(
-                        section.label,
-                        overflow: TextOverflow.ellipsis,
-                        style: theme.textTheme.bodyLarge!.copyWith(
-                          fontWeight: selected ? FontWeight.w500 : null,
-                          color: selected ? null : dim,
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ),
-          ),
-        ),
-      ),
-    );
   }
 }

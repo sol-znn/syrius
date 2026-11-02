@@ -1,0 +1,2 @@
+# prerequisite: pending F06/N06 reversible synthetic seed quiz preparation without real wallet material
+assert --key seed_quiz_screen_marker

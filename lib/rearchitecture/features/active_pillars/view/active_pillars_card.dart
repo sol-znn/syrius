@@ -1,12 +1,12 @@
 import 'dart:async';
 
-import 'package:material_ui/material_ui.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_svg/svg.dart';
+import 'package:material_ui/material_ui.dart';
 import 'package:zenon_syrius_wallet_flutter/main.dart';
-import 'package:zenon_syrius_wallet_flutter/rearchitecture/features/active_pillars/active_pillars.dart';
 import 'package:zenon_syrius_wallet_flutter/rearchitecture/features/features.dart';
 import 'package:zenon_syrius_wallet_flutter/rearchitecture/utils/utils.dart';
+import 'package:zenon_syrius_wallet_flutter/utils/app_theme.dart';
 import 'package:zenon_syrius_wallet_flutter/widgets/reusable_widgets/reusable_widgets.dart';
 
 /// Widget connected to the [ActivePillarsCubit] that receives the state
@@ -97,10 +97,11 @@ class _Populated extends StatelessWidget {
           mainAxisAlignment: MainAxisAlignment.center,
           crossAxisAlignment: CrossAxisAlignment.start,
           children: <Widget>[
-            NumberAnimation(
-              end: numberOfPillars,
-              isInt: true,
-              style: context.textTheme.headlineMedium,
+            Text(
+              splitAmount(BigInt.from(numberOfPillars), 0).$1,
+              key: const Key('active_pillars_count'),
+              textDirection: TextDirection.ltr,
+              style: monoStyle(context.textTheme.headlineMedium),
             ),
             Text(
               context.l10n.activePillars,

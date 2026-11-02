@@ -1,122 +1,197 @@
-import 'package:material_ui/material_ui.dart';
-import 'package:logging/logging.dart';
-import 'package:reown_walletkit/reown_walletkit.dart';
-import 'package:zenon_syrius_wallet_flutter/main.dart';
-import 'package:zenon_syrius_wallet_flutter/services/i_web3wallet_service.dart';
-import 'package:zenon_syrius_wallet_flutter/utils/utils.dart';
-import 'package:zenon_syrius_wallet_flutter/widgets/widgets.dart';
+import 'dart:async';
 
-/// The height of the link field and of the buttons beside it.
+import 'package:flutter/services.dart';
+import 'package:material_ui/material_ui.dart';
+import 'package:zenon_syrius_wallet_flutter/main.dart' as app;
+import 'package:zenon_syrius_wallet_flutter/rearchitecture/utils/extensions/buildcontext_extension.dart';
+import 'package:zenon_syrius_wallet_flutter/services/i_web3wallet_service.dart';
+import 'package:zenon_syrius_wallet_flutter/utils/app_theme.dart';
+import 'package:zenon_syrius_wallet_flutter/utils/global.dart';
+import 'package:zenon_syrius_wallet_flutter/widgets/modular_widgets/settings_widgets/apps_settings_presenter.dart';
+
+/// The retained pairing-link field height used by the existing connection UI.
 const double kWalletConnectFieldHeight = 44;
 
-/// The WalletConnect link field and its Connect, the main action of the
-/// Connected sites page. A link copied while the wallet runs lands here.
+/// A pairing link is ephemeral input. It never enters logs or preferences.
 class WalletConnectUriCard extends StatefulWidget {
-  const WalletConnectUriCard({super.key});
+  /// Owns ephemeral link input without logging or persisting its contents.
+  const WalletConnectUriCard({
+    this.onPair,
+    this.isCurrent,
+    this.incomingLink,
+    super.key,
+  });
+
+  /// Admits the link to the original action boundary, after its durable intent.
+  final AppsPairAdmission? onPair;
+
+  /// Whether this original section can still accept input or show errors.
+  final bool Function()? isCurrent;
+
+  /// The captured application-link notifier; its value is consumed in memory.
+  final ValueNotifier<String?>? incomingLink;
 
   @override
   State<WalletConnectUriCard> createState() => _WalletConnectUriCardState();
 }
 
 class _WalletConnectUriCardState extends State<WalletConnectUriCard> {
-  TextEditingController _uriController = TextEditingController(
-    text: kLastWalletConnectUriNotifier.value,
-  );
+  final TextEditingController _input = TextEditingController();
+  late ValueNotifier<String?> _incoming =
+      widget.incomingLink ?? kLastWalletConnectUriNotifier;
+  bool _busy = false;
+  bool _failed = false;
+  int _epoch = 0;
 
-  final GlobalKey<FormState> _uriKey = GlobalKey<FormState>();
+  bool get _current =>
+      mounted &&
+      (widget.isCurrent?.call() ?? true) &&
+      (ModalRoute.of(context)?.isCurrent ?? true);
+
+  @override
+  void initState() {
+    super.initState();
+    _incoming.addListener(_takeIncoming);
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) _takeIncoming();
+    });
+  }
+
+  void _takeIncoming() {
+    final String? text = _incoming.value;
+    if (!_current || _busy || text == null) return;
+    _input.text = text;
+    if (_incoming.value == text) _incoming.value = null;
+  }
+
+  bool Function() _capture() {
+    final int epoch = _epoch;
+    bool revoked = false;
+    return () => !revoked && !(revoked = !_current || epoch != _epoch);
+  }
+
+  Future<void> _paste() async {
+    final bool Function() owns = _capture();
+    if (!owns()) return;
+    final ClipboardData? data = await Clipboard.getData(Clipboard.kTextPlain);
+    if (!owns() || _busy) return;
+    _input.text = data?.text ?? '';
+    setState(() => _failed = false);
+  }
+
+  Future<void> _connect() async {
+    final Uri? uri = parseWalletConnectLink(_input.text);
+    final bool Function() owns = _capture();
+    if (uri == null || !owns() || _busy) return;
+    setState(() {
+      _busy = true;
+      _failed = false;
+    });
+    try {
+      final AppsPairAdmission? injected = widget.onPair;
+      final Web3WalletActions? original = injected == null
+          ? (app.sl<IWeb3WalletService>() as CapturedWeb3WalletService)
+                .captureActions()
+          : null;
+      if (!owns()) return;
+      if (injected != null) {
+        await injected(uri, owns);
+      } else {
+        await original!.pair(uri);
+      }
+      if (owns()) _input.clear();
+    } on Object {
+      if (owns()) setState(() => _failed = true);
+    } finally {
+      // The original operation still owns its busy slot after a source change.
+      // Only its actual settlement releases input for the mounted replacement.
+      if (mounted) setState(() => _busy = false);
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
-    return ValueListenableBuilder<String?>(
-      builder: (_, String? value, Widget? child) {
-        if (value != null) {
-          _uriController.text = value;
-          kLastWalletConnectUriNotifier.value = null;
-        }
+    final AppTokens tokens = AppTokens.of(context);
+    final int epoch = _epoch;
+    bool original() => _current && epoch == _epoch;
+    return ValueListenableBuilder<TextEditingValue>(
+      valueListenable: _input,
+      builder: (BuildContext context, TextEditingValue value, Widget? child) {
+        final bool valid = parseWalletConnectLink(value.text) != null;
         return Row(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: <Widget>[
             Expanded(
-              child: Form(
-                key: _uriKey,
-                autovalidateMode: AutovalidateMode.onUserInteraction,
-                child: InputField(
-                  validator: (value) {
-                    if (Uri.tryParse(value ?? '') != null) {
-                      return null;
-                    } else {
-                      return 'URI invalid';
-                    }
-                  },
-                  onChanged: (String value) {
-                    setState(() {});
-                  },
-                  controller: _uriController,
-                  inputtedTextStyle: monoStyle(
-                    const TextStyle(fontSize: 13, color: AppColors.znnColor),
-                  ),
+              child: TextField(
+                key: const Key('wc_link'),
+                controller: _input,
+                enabled: !_busy && _current,
+                style: tokens.dataText,
+                autocorrect: false,
+                enableSuggestions: false,
+                onSubmitted: (_) {
+                  if (valid && original()) unawaited(_connect());
+                },
+                decoration: InputDecoration(
+                  hintText: context.l10n.appsSettingsWalletConnectLink,
+                  errorText: _failed
+                      ? context.l10n.appsSettingsFailed
+                      : value.text.isNotEmpty && !valid
+                      ? context.l10n.appsSettingsInvalidLink
+                      : null,
                   suffixIcon: IconButton(
-                    tooltip: 'Paste',
-                    iconSize: 16,
-                    icon: const Icon(
-                      Icons.content_paste,
-                      color: AppColors.faint,
-                    ),
-                    onPressed: _onPastePressed,
+                    tooltip: context.l10n.securitySettingsPaste,
+                    onPressed: _busy || !_current
+                        ? null
+                        : () {
+                            if (original()) unawaited(_paste());
+                          },
+                    icon: const Icon(Icons.content_paste, size: 16),
                   ),
-                  hintText: 'WalletConnect link',
                 ),
               ),
             ),
-            const SizedBox(width: 10),
-            MyOutlinedButton(
+            SizedBox(width: tokens.settingsActionGap),
+            OutlinedButton(
               key: const Key('wc_connect'),
-              text: 'Connect',
-              onPressed: Uri.tryParse(_uriController.text) != null
+              onPressed: valid && !_busy && _current
                   ? () {
-                      _pairWithDapp(
-                        Uri.parse(_uriController.text),
-                      );
+                      if (original()) unawaited(_connect());
                     }
                   : null,
-              minimumSize: const Size(100, kWalletConnectFieldHeight),
+              child: Text(context.l10n.appsSettingsConnect),
             ),
           ],
         );
       },
-      valueListenable: kLastWalletConnectUriNotifier,
     );
   }
 
-  /// Pastes the clipboard into the field and rebuilds, so Connect follows
-  /// what was pasted.
-  void _onPastePressed() {
-    ClipboardUtils.pasteToClipboard(
-      callback: (String value) {
-        if (!mounted) return;
-        setState(() {
-          _uriController.text = value;
-        });
-      },
-    );
-  }
-
-  Future<void> _pairWithDapp(Uri uri) async {
-    try {
-      final PairingInfo pairingInfo = await sl.get<IWeb3WalletService>().pair(
-        uri,
-      );
-      Logger(
-        'WalletConnectPairingCard',
-      ).log(Level.INFO, 'pairing info', pairingInfo.toJson());
-      _uriController = TextEditingController();
-      _uriKey.currentState?.reset();
-      setState(() {});
-    } catch (e, stackTrace) {
-      Logger(
-        'WalletConnectPairingCard',
-      ).log(Level.INFO, 'pairing failed', e, stackTrace);
-      await NotificationUtils.sendNotificationError(e, 'Pairing failed');
+  @override
+  void didUpdateWidget(WalletConnectUriCard oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (!identical(oldWidget.onPair, widget.onPair) ||
+        !identical(oldWidget.isCurrent, widget.isCurrent) ||
+        !identical(oldWidget.incomingLink, widget.incomingLink)) {
+      _epoch++;
+      _input.clear();
+      _failed = false;
     }
+    if (!identical(oldWidget.incomingLink, widget.incomingLink)) {
+      _incoming.removeListener(_takeIncoming);
+      _incoming = widget.incomingLink ?? kLastWalletConnectUriNotifier;
+      _incoming.addListener(_takeIncoming);
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted) _takeIncoming();
+      });
+    }
+  }
+
+  @override
+  void dispose() {
+    _epoch++;
+    _incoming.removeListener(_takeIncoming);
+    _input.dispose();
+    super.dispose();
   }
 }

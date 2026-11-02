@@ -1,8 +1,10 @@
 # Syrius desktop redesign: every screen
 
 Mockups of the whole wallet on mockup B (the one the owner chose for Home),
-drawn 2026-10-13 for review. Nothing here is built; the Flutter tree is
-unchanged. The owner's words that shape it are in `HANDOFF.md` (Task 7, 8, 9,
+drawn 2026-10-13 for review. The original HTML and reference images are
+preserved; Flutter implementation and acceptance are recorded separately in
+`PROMPT-redesign-build.md`. The owner's words that shape the references are
+in `HANDOFF.md` (Task 7, 8, 9,
 30, 31, 38, 39): redesign every page, keep Home, cut clutter, consolidate
 where it makes sense, hide what is rarely used behind a button, plan the
 motion, shaders, QoL and extension ports alongside, show dollar values as the
@@ -39,6 +41,18 @@ The seven questions of the first round, and the answers.
 | 5 | Staking and delegation stay apart | "okay" | Two pages |
 | 6 | The wrong-password limit off by default | "wrong-password limit is on by default" | On, at 3. Settings > Security shows 3 selected; the lock screen counts the tries left |
 | 7 | Dollar values | "Add dollar vallues like syrius extension" | See "Dollar values" below |
+
+### Later brand-colour decision
+
+For the Flutter implementation, the owner selected the brand colours in
+`docs/design/RULES.md`: green `#00D557` and blue `#0061EB`. The original HTML
+and reference PNGs retain their green `#4FD166` and blue `#006AFF` fills.
+Preserve those references. The shared green also supplies the dark-theme ZNN
+ink; the separately defined blue inks and light-theme green ink retain their
+reference values for readability. Treat these selected colour changes as an
+approved comparison exception. All other colours, layout, type, spacing,
+icons and motion still require comparison in the running wallet. A
+source-token check establishes no visual match.
 
 ## The shell
 

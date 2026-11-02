@@ -163,7 +163,11 @@ void main() {
       expect(await page.result('znn_connect'), <String>[kA]);
       expect(wallet.prompts, <String>['connect $kSite $kA']);
       expect(channel.sites, <DappBridgeSite>[
-        const DappBridgeSite(requester: kSite, addresses: <String>[kA]),
+        DappBridgeSite(
+          requester: kSite,
+          addresses: const <String>[kA],
+          incarnation: '1:${jsonEncode(<String>[kA])}',
+        ),
       ]);
       expect(await event, <Object?>[
         'accountsChanged',
@@ -249,15 +253,20 @@ void main() {
       expect(await page.result('znn_connect'), <String>[kA]);
     });
 
-    test('the address approved is the one that was shown', () async {
+    test('selection changes during approval: 4900, nothing stored', () async {
       wallet.hold = Completer<bool>();
-      final Future<Object?> connecting = page.result('znn_connect');
+      final Future<int> connecting = page.code('znn_connect');
       await settle();
+      expect(wallet.prompts, <String>['connect $kSite $kA']);
       wallet
         ..selected = kB
         ..hold!.complete(true);
-      expect(await connecting, <String>[]);
-      expect(channel.sites.single.addresses, <String>[kA]);
+      expect(await connecting, 4900);
+      expect(channel.sites, isEmpty);
+      expect(store.values[kDappBridgeConsentKey], isNull);
+      expect(await page.result('znn_accounts'), <String>[]);
+      wallet.selected = kA;
+      expect(await page.result('znn_accounts'), <String>[]);
     });
   });
 

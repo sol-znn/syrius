@@ -18,8 +18,7 @@ const double kEmptyNoteLineMarkSize = 16;
 class EmptyNote extends StatelessWidget {
   /// The list size: the mark at [kEmptyNoteMarkSize] with [text] under it,
   /// centred in the space given.
-  const EmptyNote({required this.text, this.action, super.key})
-    : _line = false;
+  const EmptyNote({required this.text, this.action, super.key}) : _line = false;
 
   /// The line size: the mark at [kEmptyNoteLineMarkSize] with [text]
   /// beside it, as wide as the two, for a card that is one line when empty.
@@ -40,7 +39,9 @@ class EmptyNote extends StatelessWidget {
   Widget build(BuildContext context) {
     final AppTokens tokens = AppTokens.of(context);
     // The theme's dim, which each theme sets for its own card colour.
-    final TextStyle style = Theme.of(context).textTheme.titleMedium!;
+    final TextStyle style = _line
+        ? Theme.of(context).textTheme.titleMedium!
+        : tokens.bodyText.copyWith(color: tokens.dim);
     if (_line) {
       return Row(
         mainAxisSize: MainAxisSize.min,
@@ -65,7 +66,7 @@ class EmptyNote extends StatelessWidget {
           mainAxisSize: MainAxisSize.min,
           children: <Widget>[
             const _Mark(size: kEmptyNoteMarkSize, opacity: 0.85),
-            SizedBox(height: tokens.cardGap),
+            SizedBox(height: tokens.pageGap),
             Text(text, textAlign: TextAlign.center, style: style),
             if (action != null) ...<Widget>[
               SizedBox(height: tokens.panelGap),

@@ -212,7 +212,7 @@ class NoMService extends IChain {
         );
 
         if (actionWasAccepted ?? false) {
-          return walletSign(message.codeUnits);
+          return walletSignMessage(message);
         } else {
           await NotificationUtils.sendNotificationError(
             Errors.getSdkError(Errors.USER_REJECTED),

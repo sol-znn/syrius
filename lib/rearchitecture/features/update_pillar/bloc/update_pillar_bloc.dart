@@ -43,13 +43,23 @@ class UpdatePillarBloc extends Bloc<UpdatePillarEvent, UpdatePillarState> {
         PlasmaPurpose.updatePillar.message,
       );
 
-      emit(const UpdatePillarDone());
+      if (!emit.isDone) emit(const UpdatePillarDone());
     } on SyriusException catch (e, stackTrace) {
-      addError(e, stackTrace);
-      emit(UpdatePillarFailure(exception: e));
-    } on Exception catch (e, stackTrace) {
-      addError(e, stackTrace);
-      emit(UpdatePillarFailure(exception: FailureException()));
+      if (!emit.isDone) emit(UpdatePillarFailure(exception: e));
+      _report(e, stackTrace);
+    } on Object catch (e, stackTrace) {
+      if (!emit.isDone) {
+        emit(UpdatePillarFailure(exception: FailureException()));
+      }
+      _report(e, stackTrace);
+    }
+  }
+
+  void _report(Object error, StackTrace trace) {
+    try {
+      addError(error, trace);
+    } on Object {
+      // A diagnostic observer cannot replace the original action's outcome.
     }
   }
 }

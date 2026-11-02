@@ -1,148 +1,116 @@
-import 'dart:async';
-
 import 'package:material_ui/material_ui.dart';
-import 'package:zenon_syrius_wallet_flutter/blocs/blocs.dart';
-import 'package:zenon_syrius_wallet_flutter/main.dart';
 import 'package:zenon_syrius_wallet_flutter/rearchitecture/features/home/home.dart'
-    show splitAmount;
-import 'package:zenon_syrius_wallet_flutter/rearchitecture/utils/widgets/page/page_widgets.dart';
-import 'package:zenon_syrius_wallet_flutter/screens/stepper_screen.dart';
-import 'package:zenon_syrius_wallet_flutter/utils/global.dart';
-import 'package:zenon_syrius_wallet_flutter/widgets/modular_widgets/accelerator_widgets/accelerator_donation_stepper.dart';
-import 'package:zenon_syrius_wallet_flutter/widgets/modular_widgets/accelerator_widgets/project_creation_stepper.dart';
+    show AmountText;
+import 'package:zenon_syrius_wallet_flutter/rearchitecture/utils/extensions/buildcontext_extension.dart';
+import 'package:zenon_syrius_wallet_flutter/rearchitecture/utils/widgets/page/page_strip.dart';
+import 'package:zenon_syrius_wallet_flutter/utils/app_theme.dart';
+import 'package:zenon_syrius_wallet_flutter/widgets/modular_widgets/accelerator_widgets/accelerator_list_presenter.dart';
+import 'package:zenon_syrius_wallet_flutter/widgets/reusable_widgets/buttons/primary_pill.dart';
 import 'package:zenon_syrius_wallet_flutter/widgets/reusable_widgets/modals/modal_chrome.dart';
 import 'package:znn_sdk_dart/znn_sdk_dart.dart';
 
-/// The top row of the Accelerator page: what the fund holds, what a vote
-/// needs, and the two ways to put something in.
-///
-/// Creating a project is the page's one primary action; a donation is the
-/// quieter button beside it. This row replaces three cards: the donation
-/// card, the fund's pie chart and the create-project card.
-class AcceleratorStats extends StatefulWidget {
-  /// Creates the row.
+/// The actual fund and exact selected Pillar's outstanding project count.
+/// The owning page guards navigation; this strip performs no RPC.
+class AcceleratorStats extends StatelessWidget {
+  /// Displays current original fund and vote facts without requesting RPC work.
   const AcceleratorStats({
-    required this.onStepperNotificationSeeMorePressed,
-    this.pillarInfo,
+    required this.snapshot,
+    required this.nowTimestamp,
+    this.onDonate,
+    this.onCreateProject,
     super.key,
   });
 
-  /// Opens the notifications page from a stepper.
-  final VoidCallback onStepperNotificationSeeMorePressed;
+  /// Exact source-bound display facts, including explicit unknown amounts.
+  final AcceleratorListSnapshot snapshot;
 
-  /// The Pillar the selected address owns, if any.
-  final PillarInfo? pillarInfo;
+  /// Original display clock in Unix seconds for voting-window counts.
+  final int nowTimestamp;
 
-  @override
-  State<AcceleratorStats> createState() => _AcceleratorStatsState();
-}
+  /// Guarded explicit donation action supplied by the owning page.
+  final VoidCallback? onDonate;
 
-class _AcceleratorStatsState extends State<AcceleratorStats> {
-  @override
-  void initState() {
-    super.initState();
-    unawaited(sl.get<AcceleratorBalanceBloc>().getAcceleratorBalance());
-  }
+  /// Guarded explicit project-creation action supplied by the owning page.
+  final VoidCallback? onCreateProject;
 
   @override
   Widget build(BuildContext context) {
-    return Panel(
-      padding: const EdgeInsets.symmetric(horizontal: 24),
-      child: Row(
-        children: <Widget>[
-          Expanded(child: _buildFigures()),
-          const SizedBox(width: 16),
-          _buildActions(),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildFigures() {
-    final int? pillars = kNumOfPillars;
-    return StreamBuilder<AccountInfo?>(
-      stream: sl.get<AcceleratorBalanceBloc>().stream,
-      builder: (_, AsyncSnapshot<AccountInfo?> snapshot) {
-        final AccountInfo? fund = snapshot.data;
-        String amount(BigInt? raw) =>
-            raw == null ? '-' : splitAmount(raw, coinDecimals).$1;
-        final Widget figures = Row(
-          children: <Widget>[
-            Flexible(
-              child: Figure(
-                key: const Key('acc_figure_znn'),
-                label: 'ZNN available',
-                value: amount(fund?.znn()),
+    final AppTokens tokens = AppTokens.of(context);
+    final bool current = snapshot.isCurrent;
+    final AcceleratorListFund fund = current
+        ? snapshot.fund
+        : const AcceleratorListFund();
+    final int? needsVote = snapshot.needsYourVote(nowTimestamp);
+    Widget amount(BigInt? value, {required bool qsr}) => value == null
+        ? Row(
+            mainAxisSize: MainAxisSize.min,
+            children: <Widget>[
+              Text(
+                context.l10n.acceleratorUnknown,
+                style: tokens.dataText.copyWith(color: tokens.dim),
               ),
-            ),
-            const SizedBox(width: 40),
-            Flexible(
-              child: Figure(
-                key: const Key('acc_figure_qsr'),
-                label: 'QSR available',
-                value: amount(fund?.qsr()),
-              ),
-            ),
-            if (pillars != null && pillars > 0) ...<Widget>[
-              const SizedBox(width: 40),
-              Flexible(
-                child: Figure(
-                  label: 'Quorum',
-                  value: '${(pillars * 0.33).ceil()} of $pillars',
+              SizedBox(width: tokens.inlineGap),
+              Text(
+                qsr ? 'QSR' : 'ZNN',
+                style: tokens.dataText.copyWith(
+                  fontSize: 13,
+                  color: qsr ? tokens.qsrInk : tokens.znnInk,
                 ),
               ),
             ],
-            if (widget.pillarInfo != null) ...<Widget>[
-              const SizedBox(width: 40),
-              Flexible(
-                child: Figure(
-                  label: 'Votes as',
-                  value: widget.pillarInfo!.name,
-                  valueStyle: panelTitleStyle(context).copyWith(fontSize: 18),
-                ),
+          )
+        : AmountText(
+            value,
+            decimals: coinDecimals,
+            symbol: qsr ? 'QSR' : 'ZNN',
+            symbolColor: qsr ? tokens.qsrInk : tokens.znnInk,
+            style: tokens.stripAmountText,
+          );
+    return PageStrip(
+      key: const Key('accelerator_strip'),
+      figures: <StripFigure>[
+        StripFigure(
+          label: context.l10n.acceleratorFund,
+          value: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: <Widget>[
+              KeyedSubtree(
+                key: const Key('accelerator_fund_znn'),
+                child: amount(fund.znn, qsr: false),
+              ),
+              Text('  ·  ', style: tokens.dataText.copyWith(color: tokens.dim)),
+              KeyedSubtree(
+                key: const Key('accelerator_fund_qsr'),
+                child: amount(fund.qsr, qsr: true),
               ),
             ],
-          ],
-        );
-        return snapshot.hasError
-            ? Tooltip(message: snapshot.error.toString(), child: figures)
-            : figures;
-      },
-    );
-  }
-
-  Widget _buildActions() {
-    return Row(
-      mainAxisSize: MainAxisSize.min,
-      children: <Widget>[
+          ),
+        ),
+        StripFigure(
+          label: context.l10n.acceleratorVoting,
+          value: Text(
+            needsVote?.toString() ?? context.l10n.acceleratorUnknown,
+            key: const Key('accelerator_need_vote_count'),
+            style: tokens.stripAmountText,
+          ),
+          trailing: Text(context.l10n.acceleratorNeedYourPillar),
+        ),
+      ],
+      actions: <Widget>[
         OutlinedButton.icon(
           key: const Key('acc_donate'),
           style: secondaryButtonStyle(context),
-          onPressed: () => _openStepper(const AcceleratorDonationStepper()),
+          onPressed: current ? onDonate : null,
           icon: const Icon(Icons.volunteer_activism_outlined, size: 18),
-          label: const Text('Donate'),
+          label: Text(context.l10n.acceleratorDonate),
         ),
-        const SizedBox(width: 10),
-        OutlinedButton.icon(
+        PrimaryPill(
           key: const Key('acc_create_project'),
-          onPressed: () => _openStepper(const ProjectCreationStepper()),
+          onPressed: current ? onCreateProject : null,
           icon: const Icon(Icons.add, size: 18),
-          label: const Text('Create project'),
+          child: Text(context.l10n.acceleratorCreateProject),
         ),
       ],
-    );
-  }
-
-  void _openStepper(Widget stepper) {
-    Navigator.push(
-      context,
-      MaterialPageRoute<void>(
-        builder: (BuildContext context) => StepperScreen(
-          stepper: stepper,
-          onStepperNotificationSeeMorePressed:
-              widget.onStepperNotificationSeeMorePressed,
-        ),
-      ),
     );
   }
 }

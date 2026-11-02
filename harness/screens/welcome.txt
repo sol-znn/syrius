@@ -1,0 +1,2 @@
+# prerequisite: pending F06/N05 reversible onboarding preparation with no wallet or device owner mounted
+assert --key welcome_screen_marker

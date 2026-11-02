@@ -1,6 +1,6 @@
-import 'package:material_ui/material_ui.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:intl/intl.dart';
+import 'package:material_ui/material_ui.dart';
 import 'package:zenon_syrius_wallet_flutter/l10n/app_localizations.dart';
 import 'package:zenon_syrius_wallet_flutter/rearchitecture/features/cancel_plasma/view/cancel_countdown.dart';
 import 'package:zenon_syrius_wallet_flutter/rearchitecture/features/stakes/view/stakes_card.dart';
@@ -406,11 +406,15 @@ void main() {
       await tester.pumpWidget(const SizedBox.shrink());
     });
 
-    testWidgets('a project in voting says when it closes', (
+    testWidgets('a project shows its creation date and when voting closes', (
       WidgetTester tester,
     ) async {
+      LocaleNotifier(AppLanguage.english);
       final int created =
           DateTime.now().millisecondsSinceEpoch ~/ 1000 - 2 * 60 * 60;
+      final String createdDate = DateFormat.yMMMd('en').format(
+        DateTime.fromMillisecondsSinceEpoch(created * 1000),
+      );
       await tester.pumpWidget(
         MaterialApp(
           home: AcceleratorProjectDetails(
@@ -422,17 +426,12 @@ void main() {
       final RichText line = tester.widget<RichText>(find.byType(RichText));
       expect(
         line.text.toPlainText(),
-        'Created 2 h ago  ·  Closes in 13 d',
+        'Created $createdDate · Closes in 13 d',
       );
-      // The label ends where the time begins, so each keeps its style.
-      final List<String> spans = <String>[];
-      line.text.visitChildren((InlineSpan span) {
-        if (span is TextSpan && span.text != null) {
-          spans.add(span.text!);
-        }
-        return true;
-      });
-      expect(spans, containsAllInOrder(<String>['Closes in ', '13 d']));
+      expect(
+        find.text('Created $createdDate · Closes in 13 d'),
+        findsOneWidget,
+      );
     });
   });
 }

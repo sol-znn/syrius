@@ -1,9 +1,9 @@
 import 'dart:async';
 
-import 'package:material_ui/material_ui.dart';
 import 'package:hex/hex.dart';
 import 'package:hive_ce/hive_ce.dart';
 import 'package:logging/logging.dart';
+import 'package:material_ui/material_ui.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:window_manager/window_manager.dart';
 import 'package:zenon_syrius_wallet_flutter/main.dart';
@@ -17,10 +17,13 @@ import 'package:zenon_syrius_wallet_flutter/rearchitecture/features/dapp_bridge/
 import 'package:zenon_syrius_wallet_flutter/rearchitecture/features/dapp_bridge/view/dapp_bridge_approval.dart';
 import 'package:zenon_syrius_wallet_flutter/rearchitecture/features/send/send.dart';
 import 'package:zenon_syrius_wallet_flutter/services/shared_prefs_service.dart';
+import 'package:zenon_syrius_wallet_flutter/utils/constants.dart'
+    show kSharedPrefsBox;
 import 'package:zenon_syrius_wallet_flutter/utils/extensions.dart';
 import 'package:zenon_syrius_wallet_flutter/utils/functions.dart';
 import 'package:zenon_syrius_wallet_flutter/utils/global.dart';
 import 'package:zenon_syrius_wallet_flutter/utils/plasma_purpose.dart';
+import 'package:zenon_syrius_wallet_flutter/utils/wallet_context_revision.dart';
 import 'package:zenon_syrius_wallet_flutter/widgets/main_app_container.dart';
 import 'package:znn_sdk_dart/znn_sdk_dart.dart';
 
@@ -53,7 +56,7 @@ const Duration _kTokenLookup = Duration(seconds: 5);
 /// wired to this wallet's dialogs, signer and settings box.
 /// See `docs/research/webapp-to-syrius.md` for why it is a loopback socket,
 /// and `docs/webapp-integration.md` for what a page sends it.
-class DappBridge implements DappBridgeControl {
+class DappBridge implements DappBridgeControl, DappBridgeOwnedControl {
   DappBridge._() {
     DappBridgeControl.app = this;
   }
@@ -91,6 +94,9 @@ class DappBridge implements DappBridgeControl {
 
   @override
   Future<void> disconnect(String requester) => _channel.disconnect(requester);
+
+  @override
+  DappBridgeActions captureActions() => _channel.captureActions();
 
   /// Starts listening, unless the person has turned the channel off.
   Future<void> start() async {
@@ -130,16 +136,64 @@ bool get _unlocked =>
 
 /// The wallet's settings box. A wallet reset deletes it, and with it every
 /// site's consent.
-class _SettingsStore implements DappBridgeStore {
+class _SettingsStore implements DappBridgeCapturedStore {
+  @override
+  Object get identity => this;
+
+  @override
+  bool get isCurrent => true;
+
   @override
   Object? read(String key) => sharedPrefsService?.get(key);
 
   @override
-  Future<void> write(String key, Object? value) async {
+  Future<void> write(String key, Object? value) => capture().write(key, value);
+
+  @override
+  DappBridgeStore capture() {
     final SharedPrefsService prefs =
         sharedPrefsService ?? (throw StateError('settings are not open'));
-    await prefs.checkIfBoxIsOpen();
-    await prefs.put(key, value);
+    if (!Hive.isBoxOpen(kSharedPrefsBox)) {
+      throw StateError('settings are not open');
+    }
+    final Box<dynamic> box = Hive.box<dynamic>(kSharedPrefsBox);
+    final Object? wallet = kWalletFile;
+    final int revision = WalletContextRevision.value;
+    return _CapturedSettingsStore(
+      box,
+      () =>
+          identical(prefs, sharedPrefsService) &&
+          identical(wallet, kWalletFile) &&
+          revision == WalletContextRevision.value &&
+          Hive.isBoxOpen(kSharedPrefsBox) &&
+          identical(box, Hive.box<dynamic>(kSharedPrefsBox)),
+    );
+  }
+}
+
+/// A queued write never reopens or looks up a replacement preferences box.
+class _CapturedSettingsStore implements DappBridgeCapturedStore {
+  _CapturedSettingsStore(this.box, this._owns);
+  final Box<dynamic> box;
+  final bool Function() _owns;
+  bool _revoked = false;
+
+  @override
+  DappBridgeStore capture() => this;
+
+  @override
+  Object get identity => box;
+
+  @override
+  bool get isCurrent => !_revoked && !(_revoked = !box.isOpen || !_owns());
+
+  @override
+  Object? read(String key) => box.isOpen ? box.get(key) : null;
+
+  @override
+  Future<void> write(String key, Object? value) {
+    if (!isCurrent) throw StateError('settings are not open');
+    return box.put(key, value);
   }
 }
 
@@ -197,11 +251,10 @@ class _AppWallet implements DappBridgeWallet {
     String address,
     String message,
   ) async {
-    // The service has just checked that [address] is still the selected one
-    // and the wallet unlocked. The signer reads the selected address after
-    // it has opened the key file, which takes a while. Whatever happened
-    // meanwhile, a signature leaves the wallet only if its key is the
-    // approved address's.
+    // The service has checked the selected address and unlocked session.
+    // The signer retains that original wallet and account across acquisition
+    // and release. This final check keeps a signature inside the wallet
+    // unless its key belongs to the address approved by the caller.
     final Signature signed = await walletSignMessage(message);
     final String signer = Address.fromPublicKey(
       HEX.decode(signed.publicKey),

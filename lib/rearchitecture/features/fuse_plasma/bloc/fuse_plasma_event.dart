@@ -6,7 +6,7 @@ sealed class FusePlasmaEvent extends Equatable {
   const FusePlasmaEvent();
 
   @override
-  List<Object> get props => <Object>[];
+  List<Object?> get props => <Object?>[];
 }
 
 /// Requests fusing QSR for Plasma.
@@ -15,14 +15,32 @@ final class FusePlasmaRequested extends FusePlasmaEvent {
   const FusePlasmaRequested({
     required this.beneficiaryAddress,
     required this.amount,
+    this.session,
+    this.isCurrent,
+    this.draft,
   });
 
   /// Address that will receive the generated Plasma.
   final String beneficiaryAddress;
 
-  /// QSR amount to fuse, without decimals.
+  /// QSR in its integer smallest units.
   final BigInt amount;
 
+  /// Production authority captured before the form yields or asks a question.
+  final PlasmaSession? session;
+
+  /// The original form can revoke preparation without replacing its result.
+  final bool Function()? isCurrent;
+
+  /// An old event observes its original draft instead of consuming a rearm.
+  final PlasmaFuseDraft? draft;
+
   @override
-  List<Object> get props => <Object>[beneficiaryAddress, amount];
+  List<Object?> get props => <Object?>[
+    beneficiaryAddress,
+    amount,
+    session,
+    isCurrent,
+    draft,
+  ];
 }

@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:fl_chart/fl_chart.dart';
 import 'package:material_ui/material_ui.dart';
 import 'package:zenon_syrius_wallet_flutter/blocs/blocs.dart';
@@ -6,8 +8,11 @@ import 'package:zenon_syrius_wallet_flutter/rearchitecture/utils/widgets/page/pa
 import 'package:zenon_syrius_wallet_flutter/utils/app_colors.dart';
 import 'package:zenon_syrius_wallet_flutter/utils/app_theme.dart';
 import 'package:zenon_syrius_wallet_flutter/utils/constants.dart';
+import 'package:zenon_syrius_wallet_flutter/utils/explorer_links.dart';
 import 'package:zenon_syrius_wallet_flutter/utils/format_utils.dart';
+import 'package:zenon_syrius_wallet_flutter/utils/global.dart';
 import 'package:zenon_syrius_wallet_flutter/utils/navigation_utils.dart';
+import 'package:zenon_syrius_wallet_flutter/utils/node_change.dart';
 import 'package:zenon_syrius_wallet_flutter/widgets/modular_widgets/settings_widgets/settings_parts.dart';
 import 'package:zenon_syrius_wallet_flutter/widgets/widgets.dart';
 import 'package:znn_sdk_dart/znn_sdk_dart.dart';
@@ -15,10 +20,13 @@ import 'package:znn_sdk_dart/znn_sdk_dart.dart';
 /// The selected address's account chain: how many blocks it holds, of which
 /// kinds, and its block hash.
 class AccountChainStatsWidget extends StatefulWidget {
+  /// Creates the chart over the selected account's existing statistics bloc.
   const AccountChainStatsWidget({
     required this.accountChainStatsBloc,
     super.key,
   });
+
+  /// The source of the account's observed block counts and provenance.
   final AccountChainStatsBloc accountChainStatsBloc;
 
   @override
@@ -92,13 +100,35 @@ class _AccountChainStatsState extends State<AccountChainStatsWidget> {
                   ),
                 ),
                 CopyToClipboardButton(hash, iconSize: 16),
-                IconButton(
-                  tooltip: 'Open in explorer',
-                  visualDensity: VisualDensity.compact,
-                  iconSize: 16,
-                  icon: const Icon(Icons.open_in_new, color: AppColors.faint),
-                  onPressed: () => NavigationUtils.openUrl(
-                    '$kExplorer/transaction/${stats.firstHash}',
+                StreamBuilder<void>(
+                  stream: NodeChange.stream,
+                  builder: (BuildContext context, _) => IconButton(
+                    tooltip: 'Open in explorer',
+                    visualDensity: VisualDensity.compact,
+                    iconSize: 16,
+                    icon: const Icon(Icons.open_in_new, color: AppColors.faint),
+                    onPressed:
+                        ExplorerLinks.transaction(
+                              hash,
+                              chainId: stats.chainIdentifier == kNodeChainId
+                                  ? kNodeChainId
+                                  : null,
+                            ) ==
+                            null
+                        ? null
+                        : () {
+                            final Uri? link = ExplorerLinks.transaction(
+                              hash,
+                              chainId: stats.chainIdentifier == kNodeChainId
+                                  ? kNodeChainId
+                                  : null,
+                            );
+                            if (link != null) {
+                              unawaited(
+                                NavigationUtils.openUrl(link.toString()),
+                              );
+                            }
+                          },
                   ),
                 ),
               ],
@@ -139,16 +169,14 @@ class _AccountChainStatsState extends State<AccountChainStatsWidget> {
       builder: (_, AsyncSnapshot<AccountChainStats?> snapshot) {
         if (snapshot.hasError) {
           // The bloc reports an address with no blocks as an error.
-          return snapshot.error.toString() == 'Empty account-chain'
+          final Object? error = snapshot.error;
+          return error.toString() == 'Empty account-chain' ||
+                  (error is StateError &&
+                      error.message == 'Empty account-chain')
               ? const QuietNote('None yet')
               : QuietNote.error(snapshot.error!);
         }
-        if (snapshot.connectionState == ConnectionState.active) {
-          if (snapshot.hasData) {
-            return _buildBody(snapshot.data!);
-          }
-          return const QuietNote.loading();
-        }
+        if (snapshot.hasData) return _buildBody(snapshot.data!);
         return const QuietNote.loading();
       },
     );

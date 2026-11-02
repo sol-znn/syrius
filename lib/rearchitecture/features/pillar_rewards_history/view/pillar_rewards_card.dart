@@ -1,6 +1,6 @@
 import 'package:fl_chart/fl_chart.dart';
-import 'package:material_ui/material_ui.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:material_ui/material_ui.dart';
 import 'package:zenon_syrius_wallet_flutter/rearchitecture/features/card_parts/card_parts.dart';
 import 'package:zenon_syrius_wallet_flutter/rearchitecture/features/features.dart';
 import 'package:zenon_syrius_wallet_flutter/rearchitecture/utils/utils.dart';
@@ -42,34 +42,37 @@ class _View extends StatelessWidget {
           },
         ),
       ],
-      child: Column(
+      child: const Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: <Widget>[
-          const PillarCollect(),
-          const Divider(),
-          Expanded(
-            child:
-                BlocBuilder<
-                  PillarRewardsHistoryBloc,
-                  FetchState<RewardHistoryList>
-                >(
-                  builder: (_, FetchState<RewardHistoryList> state) {
-                    return switch (state) {
-                      FetchFailure<RewardHistoryList>() => CardNote.error(
-                        state.exception,
-                      ),
-                      FetchInitial<RewardHistoryList>() => const CardLoading(),
-                      FetchPopulated<RewardHistoryList>() => _Chart(
-                        rewardsHistoryList: state.data,
-                      ),
-                    };
-                  },
-                ),
-          ),
+          PillarCollect(),
+          Divider(),
+          Expanded(child: PillarRewardsChart()),
         ],
       ),
     );
   }
+}
+
+/// The existing reward history without a second collection scope.
+///
+/// Nodes keeps collection in its strip. Opening its history must not make
+/// another Collect action while that strip's block is still pending.
+class PillarRewardsChart extends StatelessWidget {
+  /// Creates the chart under a [PillarRewardsHistoryBloc].
+  const PillarRewardsChart({super.key});
+
+  @override
+  Widget build(BuildContext context) =>
+      BlocBuilder<PillarRewardsHistoryBloc, FetchState<RewardHistoryList>>(
+        builder: (_, FetchState<RewardHistoryList> state) => switch (state) {
+          FetchFailure<RewardHistoryList>() => CardNote.error(state.exception),
+          FetchInitial<RewardHistoryList>() => const CardLoading(),
+          FetchPopulated<RewardHistoryList>() => _Chart(
+            rewardsHistoryList: state.data,
+          ),
+        },
+      );
 }
 
 /// A [StandardChart] adapted to show the pillar rewards

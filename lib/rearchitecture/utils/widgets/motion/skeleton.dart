@@ -164,9 +164,9 @@ class _SkeletonState extends State<Skeleton> {
 
   @override
   Widget build(BuildContext context) {
-    // The colour the bars have always had. In this app's themes it is the
-    // scheme's outline: white on the dark cards, black on the light ones.
-    final Color ink = Theme.of(context).dividerColor;
+    // A loading bar stands in for content. Outline now carries the mockup's
+    // quiet border colour; using it as ink makes the moving band disappear.
+    final Color ink = Theme.of(context).colorScheme.onSurface;
     // The band is lighter than the bar in both themes. Light ink gets
     // lighter with more of it, dark ink with less: there the bar thins
     // toward the card as the light passes.

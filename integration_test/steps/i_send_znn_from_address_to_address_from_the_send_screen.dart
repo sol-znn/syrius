@@ -3,9 +3,9 @@
 
 import 'dart:async';
 
-import 'package:material_ui/material_ui.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:material_ui/material_ui.dart';
 import 'package:zenon_syrius_wallet_flutter/l10n/app_localizations.dart';
 import 'package:zenon_syrius_wallet_flutter/main.dart' as app;
 import 'package:zenon_syrius_wallet_flutter/rearchitecture/features/features.dart';
@@ -23,6 +23,7 @@ Future<void> iSendZnnFromAddressToAddressFromTheSendScreen(
 ) async {
   final DevnetTestContext context = app.sl<DevnetTestContext>();
   selectDevnetSender(sender);
+  selectDevnetTransfer();
   final Address expectedSenderAddress = Address.parse(sender);
   final BigInt blockchainAmount = amount.extractDecimals(coinDecimals);
   final SendTransactionBloc sendTransactionBloc = SendTransactionBloc();
@@ -60,7 +61,10 @@ Future<void> iSendZnnFromAddressToAddressFromTheSendScreen(
   await tester.enterText(find.byKey(const Key('send_amount_field')), amount);
   await tester.pumpAndSettle();
 
-  await tester.tap(find.byKey(const Key('send_submit_button')));
+  final Finder submit = find.byKey(const Key('send_submit_button'));
+  expect(submit, findsOneWidget);
+  await tester.ensureVisible(submit);
+  await tester.tap(submit);
   await tester.pumpAndSettle();
 
   final Completer<AccountBlockTemplate> completer =
@@ -80,7 +84,12 @@ Future<void> iSendZnnFromAddressToAddressFromTheSendScreen(
       });
 
   try {
-    await tester.tap(find.byKey(const Key('dialog_yes_button')));
+    final Finder confirmation = find.byKey(
+      const Key('send_confirmation_accept'),
+    );
+    expect(confirmation, findsOneWidget);
+    await tester.ensureVisible(confirmation);
+    await tester.tap(confirmation);
     context.sentBlock = await _pumpUntilComplete(
       tester,
       completer.future,

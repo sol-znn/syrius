@@ -1,635 +1,200 @@
-import 'dart:typed_data';
+import 'dart:async';
 
+import 'package:desktop_drop/desktop_drop.dart';
 import 'package:material_ui/material_ui.dart';
-import 'package:zenon_syrius_wallet_flutter/blocs/blocs.dart';
-import 'package:zenon_syrius_wallet_flutter/main.dart';
+import 'package:zenon_syrius_wallet_flutter/blocs/notifications_bloc.dart';
+import 'package:zenon_syrius_wallet_flutter/main.dart' as app;
 import 'package:zenon_syrius_wallet_flutter/model/model.dart';
-import 'package:zenon_syrius_wallet_flutter/rearchitecture/utils/widgets/page/page_widgets.dart';
-import 'package:zenon_syrius_wallet_flutter/screens/screens.dart';
-import 'package:zenon_syrius_wallet_flutter/utils/app_colors.dart';
-import 'package:zenon_syrius_wallet_flutter/utils/app_theme.dart';
-import 'package:zenon_syrius_wallet_flutter/utils/background_crypto.dart';
-import 'package:zenon_syrius_wallet_flutter/utils/clipboard_utils.dart';
-import 'package:zenon_syrius_wallet_flutter/utils/constants.dart';
-import 'package:zenon_syrius_wallet_flutter/utils/format_utils.dart';
-import 'package:zenon_syrius_wallet_flutter/utils/functions.dart';
+import 'package:zenon_syrius_wallet_flutter/rearchitecture/utils/extensions/buildcontext_extension.dart';
+import 'package:zenon_syrius_wallet_flutter/screens/dump_mnemonic_screen.dart';
+import 'package:zenon_syrius_wallet_flutter/screens/export/export_wallet_info_screen.dart';
 import 'package:zenon_syrius_wallet_flutter/utils/global.dart';
-import 'package:zenon_syrius_wallet_flutter/utils/navigation_utils.dart';
-import 'package:zenon_syrius_wallet_flutter/utils/notification_utils.dart';
-import 'package:zenon_syrius_wallet_flutter/widgets/modular_widgets/settings_widgets/settings_parts.dart';
-import 'package:zenon_syrius_wallet_flutter/widgets/widgets.dart';
+import 'package:zenon_syrius_wallet_flutter/utils/wallet_context_revision.dart';
 
-const int _kMinMinutesOfInactivity = 1;
-const int _kMaxMinutesOfInactivity = 30;
-const int _kMinUnlockAttempts = 3;
-const int _kMaxUnlockAttempts = 10;
+import 'package:zenon_syrius_wallet_flutter/widgets/modular_widgets/settings_widgets/security_settings_binding.dart';
+import 'package:zenon_syrius_wallet_flutter/widgets/modular_widgets/settings_widgets/security_settings_presenter.dart';
+import 'package:zenon_syrius_wallet_flutter/widgets/modular_widgets/settings_widgets/security_settings_view.dart';
+import 'package:zenon_syrius_wallet_flutter/widgets/modular_widgets/settings_widgets/settings_sensitive_session.dart';
 
-/// Security: the password, the two locks, and signing and verifying with
-/// the selected address.
-///
-/// Auto-lock and auto-erase apply when the slider is let go. Each used to
-/// need a Confirm press, and a slider moved without it changed nothing.
-/// Auto-erase cannot be switched off here: it is on from the first start at
-/// [kAutoEraseNumAttemptsDefault] attempts, and the slider only moves the
-/// count.
+/// Owns captured Security effects behind the pure, single-column section.
 class SecurityWidget extends StatefulWidget {
+  /// Awaits the original lock-policy callback after its saved preference.
   const SecurityWidget(
-    this._onChangeAutoLockTime, {
+    this._onPolicyChanged, {
     required this.onStepperNotificationSeeMorePressed,
+    this.isCurrent,
+    this.onResetWallet,
     super.key,
   });
 
-  final VoidCallback _onChangeAutoLockTime;
+  final FutureOr<void> Function() _onPolicyChanged;
+
+  /// Retained for callers sharing the existing notification navigation.
   final VoidCallback onStepperNotificationSeeMorePressed;
 
+  /// Root binds a captured section epoch so leaving cannot revive old work.
+  final bool Function()? isCurrent;
+
+  /// Root captures destructive maintenance before pushing its owned question.
+  final void Function(bool Function() isCurrent)? onResetWallet;
+
   @override
-  State createState() {
-    return _SecurityWidgetState();
-  }
+  State<SecurityWidget> createState() => _SecurityWidgetState();
 }
 
 class _SecurityWidgetState extends State<SecurityWidget> {
-  final GlobalKey<LoadingButtonState> _signButtonKey = GlobalKey();
-  final GlobalKey<LoadingButtonState> _signFileButtonKey = GlobalKey();
-  final GlobalKey<LoadingButtonState> _verifyButtonKey = GlobalKey();
-  final GlobalKey<LoadingButtonState> _verifyFileButtonKey = GlobalKey();
+  late SecuritySettingsPresenter _presenter;
+  SettingsSensitiveRoutes _routes = SettingsSensitiveRoutes();
+  Object? _sensitiveOperation;
+  int _generation = 0;
 
-  final TextEditingController _textToBeSignedController =
-      TextEditingController();
-  final TextEditingController _signedTextController = TextEditingController();
-  final TextEditingController _publicKeyController = TextEditingController();
-  final TextEditingController _textToBeVerifiedController =
-      TextEditingController();
-  final TextEditingController _signatureController = TextEditingController();
-  final TextEditingController _publicKeyToBeFilledController =
-      TextEditingController();
-  final TextEditingController _fileHashController = TextEditingController();
-  final TextEditingController _publicKeySignFileController =
-      TextEditingController();
-  final TextEditingController _fileHashVerifyController =
-      TextEditingController();
-  final TextEditingController _publicKeyVerifyFileController =
-      TextEditingController();
+  @override
+  void initState() {
+    super.initState();
+    _presenter = _createPresenter();
+    WalletContextRevision.changes.addListener(_onRevision);
+  }
 
-  String? _toBeSignedFilePath;
-  String? _toBeVerifiedFilePath;
+  SecuritySettingsPresenter _createPresenter() => SecuritySettingsPresenter(
+    initial: readSecuritySettingsState(),
+    capture: () {
+      final bool Function() current = _captureSection(requireVisible: true);
+      final FutureOr<void> Function() callback = widget._onPolicyChanged;
+      return captureSecurityPolicy(
+        isCurrent: current,
+        onPolicyChanged: callback,
+        lockChanged: context.l10n.securitySettingsLockChanged,
+        limitChanged: context.l10n.securitySettingsLimitChanged,
+      );
+    },
+  );
 
-  /// What signing last refused, until the message is edited.
-  String? _signError;
+  void _onRevision() {
+    _generation++;
+    _routes.close();
+    _routes = SettingsSensitiveRoutes();
+    unawaited(_presenter.close());
+    if (mounted) {
+      setState(() => _presenter = _createPresenter());
+    }
+  }
 
-  final GlobalKey<SelectFileWidgetState> _signSelectFileWidgetKey = GlobalKey();
-  final GlobalKey<SelectFileWidgetState> _verifySelectFileWidgetKey =
-      GlobalKey();
+  bool Function() _captureSection({required bool requireVisible}) {
+    final bool Function()? external = widget.isCurrent;
+    final int generation = _generation;
+    final ModalRoute<void>? route = ModalRoute.of<void>(context);
+    bool revoked = false;
+    return () =>
+        !revoked &&
+        !(revoked =
+            !mounted ||
+            generation != _generation ||
+            (external != null && !external()) ||
+            (requireVisible && !(route?.isCurrent ?? false)));
+  }
+
+  Future<void> _openSensitive(
+    bool Function() visible, {
+    required bool export,
+  }) async {
+    if (!visible() || _routes.busy || _sensitiveOperation != null) {
+      return;
+    }
+    final Object operation = Object();
+    _sensitiveOperation = operation;
+    try {
+      final bool Function() source = _captureSection(requireVisible: false);
+      final NavigatorState navigator = Navigator.of(context);
+      final SettingsSensitiveRoutes routes = _routes;
+      final String title = context.l10n.securitySettingsVaultExported;
+      final SettingsSensitiveSession? session = captureSettingsSensitiveSession(
+        isCurrent: source,
+        fileType: context.l10n.securitySettingsVaultFileType,
+      );
+      if (session == null || session.isHardwareWallet) {
+        return;
+      }
+      final NotificationsBloc? notifications = export
+          ? app.sl.get<NotificationsBloc>()
+          : null;
+      final String? seed = export
+          ? await session.readExportSeed(
+              isCurrent: visible,
+            )
+          : null;
+      if (!visible() || !source() || !session.isCurrent) {
+        return;
+      }
+      await routes.open(
+        navigator: navigator,
+        isCurrent: () => source() && session.isCurrent,
+        builder: (SettingsRouteLease lease) => export
+            ? ExportWalletInfoScreen(
+                seed!,
+                backupWalletFlow: true,
+                session: session,
+                routeLease: lease,
+                onExported: () async {
+                  final bool Function() child = lease.capture();
+                  if (source() && session.isCurrent) {
+                    await notifications!.addNotification(
+                      WalletNotification(
+                        title: title,
+                        details: '',
+                        timestamp: DateTime.now().millisecondsSinceEpoch,
+                        type: NotificationType.paymentSent,
+                      ),
+                      shouldDisplay: () =>
+                          child() && source() && session.isCurrent,
+                    );
+                  }
+                },
+              )
+            : DumpMnemonicScreen(session: session, routeLease: lease),
+      );
+    } finally {
+      if (identical(operation, _sensitiveOperation)) {
+        _sensitiveOperation = null;
+      }
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
-    // Every panel is as tall as its content and the section scrolls as one.
-    // Sign and Verify used to share what the window left under Lock and
-    // scroll inside themselves, so at the least window height Verify showed
-    // half of its file zone and nothing said there was more.
-    return SettingsSection(
-      children: <Widget>[
-        Panel(
-          title: 'Lock',
-          shrinkWrap: true,
-          child: FocusTraversalGroup(
-            child: SettingsList(
-              children: <Widget>[
-                SettingRow(
-                  label: 'Password',
-                  hint: 'The one that unlocks this wallet',
-                  trailing: SecondaryAction(
-                    child: SettingsButton(
-                      text: 'Change',
-                      onPressed: _onChangePasswordPressed,
-                    ),
-                  ),
-                ),
-                SliderSetting(
-                  key: const Key('settings_auto_lock'),
-                  label: 'Auto-lock',
-                  hintOf: (int minutes) => minutes == 1
-                      ? 'After 1 minute of inactivity'
-                      : 'After $minutes minutes of inactivity',
-                  saved: kAutoLockWalletMinutes!,
-                  min: _kMinMinutesOfInactivity,
-                  max: _kMaxMinutesOfInactivity,
-                  onCommitted: _applyAutoLock,
-                ),
-                SliderSetting(
-                  key: const Key('settings_auto_erase'),
-                  label: 'Auto-erase',
-                  hintOf: (int attempts) =>
-                      'After $attempts failed password attempts',
-                  saved: kAutoEraseWalletLimit!.toInt(),
-                  min: _kMinUnlockAttempts,
-                  max: _kMaxUnlockAttempts,
-                  onCommitted: _applyAutoErase,
-                ),
-              ],
-            ),
-          ),
-        ),
-        SettingsColumns(
-          children: <Widget>[
-            Panel(
-              title: 'Sign',
-              shrinkWrap: true,
-              padding: const EdgeInsets.all(16),
-              child: FocusTraversalGroup(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.stretch,
-                  mainAxisSize: MainAxisSize.min,
-                  children: <Widget>[
-                    _buildSignBody(),
-                    const SizedBox(height: 18),
-                    _buildLabel('File'),
-                    _buildSignFileBody(),
-                  ],
-                ),
-              ),
-            ),
-            Panel(
-              title: 'Verify',
-              shrinkWrap: true,
-              padding: const EdgeInsets.all(16),
-              child: FocusTraversalGroup(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.stretch,
-                  mainAxisSize: MainAxisSize.min,
-                  children: <Widget>[
-                    _buildVerifyBody(),
-                    const SizedBox(height: 18),
-                    _buildLabel('File'),
-                    _buildVerifyFileBody(),
-                  ],
-                ),
-              ),
-            ),
-          ],
-        ),
-      ],
-    );
-  }
-
-  Widget _buildLabel(String text) {
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 6),
-      child: Text(text.toUpperCase(), style: ledgerLabelStyle(context)),
-    );
-  }
-
-  /// A read-only result, a signature or a key, with its copy button.
-  Widget _buildResult(String label, TextEditingController controller) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.stretch,
-      mainAxisSize: MainAxisSize.min,
-      children: <Widget>[
-        _buildLabel(label),
-        Row(
-          children: <Widget>[
-            Expanded(
-              child: InputField(
-                enabled: false,
-                controller: controller,
-                inputtedTextStyle: settingMonoStyle(context),
-              ),
-            ),
-            CopyToClipboardButton(controller.text, iconSize: 16),
-          ],
-        ),
-      ],
-    );
-  }
-
-  /// Pastes the clipboard into [controller]. The page rebuilds after the
-  /// paste lands, so a Verify that was waiting for that field enables.
-  Widget _buildPasteButton(TextEditingController controller) {
-    return IconButton(
-      tooltip: 'Paste',
-      visualDensity: VisualDensity.compact,
-      iconSize: 16,
-      icon: const Icon(Icons.content_paste, color: AppColors.faint),
-      onPressed: () {
-        ClipboardUtils.pasteToClipboard(
-          callback: (String value) {
-            if (!mounted) return;
-            setState(() {
-              controller.text = value;
-            });
-          },
-        );
-      },
-    );
-  }
-
-  TextStyle get _monoInput => monoStyle(
-    const TextStyle(fontSize: 13, color: AppColors.znnColor),
-  );
-
-  void _onChangePasswordPressed() {
-    NavigationUtils.push(
-      context,
-      ChangeWalletPasswordScreen(
-        onStepperNotificationSeeMorePressed:
-            widget.onStepperNotificationSeeMorePressed,
+    final bool Function() visible = _captureSection(requireVisible: true);
+    final bool Function() source = _captureSection(requireVisible: false);
+    final void Function(bool Function())? reset = widget.onResetWallet;
+    return SecuritySettingsView(
+      key: ValueKey<int>(_generation),
+      presenter: _presenter,
+      hardware: kWalletFile?.isHardwareWallet ?? true,
+      isCurrent: source,
+      captureCrypto: (bool Function() current) => captureSecurityCrypto(
+        isCurrent: () => visible() && current(),
       ),
+      onShowSeed: (bool Function() current) =>
+          _openSensitive(current, export: false),
+      onExportVault: (bool Function() current) =>
+          _openSensitive(current, export: true),
+      onResetWallet: reset,
+      fileDropBuilder: (Widget child, ValueChanged<String> onPath) =>
+          DropTarget(
+            onDragDone: (DropDoneDetails details) {
+              if (details.files.isNotEmpty) {
+                onPath(details.files.first.path);
+              }
+            },
+            child: child,
+          ),
     );
-  }
-
-  /// Saves the auto-lock interval and restarts the lock timer with it.
-  /// Returns whether it was saved; the slider goes back when it was not.
-  Future<bool> _applyAutoLock(int minutes) async {
-    // Read before the await: the slider saves a pending value as it is
-    // disposed, and this page is gone by the time that write returns.
-    final VoidCallback restartLockTimer = widget._onChangeAutoLockTime;
-    try {
-      await sharedPrefsService!.put(kAutoLockWalletMinutesKey, minutes);
-      kAutoLockWalletMinutes = minutes;
-      restartLockTimer();
-      return true;
-    } catch (e) {
-      await NotificationUtils.sendNotificationError(
-        e,
-        'Error while confirming auto-lock interval',
-      );
-      return false;
-    }
-  }
-
-  /// Saves how many wrong passwords erase the wallet. Kept as a double, the
-  /// type the lock screen and the settings box already hold it in.
-  Future<bool> _applyAutoErase(int attempts) async {
-    try {
-      final double limit = attempts.toDouble();
-      await sharedPrefsService!.put(kAutoEraseNumAttemptsKey, limit);
-      kAutoEraseWalletLimit = limit;
-      await sl.get<NotificationsBloc>().addNotification(
-        WalletNotification(
-          title: 'Auto-erase attempts limit successfully changed',
-          details: 'The auto-erase limit has now $attempts attempt(s)',
-          timestamp: DateTime.now().millisecondsSinceEpoch,
-          type: NotificationType.autoEraseNumAttemptsChanged,
-        ),
-      );
-      return true;
-    } catch (e) {
-      await NotificationUtils.sendNotificationError(
-        e,
-        'Error while confirming auto-erase limit',
-      );
-      return false;
-    }
-  }
-
-  /// Why [message] cannot be signed or verified as text, in the words of
-  /// the [FormatException] the shared signing function raises for it; null
-  /// when it can. Asked as the person types, so the line is under the field
-  /// before Sign is pressed rather than in a notification after.
-  String? _refusalOf(String message) {
-    try {
-      messageBytesToSign(message);
-      return null;
-    } on FormatException catch (e) {
-      return e.message;
-    }
-  }
-
-  Widget _buildSignBody() {
-    final String? signRefusal =
-        _signError ??
-        _refusalOf(
-          _textToBeSignedController.text,
-        );
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.stretch,
-      mainAxisSize: MainAxisSize.min,
-      children: <Widget>[
-        InputField(
-          controller: _textToBeSignedController,
-          hintText: 'Message',
-          errorText: signRefusal,
-          onChanged: (String? value) {
-            setState(() {
-              _signError = null;
-            });
-          },
-          suffixIcon: CopyToClipboardButton(
-            _textToBeSignedController.text,
-            iconSize: 16,
-          ),
-        ),
-        const SizedBox(height: 10),
-        Align(
-          alignment: Alignment.centerRight,
-          child: LoadingButton.settings(
-            key: _signButtonKey,
-            text: 'Sign',
-            onPressed:
-                _textToBeSignedController.text.isNotEmpty && signRefusal == null
-                ? _onSignButtonPressed
-                : null,
-          ),
-        ),
-        if (_signedTextController.text.isNotEmpty) ...<Widget>[
-          const SizedBox(height: 10),
-          _buildResult('Signature', _signedTextController),
-          const SizedBox(height: 10),
-          _buildResult('Public key', _publicKeyController),
-        ],
-      ],
-    );
-  }
-
-  Future<void> _onSignButtonPressed() async {
-    try {
-      _signButtonKey.currentState?.animateForward();
-      final Signature signature = await walletSignMessage(
-        _textToBeSignedController.text,
-      );
-      if (!mounted) return;
-      setState(() {
-        _signedTextController.text = signature.signature;
-        _publicKeyController.text = signature.publicKey;
-      });
-    } on FormatException catch (e) {
-      // The button is off for a refused message, so this is the case of
-      // the rule changing under the panel: still one line, under the field.
-      if (!mounted) return;
-      setState(() {
-        _signError = e.message;
-      });
-    } catch (e) {
-      await NotificationUtils.sendNotificationError(
-        e,
-        'Error while signing message',
-      );
-    } finally {
-      _signButtonKey.currentState?.animateReverse();
-    }
-  }
-
-  Widget _buildVerifyBody() {
-    final String? verifyRefusal = _refusalOf(_textToBeVerifiedController.text);
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.stretch,
-      mainAxisSize: MainAxisSize.min,
-      children: <Widget>[
-        InputField(
-          onChanged: (String value) {
-            setState(() {});
-          },
-          controller: _textToBeVerifiedController,
-          hintText: 'Message',
-          errorText: verifyRefusal,
-          suffixIcon: _buildPasteButton(_textToBeVerifiedController),
-        ),
-        const SizedBox(height: 10),
-        InputField(
-          onChanged: (String value) {
-            setState(() {});
-          },
-          controller: _signatureController,
-          hintText: 'Signature',
-          inputtedTextStyle: _monoInput,
-          suffixIcon: _buildPasteButton(_signatureController),
-        ),
-        const SizedBox(height: 10),
-        InputField(
-          onChanged: (String value) {
-            setState(() {});
-          },
-          controller: _publicKeyToBeFilledController,
-          hintText: 'Public key',
-          inputtedTextStyle: _monoInput,
-          suffixIcon: _buildPasteButton(_publicKeyToBeFilledController),
-        ),
-        const SizedBox(height: 10),
-        Align(
-          alignment: Alignment.centerRight,
-          child: LoadingButton.settings(
-            key: _verifyButtonKey,
-            text: 'Verify',
-            onPressed:
-                _textToBeVerifiedController.text.isNotEmpty &&
-                    verifyRefusal == null &&
-                    _signatureController.text.isNotEmpty &&
-                    _publicKeyToBeFilledController.text.isNotEmpty
-                ? _onVerifyButtonPressed
-                : null,
-          ),
-        ),
-      ],
-    );
-  }
-
-  Future<void> _onVerifyButtonPressed() async {
-    try {
-      _verifyButtonKey.currentState?.animateForward();
-      final bool verified = await BackgroundCrypto.verify(
-        FormatUtils.decodeHexString(_signatureController.text),
-        Uint8List.fromList(
-          messageBytesToSign(_textToBeVerifiedController.text),
-        ),
-        FormatUtils.decodeHexString(_publicKeyToBeFilledController.text),
-      );
-      if (verified) {
-        await sl.get<NotificationsBloc>().addNotification(
-          WalletNotification(
-            title: 'Message verified successfully',
-            timestamp: DateTime.now().millisecondsSinceEpoch,
-            details:
-                'The message: ${_textToBeVerifiedController.text} '
-                'was successfully verified with the signature: '
-                '${_signatureController.text}',
-            type: NotificationType.paymentSent,
-          ),
-        );
-        if (!mounted) return;
-        setState(() {
-          _textToBeVerifiedController.clear();
-          _signatureController.clear();
-          _publicKeyToBeFilledController.clear();
-        });
-      } else {
-        throw 'Message or signature invalid';
-      }
-    } catch (e) {
-      await NotificationUtils.sendNotificationError(
-        e,
-        'Error while verifying message',
-      );
-    } finally {
-      _verifyButtonKey.currentState?.animateReverse();
-    }
   }
 
   @override
   void dispose() {
-    _textToBeSignedController.dispose();
-    _signedTextController.dispose();
-    _publicKeyController.dispose();
-    _textToBeVerifiedController.dispose();
-    _signatureController.dispose();
-    _publicKeyToBeFilledController.dispose();
-    _fileHashController.dispose();
-    _publicKeySignFileController.dispose();
-    _fileHashVerifyController.dispose();
-    _publicKeyVerifyFileController.dispose();
+    WalletContextRevision.changes.removeListener(_onRevision);
+    _generation++;
+    _routes.close();
+    unawaited(_presenter.close());
     super.dispose();
-  }
-
-  Widget _buildSignFileBody() {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.stretch,
-      mainAxisSize: MainAxisSize.min,
-      children: <Widget>[
-        SelectFileWidget(
-          onPathFoundCallback: (String path) {
-            setState(() {
-              _toBeSignedFilePath = path;
-            });
-          },
-          textStyle: Theme.of(context).textTheme.titleMedium,
-          key: _signSelectFileWidgetKey,
-        ),
-        if (_toBeSignedFilePath != null) ...<Widget>[
-          const SizedBox(height: 10),
-          Align(
-            alignment: Alignment.centerRight,
-            child: SecondaryAction(
-              child: LoadingButton.settings(
-                key: _signFileButtonKey,
-                text: 'Sign file',
-                onPressed: _onSignFileButtonPressed,
-              ),
-            ),
-          ),
-        ],
-        if (_fileHashController.text.isNotEmpty) ...<Widget>[
-          const SizedBox(height: 10),
-          _buildResult('Signed hash', _fileHashController),
-          const SizedBox(height: 10),
-          _buildResult('Public key', _publicKeySignFileController),
-        ],
-      ],
-    );
-  }
-
-  Future<void> _onSignFileButtonPressed() async {
-    try {
-      _signFileButtonKey.currentState?.animateForward();
-      final Signature fileSignature = await walletSign(
-        await BackgroundCrypto.digestFile(_toBeSignedFilePath!),
-      );
-      if (!mounted) return;
-      setState(() {
-        _fileHashController.text = fileSignature.signature;
-        _publicKeySignFileController.text = fileSignature.publicKey;
-        _toBeSignedFilePath = null;
-        _signSelectFileWidgetKey.currentState!.resetMessageToUser();
-      });
-    } catch (e) {
-      await NotificationUtils.sendNotificationError(
-        e,
-        'Error while signing message',
-      );
-    } finally {
-      _signFileButtonKey.currentState?.animateReverse();
-    }
-  }
-
-  Widget _buildVerifyFileBody() {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.stretch,
-      mainAxisSize: MainAxisSize.min,
-      children: <Widget>[
-        SelectFileWidget(
-          onPathFoundCallback: (String path) {
-            setState(() {
-              _toBeVerifiedFilePath = path;
-            });
-          },
-          textStyle: Theme.of(context).textTheme.titleMedium,
-          key: _verifySelectFileWidgetKey,
-        ),
-        const SizedBox(height: 10),
-        InputField(
-          onChanged: (String value) {
-            setState(() {});
-          },
-          controller: _fileHashVerifyController,
-          hintText: 'Signed hash',
-          inputtedTextStyle: _monoInput,
-          suffixIcon: _buildPasteButton(_fileHashVerifyController),
-        ),
-        const SizedBox(height: 10),
-        InputField(
-          onChanged: (String value) {
-            setState(() {});
-          },
-          controller: _publicKeyVerifyFileController,
-          hintText: 'Public key',
-          inputtedTextStyle: _monoInput,
-          suffixIcon: _buildPasteButton(_publicKeyVerifyFileController),
-        ),
-        if (_toBeVerifiedFilePath != null) ...<Widget>[
-          const SizedBox(height: 10),
-          Align(
-            alignment: Alignment.centerRight,
-            child: SecondaryAction(
-              child: LoadingButton.settings(
-                key: _verifyFileButtonKey,
-                text: 'Verify file',
-                onPressed:
-                    _fileHashVerifyController.text.isNotEmpty &&
-                        _publicKeyVerifyFileController.text.isNotEmpty
-                    ? _onVerifyFileButtonPressed
-                    : null,
-              ),
-            ),
-          ),
-        ],
-      ],
-    );
-  }
-
-  Future<void> _onVerifyFileButtonPressed() async {
-    try {
-      _verifyFileButtonKey.currentState?.animateForward();
-      final bool verified = await BackgroundCrypto.verify(
-        FormatUtils.decodeHexString(_fileHashVerifyController.text),
-        await BackgroundCrypto.digestFile(_toBeVerifiedFilePath!),
-        FormatUtils.decodeHexString(_publicKeyVerifyFileController.text),
-      );
-      if (verified) {
-        await sl.get<NotificationsBloc>().addNotification(
-          WalletNotification(
-            title: 'File hash verified successfully',
-            timestamp: DateTime.now().millisecondsSinceEpoch,
-            details:
-                'File hash was successfully verified with the signed hash: '
-                '${_fileHashVerifyController.text}',
-            type: NotificationType.paymentSent,
-          ),
-        );
-        if (!mounted) return;
-        setState(() {
-          _toBeVerifiedFilePath = null;
-          _verifySelectFileWidgetKey.currentState!.resetMessageToUser();
-          _fileHashVerifyController.clear();
-          _publicKeyVerifyFileController.clear();
-        });
-      } else {
-        throw 'Hash or public key invalid';
-      }
-    } catch (e) {
-      await NotificationUtils.sendNotificationError(
-        e,
-        'Error while verifying file hash:',
-      );
-    } finally {
-      _verifyFileButtonKey.currentState?.animateReverse();
-    }
   }
 }

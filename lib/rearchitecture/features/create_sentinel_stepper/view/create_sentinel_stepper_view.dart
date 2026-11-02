@@ -1,8 +1,10 @@
-import 'package:material_ui/material_ui.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:material_ui/material_ui.dart';
 import 'package:zenon_syrius_wallet_flutter/main.dart';
 import 'package:zenon_syrius_wallet_flutter/rearchitecture/features/card_parts/card_parts.dart';
 import 'package:zenon_syrius_wallet_flutter/rearchitecture/features/features.dart';
+import 'package:zenon_syrius_wallet_flutter/rearchitecture/features/registration_success/registration_confirmation.dart';
+import 'package:zenon_syrius_wallet_flutter/rearchitecture/features/registration_success/registration_success_surface.dart';
 import 'package:zenon_syrius_wallet_flutter/rearchitecture/utils/utils.dart';
 import 'package:zenon_syrius_wallet_flutter/utils/app_theme.dart';
 import 'package:zenon_syrius_wallet_flutter/utils/global.dart';
@@ -25,13 +27,18 @@ enum _Step {
 /// than a Sentinel takes.
 class CreateSentinelStepperView extends StatefulWidget {
   /// {@macro default_constructor}
-  const CreateSentinelStepperView({super.key});
+  const CreateSentinelStepperView({this.confirmation, super.key});
+
+  /// A page-owned confirmation survives every retained step and balance read.
+  final RegistrationConfirmation? confirmation;
 
   @override
   State<CreateSentinelStepperView> createState() => _MainSentinelState();
 }
 
 class _MainSentinelState extends State<CreateSentinelStepperView> {
+  late final RegistrationConfirmation _confirmation;
+  AccountInfo? _lastAccountInfo;
   final TextEditingController _qsrAmountController = TextEditingController();
   final TextEditingController _znnAmountController = TextEditingController();
   final TextEditingController _addressController = TextEditingController();
@@ -44,6 +51,7 @@ class _MainSentinelState extends State<CreateSentinelStepperView> {
   @override
   void initState() {
     super.initState();
+    _confirmation = widget.confirmation ?? RegistrationConfirmation.capture();
     // Shown, never typed: grouped, and with no trailing zeros.
     _znnAmountController.text = cardAmount(
       sentinelRegisterZnnAmount,
@@ -63,26 +71,33 @@ class _MainSentinelState extends State<CreateSentinelStepperView> {
     return BlocBuilder<MultipleBalanceBloc, MultipleBalanceState>(
       // Loading, the steps and an error fade into one another. The steps
       // themselves change with the stepper's own transition.
-      builder: (_, MultipleBalanceState state) => StateSwitcher(
-        alignment: Alignment.center,
-        child: switch (state.status) {
-          MultipleBalanceStatus.failure => SyriusErrorWidget(
-            state.error!,
-            key: const ValueKey<String>('error'),
-          ),
-          MultipleBalanceStatus.initial ||
-          MultipleBalanceStatus.loading => const SyriusLoadingWidget(
-            key: ValueKey<String>('loading'),
-          ),
-          MultipleBalanceStatus.success => KeyedSubtree(
-            key: const ValueKey<String>('steps'),
-            child: _buildBody(
-              context,
-              state.data![_addressController.text]!,
-            ),
-          ),
-        },
-      ),
+      builder: (_, MultipleBalanceState state) {
+        final AccountInfo? account = state.data?[_addressController.text];
+        if (state.status == MultipleBalanceStatus.success && account != null) {
+          _lastAccountInfo = account;
+        }
+        return StateSwitcher(
+          alignment: Alignment.center,
+          child: _lastAccountInfo != null
+              ? KeyedSubtree(
+                  key: const ValueKey<String>('steps'),
+                  child: _buildBody(context, _lastAccountInfo!),
+                )
+              : switch (state.status) {
+                  MultipleBalanceStatus.failure => SyriusErrorWidget(
+                    state.error!,
+                    key: const ValueKey<String>('error'),
+                  ),
+                  MultipleBalanceStatus.initial ||
+                  MultipleBalanceStatus.loading => const SyriusLoadingWidget(
+                    key: ValueKey<String>('loading'),
+                  ),
+                  MultipleBalanceStatus.success => const SyriusLoadingWidget(
+                    key: ValueKey<String>('loading'),
+                  ),
+                },
+        );
+      },
     );
   }
 
@@ -95,27 +110,20 @@ class _MainSentinelState extends State<CreateSentinelStepperView> {
         child: ValueListenableBuilder<_Step?>(
           valueListenable: _currentStep,
           builder: (_, _Step? currentStep, _) {
-            final bool hasSentinelBeenRegistered = currentStep == null;
-
-            return Stack(
-              children: <Widget>[
-                ListView(
-                  children: <Widget>[
-                    _buildMaterialStepper(
-                      accountInfo: accountInfo,
-                      currentStep: currentStep,
-                    ),
-                    if (hasSentinelBeenRegistered)
-                      SentinelRegisteredSuccess(
-                        onViewSentinelsPressed: () {
-                          Navigator.pop(context);
-                        },
-                      ),
-                  ],
-                ),
-                if (hasSentinelBeenRegistered)
-                  const SentinelRegisteredSuccessAnimation(),
-              ],
+            return RegistrationRetainedFlow(
+              published: currentStep == null,
+              form: ListView(
+                children: <Widget>[
+                  _buildMaterialStepper(
+                    accountInfo: accountInfo,
+                    currentStep: currentStep,
+                  ),
+                ],
+              ),
+              receipt: SentinelRegisteredSuccess(
+                confirmation: _confirmation,
+                onViewSentinelsPressed: () => Navigator.pop(context),
+              ),
             );
           },
         ),
@@ -205,6 +213,7 @@ class _MainSentinelState extends State<CreateSentinelStepperView> {
             address: _addressController.text,
             onBackPressed: _navigateToPreviousStep,
             onDeployDone: _onDeployDone,
+            onPublished: _confirmation.accept,
           ),
           stepSubtitle: context.l10n.sentinelRegistered,
           stepState: getStepState(
@@ -260,6 +269,7 @@ class _MainSentinelState extends State<CreateSentinelStepperView> {
 
   @override
   void dispose() {
+    if (widget.confirmation == null) _confirmation.dispose();
     _qsrAmountController.dispose();
     _znnAmountController.dispose();
     _addressController.dispose();

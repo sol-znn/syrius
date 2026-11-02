@@ -1,449 +1,131 @@
+import 'dart:async';
 import 'dart:isolate';
 
-import 'package:material_ui/material_ui.dart';
-import 'package:flutter/services.dart';
-import 'package:flutter_vector_icons/flutter_vector_icons.dart';
+import 'package:flutter/foundation.dart';
 import 'package:hive_ce/hive_ce.dart';
+import 'package:material_ui/material_ui.dart';
 import 'package:wakelock_plus/wakelock_plus.dart';
-import 'package:zenon_syrius_wallet_flutter/blocs/blocs.dart';
-import 'package:zenon_syrius_wallet_flutter/embedded_node/embedded_node.dart';
-import 'package:zenon_syrius_wallet_flutter/main.dart';
+import 'package:zenon_syrius_wallet_flutter/blocs/auto_receive_tx_worker.dart';
+import 'package:zenon_syrius_wallet_flutter/blocs/auto_unlock_htlc_worker.dart';
+import 'package:zenon_syrius_wallet_flutter/blocs/notifications_bloc.dart';
+import 'package:zenon_syrius_wallet_flutter/handlers/htlc_swaps_handler.dart';
+import 'package:zenon_syrius_wallet_flutter/l10n/l10n.dart';
+import 'package:zenon_syrius_wallet_flutter/main.dart' as app;
 import 'package:zenon_syrius_wallet_flutter/model/model.dart';
-import 'package:zenon_syrius_wallet_flutter/rearchitecture/utils/widgets/page/page_widgets.dart';
+import 'package:zenon_syrius_wallet_flutter/rearchitecture/features/node_update/node_update.dart';
+import 'package:zenon_syrius_wallet_flutter/services/htlc_swaps_service.dart';
 import 'package:zenon_syrius_wallet_flutter/services/i_web3wallet_service.dart';
+import 'package:zenon_syrius_wallet_flutter/services/shared_prefs_service.dart';
+import 'package:zenon_syrius_wallet_flutter/utils/constants.dart';
+import 'package:zenon_syrius_wallet_flutter/utils/global.dart';
 import 'package:zenon_syrius_wallet_flutter/utils/node_change.dart';
-import 'package:zenon_syrius_wallet_flutter/utils/utils.dart';
-import 'package:zenon_syrius_wallet_flutter/widgets/modular_widgets/settings_widgets/settings_parts.dart';
-import 'package:zenon_syrius_wallet_flutter/widgets/widgets.dart';
+import 'package:zenon_syrius_wallet_flutter/utils/node_utils.dart';
+import 'package:zenon_syrius_wallet_flutter/utils/original_publications.dart';
+import 'package:zenon_syrius_wallet_flutter/utils/wallet_context_revision.dart';
+import 'package:zenon_syrius_wallet_flutter/widgets/modular_widgets/settings_widgets/node_settings_presenter.dart';
+import 'package:zenon_syrius_wallet_flutter/widgets/modular_widgets/settings_widgets/node_settings_view.dart';
+import 'package:zenon_syrius_wallet_flutter/widgets/shell/tabs.dart';
 import 'package:znn_sdk_dart/znn_sdk_dart.dart';
 
-class NodeManagement extends StatefulWidget {
+part 'node_settings_wallet.dart';
 
-  const NodeManagement({
+/// The Node section's production owner. The child supplies its single scroller.
+class NodeSettingsSection extends StatefulWidget {
+  /// Keeps the existing return-to-wallet callback after a genuine connection.
+  const NodeSettingsSection({
     required this.onNodeChangedCallback,
+    this.isCurrent,
+    this.onboarding = false,
     super.key,
   });
+
+  /// Called only after the selected node was accepted, kept and announced.
   final VoidCallback onNodeChangedCallback;
 
+  /// The Settings owner revokes outgoing sections before transition teardown.
+  final bool Function()? isCurrent;
+
+  /// Uses the genuine entry route, including a pristine absent node selection.
+  final bool onboarding;
+
   @override
-  State<NodeManagement> createState() => _NodeManagementState();
+  State<NodeSettingsSection> createState() => _NodeSettingsSectionState();
 }
 
-class _NodeManagementState extends State<NodeManagement> {
-  String? _selectedNode;
-
-  final GlobalKey<LoadingButtonState> _confirmNodeButtonKey = GlobalKey();
-  final GlobalKey<LoadingButtonState> _addNodeButtonKey = GlobalKey();
-  final GlobalKey<LoadingButtonState> _confirmChainIdButtonKey = GlobalKey();
-
-  TextEditingController _newNodeController = TextEditingController();
-  GlobalKey<FormState> _newNodeKey = GlobalKey();
-
-  TextEditingController _newChainIdController = TextEditingController();
-  GlobalKey<FormState> _newChainIdKey = GlobalKey();
-
-  late String _selectedNodeConfirmed;
-  late int _currentChainId;
-
-  int get _newChainId => int.parse(_newChainIdController.text);
+class _NodeSettingsSectionState extends State<NodeSettingsSection> {
+  late final NodeSettingsPresenter _presenter = NodeSettingsPresenter(
+    initial: NodeSettingsState(
+      entries: _walletNodeEntries(),
+      activeNode: kCurrentNode,
+      clientChain: getChainIdentifier(),
+    ),
+    capture: _capture,
+  );
+  Timer? _refresh;
 
   @override
   void initState() {
     super.initState();
-    kDefaultCommunityNodes.shuffle();
+    WalletContextRevision.changes.addListener(_authorityChanged);
+    _refresh = Timer.periodic(
+      const Duration(seconds: 10),
+      (Timer _) => unawaited(_presenter.refresh()),
+    );
+  }
+
+  NodeSettingsSession? _capture() {
+    final bool Function()? external = widget.isCurrent;
+    if (!mounted || !_presenter.visible || !(external?.call() ?? true)) {
+      return null;
+    }
+    return _WalletNodeSettingsSession.capture(
+      onboarding: widget.onboarding,
+      visible: () =>
+          mounted && _presenter.visible && (external?.call() ?? true),
+      didConnect: widget.onNodeChangedCallback,
+    );
   }
 
   @override
-  void didChangeDependencies() {
-    super.didChangeDependencies();
-    _selectedNode ??= kCurrentNode!;
-    _selectedNodeConfirmed = _selectedNode!;
-    _initCurrentChainId();
+  void didUpdateWidget(NodeSettingsSection oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (!(oldWidget.isCurrent?.call() ?? true)) {
+      _presenter.invalidate();
+      unawaited(_presenter.refresh());
+    }
   }
 
-  void _initCurrentChainId() {
-    _currentChainId = sharedPrefsService!.get(
-      kChainIdKey,
-      defaultValue: kChainIdDefaultValue,
-    );
+  void _authorityChanged() {
+    if (_presenter.committing) {
+      return;
+    }
+    _presenter.invalidate();
+    unawaited(_presenter.refresh());
   }
 
-  /// Two panels: the nodes to connect to, with Connect and the form that adds
-  /// one, and under them the chain identifier the wallet signs for.
   @override
-  Widget build(BuildContext context) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.stretch,
-      children: <Widget>[
-        Expanded(
-          child: Panel(
-            title: 'Node',
-            actions: <Widget>[
-              LoadingButton.settings(
-                text: 'Connect',
-                onPressed: _onConfirmNodeButtonPressed,
-                key: _confirmNodeButtonKey,
-              ),
-            ],
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: <Widget>[
-                Expanded(child: _buildNodeTiles()),
-                const Divider(),
-                _buildAddNodeRow(),
-              ],
-            ),
-          ),
-        ),
-        const SizedBox(height: kPanelGap),
-        // As tall as its row: at a fixed 128 the validator's line under the
-        // field pushed the row past the panel's edge.
-        Panel(
-          title: 'Chain identifier',
-          shrinkWrap: true,
-          child: _buildChainIdRow(),
-        ),
-      ],
-    );
-  }
-
-  Future<void> _onConfirmNodeButtonPressed() async {
-    // Acquire WakeLock
-    if (!await WakelockPlus.enabled) {
-      WakelockPlus.enable();
-    }
-
-    try {
-      _confirmNodeButtonKey.currentState?.animateForward();
-      final bool isConnectionEstablished =
-          await _establishConnectionToNode(_selectedNode);
-      if (isConnectionEstablished) {
-        kNodeChainId = await NodeUtils.getNodeChainIdentifier();
-        if (await _checkForChainIdMismatch()) {
-          await htlcSwapsService!.storeLastCheckedHtlcBlockHeight(0);
-          await sharedPrefsService!.put(
-            kSelectedNodeKey,
-            _selectedNode,
-          );
-          kCurrentNode = _selectedNode;
-          NodeChange.announce();
-          await _sendChangingNodeSuccessNotification();
-          widget.onNodeChangedCallback();
-        } else {
-          await _establishConnectionToNode(kCurrentNode);
-          kNodeChainId = await NodeUtils.getNodeChainIdentifier();
-          setState(() {
-            _selectedNode = kCurrentNode;
-          });
-        }
-      } else {
-        throw 'Connection could not be established to $_selectedNode';
-      }
-    } catch (e) {
-      await NotificationUtils.sendNotificationError(
-        e,
-        'Connection failed',
-      );
-      setState(() {
-        _selectedNode = kCurrentNode;
-      });
-    } finally {
-      _confirmNodeButtonKey.currentState?.animateReverse();
-    }
-  }
-
-  Future<bool> _establishConnectionToNode(String? url) async {
-    final String targetUrl = url == kEmbeddedNode ? kLocalhostDefaultNodeUrl : url!;
-    bool isConnectionEstablished =
-        await NodeUtils.establishConnectionToNode(targetUrl);
-    if (url == kEmbeddedNode) {
-      // Check if node is already running
-      if (!isConnectionEstablished) {
-        // Initialize local full node
-        await Isolate.spawn(EmbeddedNode.runNode, <String>[''],
-            onExit:
-                sl<ReceivePort>(instanceName: 'embeddedStoppedPort').sendPort,);
-        kEmbeddedNodeRunning = true;
-        // The node needs a couple of seconds to actually start
-        await Future.delayed(kEmbeddedConnectionDelay);
-        isConnectionEstablished =
-            await NodeUtils.establishConnectionToNode(targetUrl);
-      }
-    } else {
-      isConnectionEstablished =
-          await NodeUtils.establishConnectionToNode(targetUrl);
-      if (isConnectionEstablished) {
-        await NodeUtils.closeEmbeddedNode();
-      }
-    }
-    return isConnectionEstablished;
-  }
-
-  Widget _buildAddNodeRow() {
-    return Padding(
-      padding: const EdgeInsets.fromLTRB(16, 10, 12, 10),
-      child: Row(
-        children: <Widget>[
-          Expanded(
-            child: Form(
-              key: _newNodeKey,
-              autovalidateMode: AutovalidateMode.onUserInteraction,
-              child: InputField(
-                controller: _newNodeController,
-                hintText: 'Node address with port',
-                onSubmitted: (String value) {
-                  if (_ifUserInputValid()) {
-                    _onAddNodePressed();
-                  }
-                },
-                onChanged: (String value) {
-                  if (value.isNotEmpty) {
-                    setState(() {});
-                  }
-                },
-                validator: InputValidators.node,
-              ),
-            ),
-          ),
-          const SizedBox(width: 10),
-          SecondaryAction(
-            child: LoadingButton.settings(
-              onPressed: _ifUserInputValid() ? _onAddNodePressed : null,
-              text: 'Add node',
-              key: _addNodeButtonKey,
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  bool _ifUserInputValid() =>
-      InputValidators.node(_newNodeController.text) == null;
-
-  Future<void> _onAddNodePressed() async {
-    if (<String>[...kDbNodes, ...kDefaultCommunityNodes, ...kDefaultNodes]
-        .contains(_newNodeController.text)) {
-      await NotificationUtils.sendNotificationError(
-          'Node ${_newNodeController.text} already exists',
-          'Node already exists',);
-    } else {
-      _addNodeToDb();
-    }
-  }
-
-  Future<void> _addNodeToDb() async {
-    try {
-      _addNodeButtonKey.currentState?.animateForward();
-      if (!Hive.isBoxOpen(kNodesBox)) {
-        await Hive.openBox<String>(kNodesBox);
-      }
-      Hive.box<String>(kNodesBox).add(_newNodeController.text);
-      await NodeUtils.loadDbNodes();
-      await _sendAddNodeSuccessNotification();
-      _newNodeController = TextEditingController();
-      _newNodeKey = GlobalKey();
-    } catch (e) {
-      await NotificationUtils.sendNotificationError(e, 'Error while adding new node');
-    } finally {
-      _addNodeButtonKey.currentState?.animateReverse();
-    }
-  }
-
-  Widget _buildNodeTiles() {
-    // Built all at once, not lazily: each tile asks the node for its chain
-    // identifier when it is created, and scrolling must not repeat that.
-    return SingleChildScrollView(
-      padding: const EdgeInsets.symmetric(vertical: 6),
-      child: Column(
-        children: <String>{
-          ...kDefaultNodes,
-          ...kDefaultCommunityNodes,
-          ...kDbNodes,
-        }.toList().map(_buildNodeTile).toList(),
-      ),
-    );
-  }
-
-  Widget _buildNodeTile(String node) {
-    return Row(
-      children: <Widget>[
-        const SizedBox(width: 6),
-        Radio<String?>(
-          value: node,
-          groupValue: _selectedNode,
-          onChanged: (String? value) {
-            setState(() {
-              _selectedNode = value;
-            });
-          },
-        ),
-        Expanded(
-          child: SettingsNode(
-            key: ValueKey(node),
-            node: node,
-            onNodePressed: (String? value) {
-              setState(() {
-                _selectedNode = value;
-              });
-            },
-            onChangedOrDeletedNode: () {
-              setState(() {});
-            },
-            currentNode: _selectedNodeConfirmed,
-          ),
-        ),
-      ],
-    );
-  }
-
-  Future<void> _sendChangingNodeSuccessNotification() async {
-    await sl.get<NotificationsBloc>().addNotification(
-          WalletNotification(
-            title: 'Successfully connected to $_selectedNode',
-            timestamp: DateTime.now().millisecondsSinceEpoch,
-            details: 'Successfully connected to $_selectedNode',
-            type: NotificationType.changedNode,
-          ),
-        );
-  }
+  Widget build(BuildContext context) => NodeSettingsView(
+    presenter: _presenter,
+    embeddedNode: const NodeUpdateCard(),
+    isCurrent: widget.isCurrent,
+    confirmSelected: widget.onboarding,
+  );
 
   @override
   void dispose() {
-    _newNodeController.dispose();
-    _newChainIdController.dispose();
+    _refresh?.cancel();
+    WalletContextRevision.changes.removeListener(_authorityChanged);
+    unawaited(_presenter.close());
     super.dispose();
   }
+}
 
-  Future<void> _sendAddNodeSuccessNotification() async {
-    await sl.get<NotificationsBloc>().addNotification(
-          WalletNotification(
-            title: 'Successfully added node ${_newNodeController.text}',
-            timestamp: DateTime.now().millisecondsSinceEpoch,
-            details: 'Successfully added node ${_newNodeController.text}',
-            type: NotificationType.changedNode,
-          ),
-        );
-  }
-
-  Widget _buildChainIdRow() {
-    final bool alphanet = getChainIdentifier() == 1;
-    return Padding(
-      padding: const EdgeInsets.fromLTRB(16, 12, 12, 12),
-      child: Row(
-        children: <Widget>[
-          Expanded(
-            child: Form(
-              key: _newChainIdKey,
-              autovalidateMode: AutovalidateMode.onUserInteraction,
-              child: InputField(
-                inputFormatters: <TextInputFormatter>[
-                  FilteringTextInputFormatter.digitsOnly,
-                ],
-                controller: _newChainIdController,
-                hintText:
-                    'Current client chain identifier is ${getChainIdentifier()}',
-                onSubmitted: (String value) async {
-                  if (_isChainIdSelectionInputIsValid()) {
-                    _onConfirmChainIdPressed();
-                  }
-                },
-                onChanged: (String value) {
-                  if (value.isNotEmpty) {
-                    setState(() {});
-                  }
-                },
-                validator: InputValidators.validateNumber,
-              ),
-            ),
-          ),
-          StandardTooltipIcon(
-            alphanet
-                ? 'Alphanet chain identifier'
-                : 'Non-alphanet chain identifier',
-            MaterialCommunityIcons.network,
-            iconColor: alphanet ? AppColors.znnColor : AppColors.warn,
-          ),
-          const StandardTooltipIcon(
-            'The chain identifier is used in transaction signing to prevent '
-            'replay attacks',
-            Icons.info_outline,
-            iconColor: AppColors.faint,
-          ),
-          const SizedBox(width: 8),
-          SecondaryAction(
-            child: LoadingButton.settings(
-              onPressed: _isChainIdSelectionInputIsValid()
-                  ? _onConfirmChainIdPressed
-                  : null,
-              text: 'Confirm',
-              key: _confirmChainIdButtonKey,
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  bool _isChainIdSelectionInputIsValid() =>
-      InputValidators.validateNumber(_newChainIdController.text) == null &&
-      _newChainId != _currentChainId;
-
-  Future<void> _onConfirmChainIdPressed() async {
-    try {
-      _confirmChainIdButtonKey.currentState?.animateForward();
-      setChainIdentifier(chainIdentifier: _newChainId);
-      await sharedPrefsService!.put(kChainIdKey, _newChainId);
-      await sl<IWeb3WalletService>().emitChainIdChangeEvent(_newChainId.toString());
-      await _sendSuccessfullyChangedChainIdNotification(_newChainId);
-      _initCurrentChainId();
-      _newChainIdController = TextEditingController();
-      _newChainIdKey = GlobalKey();
-    } catch (e) {
-      await NotificationUtils.sendNotificationError(
-        e,
-        'Error while setting the new client chain identifier',
-      );
-    } finally {
-      _confirmChainIdButtonKey.currentState?.animateReverse();
-    }
-  }
-
-  Future<void> _sendSuccessfullyChangedChainIdNotification(int newChainId) async {
-    await sl.get<NotificationsBloc>().addNotification(
-          WalletNotification(
-            title:
-                'Successfully changed client chain identifier to $newChainId',
-            timestamp: DateTime.now().millisecondsSinceEpoch,
-            details:
-                'Successfully changed client chain identifier from $_currentChainId to $_newChainId',
-            type: NotificationType.changedNode,
-          ),
-        );
-  }
-
-  Future<bool> _checkForChainIdMismatch() async {
-    bool match = false;
-    await zenon!.ledger.getFrontierMomentum().then((Momentum momentum) async {
-      final int nodeChainId = momentum.chainIdentifier;
-      if (nodeChainId != _currentChainId) {
-        match = await _showChainIdWarningDialog(nodeChainId, _currentChainId);
-      } else {
-        match = true;
-      }
-    });
-    return match;
-  }
-
-  Future<bool> _showChainIdWarningDialog(
-      int nodeChainId, int currentChainId,) async {
-    return showWarningDialog(
-      context: context,
-      title: 'Chain identifier mismatch',
-      buttonText: 'Proceed anyway',
-      description:
-          'The node $_selectedNode you are connecting to has a different '
-          'chain identifier $nodeChainId than the current client chain identifier $currentChainId',
-    );
-  }
+/// Compatibility for the existing Settings import and callback contract.
+class NodeManagement extends NodeSettingsSection {
+  /// New routing should use [NodeSettingsSection] directly, without a grid.
+  const NodeManagement({
+    required super.onNodeChangedCallback,
+    super.isCurrent,
+    super.key,
+  });
 }

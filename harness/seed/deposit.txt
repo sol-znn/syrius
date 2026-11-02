@@ -1,0 +1,15 @@
+# seed: deposit
+# prerequisite: isolated-chain-321-checkpoint
+# The offer/terms coordinator is unavailable. This creates one HTLC deposit.
+goto p2pSwap
+wait --key p2p_start_swap --timeout 30
+tap --key p2p_start_swap
+tap --key p2p_warning_continue
+wait --key swap_start_screen_marker --timeout 30
+type --key swap_amount_input --nth 0 1
+type --key swap_counterparty_input ${counterparty}
+tap --key swap_action_details_toggle
+wait --key swap_create_deposit --timeout 30
+assert --key swap_create_deposit
+publish --key swap_create_deposit
+assert --key swap_start_screen_marker

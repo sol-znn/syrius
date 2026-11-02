@@ -1,0 +1,18 @@
+# prerequisite: unlocked-home
+# Use an isolated harness profile.
+# This capture navigates only. It never reads secrets or changes a policy.
+goto settings
+tap --key settings_security
+wait --key security_settings_page --timeout 30
+assert --key security_settings_policies
+assert --key security_settings_password_gate
+assert --key security_settings_backup
+assert --key security_settings_show_seed
+assert --key security_settings_export_vault
+assert --key security_settings_sign_toggle
+assert --key security_settings_verify_toggle
+assert --key security_settings_remove_toggle
+
+# Return only after a fully retained positive shot.
+# after-capture: goto dashboard
+# after-capture: wait --key home_hero --timeout 5

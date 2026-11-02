@@ -1,48 +1,67 @@
 import 'dart:io';
-import 'dart:ui' show PointerDeviceKind;
+import 'dart:ui' as ui;
 
-import 'package:material_ui/material_ui.dart';
+import 'package:flutter/foundation.dart';
+import 'package:flutter/rendering.dart';
 import 'package:flutter/services.dart';
+import 'package:flutter_svg/flutter_svg.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:hive_ce/hive_ce.dart';
+import 'package:material_ui/material_ui.dart';
 import 'package:zenon_syrius_wallet_flutter/l10n/app_localizations.dart';
 import 'package:zenon_syrius_wallet_flutter/l10n/l10n.dart';
 import 'package:zenon_syrius_wallet_flutter/main.dart';
 import 'package:zenon_syrius_wallet_flutter/services/shared_prefs_service.dart';
 import 'package:zenon_syrius_wallet_flutter/utils/app_theme.dart';
 import 'package:zenon_syrius_wallet_flutter/utils/constants.dart';
-import 'package:zenon_syrius_wallet_flutter/widgets/main_app_container.dart';
-
-const double _collapsedWidth = 56;
-const double _openWidth = 200;
-
-/// The shell's own padding round the rail, so the rail is as tall here as it
-/// is in the wallet.
-const EdgeInsets _shellPadding = EdgeInsets.fromLTRB(10, 14, 18, 18);
+import 'package:zenon_syrius_wallet_flutter/widgets/shell/rail.dart';
+import 'package:zenon_syrius_wallet_flutter/widgets/shell/tabs.dart';
 
 const Key _toggle = ValueKey<String>('rail_toggle');
 const Key _pill = Key('rail_pill');
 const Key _page = Key('page');
+const Key _dot = ValueKey<String>('rail_unseen_dot');
+const EdgeInsets _shellPadding = EdgeInsets.fromLTRB(10, 14, 18, 18);
 
 Key _nav(Tabs tab) => ValueKey<String>('nav_${tab.name}');
+Key _icon(Tabs tab) => ValueKey<String>('rail_icon_${tab.name}');
+Key _label(Tabs tab) => ValueKey<String>('rail_label_${tab.name}');
 
-/// A rail tooltip by its message. Not `find.byTooltip`: the rail keeps its
-/// tooltips out of semantics, and for those the finder reads the message of
-/// the SDK's own `Tooltip` class, which material_ui's is not.
-Finder _tooltip(String message) => find.byWidgetPredicate(
-  (Widget widget) => widget is Tooltip && widget.message == message,
+Finder _semantic(String name) => find.byWidgetPredicate(
+  (Widget widget) => widget is Semantics && widget.properties.label == name,
 );
 
-/// The rail beside a page, as the shell lays the two out, and nothing else
-/// of the shell: no wallet, no node, no shortcuts.
+String? _tooltipMessage(Tooltip tooltip) =>
+    tooltip.message ?? (tooltip.richMessage as TextSpan?)?.semanticsLabel;
+
+Finder _tooltip(String name, [String? shortcut]) => find.byWidgetPredicate(
+  (Widget widget) =>
+      widget is Tooltip &&
+      _tooltipMessage(widget) != null &&
+      (_tooltipMessage(widget) == name ||
+          _tooltipMessage(widget)!.startsWith('$name  ')) &&
+      (shortcut == null || _tooltipMessage(widget)!.contains(shortcut)),
+);
+
+Finder _shownTooltip(String name) => find.byWidgetPredicate(
+  (Widget widget) =>
+      widget is RichText &&
+      widget.text
+          .toPlainText(includeSemanticsLabels: false)
+          .startsWith('$name\uFFFC'),
+);
+
 Widget _host({
   required RailCollapse collapse,
   Tabs selected = Tabs.dashboard,
   bool locked = false,
+  bool light = false,
+  bool hasUnseen = false,
   TextDirection direction = TextDirection.ltr,
   ValueChanged<Tabs>? onSelected,
+  VoidCallback? onNotifications,
 }) => MaterialApp(
-  theme: AppTheme.darkTheme,
+  theme: light ? AppTheme.lightTheme : AppTheme.darkTheme,
   localizationsDelegates: appLocalizationsDelegates,
   supportedLocales: AppLocalizations.supportedLocales,
   home: Directionality(
@@ -58,6 +77,8 @@ Widget _host({
               selected: selected,
               locked: locked,
               onSelected: onSelected ?? (Tabs _) {},
+              onNotifications: onNotifications,
+              hasUnseen: hasUnseen,
             ),
             const SizedBox(width: 8),
             const Expanded(child: SizedBox.expand(key: _page)),
@@ -70,280 +91,320 @@ Widget _host({
 
 Rect _rail(WidgetTester tester) => tester.getRect(find.byType(ShellRail));
 
-/// Every icon of the rail: the toggle's, the pages' and the wallet's.
-Finder _icons() =>
-    find.descendant(of: find.byType(ShellRail), matching: find.byType(Icon));
-
 Finder _labels() =>
     find.descendant(of: find.byType(ShellRail), matching: find.byType(Text));
 
-/// How strongly the label [text] is drawn.
-double _labelOpacity(WidgetTester tester, String text) => tester
+double _labelOpacity(WidgetTester tester, Tabs tab) => tester
     .widget<Opacity>(
       find
-          .ancestor(of: find.text(text), matching: find.byType(Opacity))
+          .ancestor(of: find.byKey(_label(tab)), matching: find.byType(Opacity))
           .first,
     )
     .opacity;
 
-/// The smallest window the wallet allows.
-void _smallestWindow(WidgetTester tester) {
-  tester.view.physicalSize = const Size(1200, 600);
-  tester.view.devicePixelRatio = 1;
-  addTearDown(tester.view.reset);
+RailCollapse _choice({bool open = false}) {
+  final RailCollapse collapse = RailCollapse();
+  addTearDown(collapse.dispose);
+  if (open) collapse.setCollapsed(collapsed: false);
+  return collapse;
 }
 
-/// Preferences kept in memory, for the tests that press the toggle.
-///
-/// The toggle stores as it is pressed, under the test's fake clock. A write
-/// to a file begun there never finishes.
 Future<void> _preferencesInMemory() async {
   await Hive.openBox<dynamic>(kSharedPrefsBox, bytes: Uint8List(0));
   sharedPrefsService = await SharedPrefsService.getInstance();
 }
 
-/// Preferences in a file, as the wallet has them.
-Future<void> _preferencesInFile() async {
-  sharedPrefsService = await SharedPrefsService.getInstance();
-}
-
-/// Closes the preferences and opens them again from the file, which is what
-/// quitting and starting the wallet does to them.
-Future<void> _restart() async {
-  await sharedPrefsService!.close();
-  await sharedPrefsService!.checkIfBoxIsOpen();
-}
-
 void main() {
-  // A press that would not land on the row it was aimed at fails the test:
-  // the harness presses rows by the same keys, in the middle.
   WidgetController.hitTestWarningShouldBeFatal = true;
-
   late Directory dir;
 
-  // Whatever a test opens lands in a folder of its own, never in the
-  // wallet's.
   setUp(() {
     dir = Directory.systemTemp.createTempSync('syrius_rail_');
     Hive.init(dir.path);
+    sharedPrefsService = null;
   });
 
   tearDown(() async {
     await Hive.close();
+    sharedPrefsService = null;
     dir.deleteSync(recursive: true);
   });
 
   group('the stored choice', () {
-    setUp(_preferencesInFile);
+    test('works in memory before preferences exist', () {
+      final RailCollapse collapse = _choice();
+      expect(collapse.value, isTrue);
+      collapse.setCollapsed(collapsed: false);
+      expect(collapse.value, isFalse);
+      collapse.toggle();
+      expect(collapse.value, isTrue);
+    });
 
-    test('a profile that has never chosen gets the rail collapsed', () {
-      expect(RailCollapse().value, isTrue);
-      // Reading the default stores nothing: it stays "never chosen".
+    test('the explicit setter notifies only when the choice changes', () {
+      int notifications = 0;
+      final RailCollapse collapse = _choice()
+        ..addListener(() => notifications++)
+        ..setCollapsed(collapsed: false)
+        ..setCollapsed(collapsed: false);
+      expect(collapse.value, isFalse);
+      expect(notifications, 1);
+    });
+
+    test('the default does not create a stored choice', () async {
+      sharedPrefsService = await SharedPrefsService.getInstance();
+      expect(_choice().value, isTrue);
       expect(sharedPrefsService!.get(kRailCollapsedKey), isNull);
     });
 
-    test('is stored when it changes and read at the next start', () async {
-      RailCollapse().toggle();
+    test('the choice survives closing and reopening its profile box', () async {
+      sharedPrefsService = await SharedPrefsService.getInstance();
+      final RailCollapse collapse = _choice()..setCollapsed(collapsed: false);
+      await sharedPrefsService!.close();
+      await sharedPrefsService!.checkIfBoxIsOpen();
       expect(sharedPrefsService!.get(kRailCollapsedKey), isFalse);
-      await _restart();
-      expect(RailCollapse().value, isFalse);
-
-      RailCollapse().toggle();
-      await _restart();
-      expect(sharedPrefsService!.get(kRailCollapsedKey), isTrue);
-      expect(RailCollapse().value, isTrue);
+      expect(_choice().value, isFalse);
+      collapse.setCollapsed(collapsed: true);
+      await sharedPrefsService!.close();
+      await sharedPrefsService!.checkIfBoxIsOpen();
+      expect(_choice().value, isTrue);
     });
 
-    test('a damaged entry reads as never chosen', () async {
+    test('a damaged entry uses the default', () async {
+      await _preferencesInMemory();
       await sharedPrefsService!.put(kRailCollapsedKey, 'open');
-      expect(RailCollapse().value, isTrue);
+      expect(_choice().value, isTrue);
+    });
+
+    test('a closed preferences box cannot break navigation', () async {
+      sharedPrefsService = await SharedPrefsService.getInstance();
+      await sharedPrefsService!.close();
+      final RailCollapse collapse = _choice()..toggle();
+      await Future<void>.delayed(Duration.zero);
+      expect(collapse.value, isFalse);
     });
   });
 
   group('the rail', () {
     setUp(_preferencesInMemory);
 
-    testWidgets('starts collapsed: a strip of centred icons and no text', (
+    test('has exactly eight pages and three footer destinations', () {
+      expect(
+        kRailPages.map((RailEntry entry) => entry.tab),
+        <Tabs>[
+          Tabs.dashboard,
+          Tabs.transfer,
+          Tabs.staking,
+          Tabs.pillars,
+          Tabs.plasma,
+          Tabs.tokens,
+          Tabs.p2pSwap,
+          Tabs.accelerator,
+        ],
+      );
+      expect(
+        railWalletEntries(onLock: false).map((RailEntry entry) => entry.tab),
+        <Tabs>[Tabs.notifications, Tabs.settings, Tabs.lock],
+      );
+    });
+
+    testWidgets('starts as a 56 px strip of twelve exact glyphs', (
       WidgetTester tester,
     ) async {
-      await tester.pumpWidget(_host(collapse: RailCollapse()));
-
+      await tester.pumpWidget(_host(collapse: _choice()));
       final Rect rail = _rail(tester);
-      expect(rail.width, _collapsedWidth);
+      expect(rail.width, 56);
       expect(rail.left, _shellPadding.left);
       expect(_labels(), findsNothing);
-      // The toggle, nine pages, and at least Notifications, Settings, Lock.
-      expect(_icons().evaluate().length, greaterThanOrEqualTo(13));
-      for (final Element icon in _icons().evaluate()) {
+      expect(
+        find.descendant(
+          of: find.byType(ShellRail),
+          matching: find.byType(SvgPicture),
+        ),
+        findsNWidgets(12),
+      );
+      for (final RailEntry entry in <RailEntry>[
+        ...kRailPages,
+        ...railWalletEntries(onLock: false),
+      ]) {
         expect(
-          tester.getCenter(find.byWidget(icon.widget)).dx,
+          tester.getCenter(find.byKey(_icon(entry.tab))).dx,
           rail.center.dx,
-          reason: '${icon.widget}',
         );
+        expect(tester.getSize(find.byKey(_nav(entry.tab))).width, 40);
       }
-      // The page has everything the rail does not.
       expect(
         tester.getSize(find.byKey(_page)).width,
-        800 - _shellPadding.horizontal - _collapsedWidth - 8,
+        800 - _shellPadding.horizontal - 56 - 8,
       );
+      expect(find.byKey(_nav(Tabs.sentinels)), findsNothing);
+      expect(find.byKey(_nav(Tabs.walletConnect)), findsNothing);
     });
 
-    testWidgets('starts open when that is what was stored', (
+    testWidgets('a stored open choice is fully visible on the first frame', (
       WidgetTester tester,
     ) async {
-      await sharedPrefsService!.put(kRailCollapsedKey, false);
-      await tester.pumpWidget(_host(collapse: RailCollapse()));
-
-      // On the first frame: nothing opens as the wallet starts.
-      expect(_rail(tester).width, _openWidth);
+      await tester.pumpWidget(_host(collapse: _choice(open: true)));
+      expect(_rail(tester).width, 200);
       expect(find.text('Home'), findsOneWidget);
-      expect(_labelOpacity(tester, 'Home'), 1);
-      expect(_tooltip('Collapse'), findsOneWidget);
+      expect(_labelOpacity(tester, Tabs.dashboard), 1);
+      expect(_tooltip('Collapse', 'Ctrl B'), findsOneWidget);
+      expect(tester.getSize(find.byKey(_pill)).width, 184);
     });
 
-    testWidgets('collapsed, every item is named by a tooltip beside it', (
+    testWidgets(
+      'tooltips name the eight numbered shortcuts and footer chords',
+      (
+        WidgetTester tester,
+      ) async {
+        await tester.pumpWidget(_host(collapse: _choice()));
+        for (int i = 0; i < kRailPages.length; i++) {
+          expect(
+            _tooltip(kRailPages[i].label, 'Ctrl ${i + 1}'),
+            findsOneWidget,
+          );
+        }
+        expect(_tooltip('Expand', 'Ctrl B'), findsOneWidget);
+        expect(_tooltip('Settings', 'Ctrl ,'), findsOneWidget);
+        expect(_tooltip('Lock', 'Ctrl L'), findsOneWidget);
+        expect(_tooltip('Notifications'), findsOneWidget);
+      },
+    );
+
+    testWidgets('macOS tooltip chords use Cmd', (WidgetTester tester) async {
+      await tester.pumpWidget(_host(collapse: _choice()));
+      expect(_tooltip('Transfer', 'Cmd 2'), findsOneWidget);
+      expect(_tooltip('Settings', 'Cmd ,'), findsOneWidget);
+      expect(_tooltip('Transfer', 'Ctrl 2'), findsNothing);
+    }, variant: TargetPlatformVariant.only(TargetPlatform.macOS));
+
+    testWidgets('collapsed tooltips sit beside the row towards the page', (
       WidgetTester tester,
     ) async {
-      await tester.pumpWidget(_host(collapse: RailCollapse()));
-
-      for (final String name in <String>[
-        'Expand',
-        'Home',
-        'Transfer',
-        'Pillars',
-        'Sentinels',
-        'Staking',
-        'Plasma',
-        'Tokens',
-        'P2P Swap',
-        'Accelerator',
-        'Notifications',
-        'Settings',
-        'Lock',
-      ]) {
-        expect(_tooltip(name), findsOneWidget, reason: name);
-      }
-
+      await tester.pumpWidget(_host(collapse: _choice()));
       final TestGesture mouse = await tester.createGesture(
-        kind: PointerDeviceKind.mouse,
+        kind: ui.PointerDeviceKind.mouse,
       );
       await mouse.addPointer(location: const Offset(700, 500));
       addTearDown(mouse.removePointer);
       await mouse.moveTo(tester.getCenter(find.byKey(_nav(Tabs.transfer))));
       await tester.pumpAndSettle();
-
-      // Beside the item, towards the page, and level with it: under it, it
-      // would lie on the next icon.
-      final Rect tip = tester.getRect(find.text('Transfer'));
-      final Rect item = tester.getRect(find.byKey(_nav(Tabs.transfer)));
+      final Rect tip = tester.getRect(_shownTooltip('Transfer'));
       expect(tip.left, greaterThan(_rail(tester).right));
-      expect(tip.center.dy, closeTo(item.center.dy, 1));
+      expect(
+        tip.center.dy,
+        closeTo(tester.getCenter(find.byKey(_nav(Tabs.transfer))).dy, 1),
+      );
     });
 
-    testWidgets('open, the labels name the items and no tooltip repeats them', (
+    testWidgets('open labels suppress duplicate floating tooltips', (
       WidgetTester tester,
     ) async {
-      await sharedPrefsService!.put(kRailCollapsedKey, false);
-      await tester.pumpWidget(_host(collapse: RailCollapse()));
-
+      await tester.pumpWidget(_host(collapse: _choice(open: true)));
       final TestGesture mouse = await tester.createGesture(
-        kind: PointerDeviceKind.mouse,
+        kind: ui.PointerDeviceKind.mouse,
       );
       await mouse.addPointer(location: const Offset(700, 500));
       addTearDown(mouse.removePointer);
       await mouse.moveTo(tester.getCenter(find.byKey(_nav(Tabs.transfer))));
       await tester.pumpAndSettle();
-
-      // The label, and no second "Transfer" floating beside it.
       expect(find.text('Transfer'), findsOneWidget);
-
-      // The toggle has no label, so it keeps its tooltip.
-      await mouse.moveTo(tester.getCenter(find.byKey(_toggle)));
-      await tester.pumpAndSettle();
-      expect(find.text('Collapse'), findsOneWidget);
+      expect(_shownTooltip('Transfer'), findsNothing);
     });
 
-    testWidgets('the toggle opens it over 200 ms, labels fading on one line', (
+    testWidgets('width uses the 200 ms spring, then labels fade for 150 ms', (
       WidgetTester tester,
     ) async {
-      final RailCollapse collapse = RailCollapse();
+      final RailCollapse collapse = _choice();
       await tester.pumpWidget(_host(collapse: collapse));
       final double pageCollapsed = tester.getSize(find.byKey(_page)).width;
-
       await tester.tap(find.byKey(_toggle));
       await tester.pump();
-      expect(collapse.value, isFalse);
       expect(sharedPrefsService!.get(kRailCollapsedKey), isFalse);
-
-      // On the way: between the two widths, the label already at the size
-      // it will have open (so neither wrapped nor cut to a new ellipsis)
-      // and not yet at full strength.
-      await tester.pump(const Duration(milliseconds: 40));
-      final double midWidth = _rail(tester).width;
-      expect(midWidth, greaterThan(_collapsedWidth));
-      expect(midWidth, lessThan(_openWidth));
-      final Size midLabel = tester.getSize(find.text('Notifications'));
-      expect(_labelOpacity(tester, 'Notifications'), greaterThan(0));
-      expect(_labelOpacity(tester, 'Notifications'), lessThan(1));
-      expect(tester.takeException(), isNull);
-
-      await tester.pump(const Duration(milliseconds: 150));
-      expect(_rail(tester).width, lessThan(_openWidth));
-      await tester.pump(const Duration(milliseconds: 10));
-      expect(_rail(tester).width, _openWidth);
-
-      expect(tester.getSize(find.text('Notifications')), midLabel);
-      expect(_labelOpacity(tester, 'Notifications'), 1);
-      expect(_tooltip('Collapse'), findsOneWidget);
-      // The page gave up exactly what the rail took.
+      await tester.pump(const Duration(milliseconds: 50));
       expect(
-        tester.getSize(find.byKey(_page)).width,
-        pageCollapsed - (_openWidth - _collapsedWidth),
+        _rail(tester).width,
+        closeTo(56 + 144 * AppTokens.dark.spring.transform(0.25), 0.01),
       );
-      await tester.pumpAndSettle();
+      expect(_labels(), findsNothing);
+      await tester.pump(const Duration(milliseconds: 149));
+      expect(_rail(tester).width, lessThan(200));
+      expect(_labels(), findsNothing);
+      await tester.pump(const Duration(milliseconds: 1));
+      expect(_rail(tester).width, 200);
+      await tester.pump(const Duration(microseconds: 1));
+      expect(_labelOpacity(tester, Tabs.dashboard), 0);
+      await tester.pump(const Duration(milliseconds: 75));
+      expect(_rail(tester).width, 200);
+      expect(
+        _labelOpacity(tester, Tabs.dashboard),
+        closeTo(AppTokens.dark.ease.transform(0.5), 0.001),
+      );
+      await tester.pump(const Duration(microseconds: 75001));
+      expect(_labelOpacity(tester, Tabs.dashboard), 1);
+      expect(tester.getSize(find.byKey(_page)).width, pageCollapsed - 144);
+      expect(tester.takeException(), isNull);
     });
 
-    testWidgets('the toggle collapses it again and the labels leave the tree', (
+    testWidgets('closing hides text before the 200 ms spring narrows its box', (
       WidgetTester tester,
     ) async {
-      final RailCollapse collapse = RailCollapse();
-      await tester.pumpWidget(_host(collapse: collapse));
-
-      await tester.tap(find.byKey(_toggle));
-      await tester.pumpAndSettle();
-      expect(_rail(tester).width, _openWidth);
-      expect(find.text('Home'), findsOneWidget);
-
+      await tester.pumpWidget(_host(collapse: _choice(open: true)));
       await tester.tap(find.byKey(_toggle));
       await tester.pump();
-      // Still there while it closes, fading: it does not pop out.
-      await tester.pump(const Duration(milliseconds: 40));
-      expect(find.text('Home'), findsOneWidget);
-      await tester.pumpAndSettle();
-
-      expect(collapse.value, isTrue);
-      expect(sharedPrefsService!.get(kRailCollapsedKey), isTrue);
-      expect(_rail(tester).width, _collapsedWidth);
       expect(_labels(), findsNothing);
-      expect(_tooltip('Expand'), findsOneWidget);
+      await tester.pump(const Duration(milliseconds: 50));
+      expect(
+        _rail(tester).width,
+        closeTo(200 - 144 * AppTokens.dark.spring.transform(0.25), 0.01),
+      );
+      expect(_labels(), findsNothing);
+      await tester.pump(const Duration(milliseconds: 150));
+      expect(_rail(tester).width, 56);
+      expect(_tooltip('Expand', 'Ctrl B'), findsOneWidget);
     });
 
-    testWidgets('follows a change made outside it, as the shortcut makes', (
+    testWidgets('rapid reversal cannot leave visible labels in a narrow rail', (
       WidgetTester tester,
     ) async {
-      final RailCollapse collapse = RailCollapse();
+      final RailCollapse collapse = _choice();
       await tester.pumpWidget(_host(collapse: collapse));
-
       collapse.toggle();
-      await tester.pumpAndSettle();
-      expect(_rail(tester).width, _openWidth);
-
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 50));
+      final double interruptedWidth = _rail(tester).width;
       collapse.toggle();
+      await tester.pump();
+      expect(_rail(tester).width, interruptedWidth);
+      expect(_labels(), findsNothing);
+      await tester.pump(const Duration(milliseconds: 50));
+      expect(_rail(tester).width, lessThan(interruptedWidth));
+      collapse.setCollapsed(collapsed: false);
+      await tester.pump();
+      expect(_labels(), findsNothing);
       await tester.pumpAndSettle();
-      expect(_rail(tester).width, _collapsedWidth);
+      expect(_rail(tester).width, 200);
+      expect(_labelOpacity(tester, Tabs.dashboard), 1);
+      expect(tester.takeException(), isNull);
     });
 
-    testWidgets('moves at full length when the system asks for less motion', (
+    testWidgets('follows the Display setter and a replacement notifier', (
+      WidgetTester tester,
+    ) async {
+      final RailCollapse first = _choice();
+      await tester.pumpWidget(_host(collapse: first));
+      first.setCollapsed(collapsed: false);
+      await tester.pumpAndSettle();
+      expect(_rail(tester).width, 200);
+      final RailCollapse next = _choice()..setCollapsed(collapsed: true);
+      await tester.pumpWidget(_host(collapse: next));
+      await tester.pumpAndSettle();
+      expect(_rail(tester).width, 56);
+      first.toggle();
+      await tester.pumpAndSettle();
+      expect(_rail(tester).width, 56);
+    });
+
+    testWidgets('keeps both full clocks when the system disables animations', (
       WidgetTester tester,
     ) async {
       tester.platformDispatcher.accessibilityFeaturesTestValue =
@@ -351,162 +412,327 @@ void main() {
       addTearDown(
         tester.platformDispatcher.clearAccessibilityFeaturesTestValue,
       );
-      await tester.pumpWidget(_host(collapse: RailCollapse()));
-
+      await tester.pumpWidget(_host(collapse: _choice()));
       await tester.tap(find.byKey(_toggle));
       await tester.pump();
-      // A controller left to the system's setting would be done in 10 ms.
-      await tester.pump(const Duration(milliseconds: 40));
-      expect(_rail(tester).width, greaterThan(_collapsedWidth));
-      expect(_rail(tester).width, lessThan(_openWidth));
+      await tester.pump(const Duration(milliseconds: 50));
+      expect(
+        _rail(tester).width,
+        closeTo(56 + 144 * AppTokens.dark.spring.transform(0.25), 0.01),
+      );
       await tester.pump(const Duration(milliseconds: 150));
-      expect(_rail(tester).width, lessThan(_openWidth));
+      await tester.pump(const Duration(microseconds: 1));
+      expect(_labelOpacity(tester, Tabs.dashboard), 0);
+      await tester.pump(const Duration(milliseconds: 75));
+      expect(_labelOpacity(tester, Tabs.dashboard), greaterThan(0));
+      expect(_labelOpacity(tester, Tabs.dashboard), lessThan(1));
       await tester.pumpAndSettle();
-      expect(_rail(tester).width, _openWidth);
+      expect(_labelOpacity(tester, Tabs.dashboard), 1);
     });
 
-    testWidgets('collapsed, an item opens its page and the pill fits', (
+    testWidgets('inset pills and row middles retain their hit targets', (
       WidgetTester tester,
     ) async {
       final List<Tabs> opened = <Tabs>[];
+      final RailCollapse collapse = _choice();
       await tester.pumpWidget(
         _host(
-          collapse: RailCollapse(),
+          collapse: collapse,
           selected: Tabs.transfer,
           onSelected: opened.add,
         ),
       );
-      await tester.pumpAndSettle();
-
+      expect(
+        tester.getRect(find.byKey(_pill)),
+        tester.getRect(find.byKey(_nav(Tabs.transfer))),
+      );
+      expect(tester.getSize(find.byKey(_pill)).width, 40);
       await tester.tap(find.byKey(_nav(Tabs.staking)));
-      await tester.tap(find.byKey(_nav(Tabs.settings)));
-      expect(opened, <Tabs>[Tabs.staking, Tabs.settings]);
-
-      // The pill is the selected row, toggle's row counted, at the strip's
-      // width.
-      expect(
-        tester.getRect(find.byKey(_pill)),
-        rectMoreOrLessEquals(
-          tester.getRect(find.byKey(_nav(Tabs.transfer))),
-          epsilon: 0.01,
-        ),
-      );
-      expect(tester.getSize(find.byKey(_pill)).width, _collapsedWidth);
-
-      // And from the bottom for the wallet's entries.
-      await tester.pumpWidget(
-        _host(collapse: RailCollapse(), selected: Tabs.settings),
-      );
+      collapse.toggle();
       await tester.pumpAndSettle();
+      final Rect settings = tester.getRect(find.byKey(_nav(Tabs.settings)));
+      await tester.tapAt(Offset(settings.right - 2, settings.center.dy));
+      expect(opened, <Tabs>[Tabs.staking, Tabs.settings]);
+      expect(tester.getSize(find.byKey(_pill)).width, 184);
       expect(
-        tester.getRect(find.byKey(_pill)),
-        rectMoreOrLessEquals(
-          tester.getRect(find.byKey(_nav(Tabs.settings))),
-          epsilon: 0.01,
-        ),
+        tester.getCenter(find.byKey(_icon(Tabs.transfer))).dx,
+        _rail(tester).left + 28,
       );
     });
 
-    testWidgets('locked, the toggle takes no pointer and no focus', (
+    testWidgets('legacy Sentinels navigation highlights Nodes', (
       WidgetTester tester,
     ) async {
-      final RailCollapse collapse = RailCollapse();
+      await tester.pumpWidget(
+        _host(collapse: _choice(), selected: Tabs.sentinels),
+      );
+      expect(
+        tester.getRect(find.byKey(_pill)),
+        tester.getRect(find.byKey(_nav(Tabs.pillars))),
+      );
+    });
+
+    testWidgets('the bell defaults to navigation and can open its panel', (
+      WidgetTester tester,
+    ) async {
       final List<Tabs> opened = <Tabs>[];
+      final RailCollapse collapse = _choice();
+      await tester.pumpWidget(
+        _host(collapse: collapse, onSelected: opened.add),
+      );
+      await tester.tap(find.byKey(_nav(Tabs.notifications)));
+      expect(opened, <Tabs>[Tabs.notifications]);
+      int panels = 0;
       await tester.pumpWidget(
         _host(
           collapse: collapse,
-          selected: Tabs.lock,
+          onSelected: opened.add,
+          onNotifications: () => panels++,
+        ),
+      );
+      await tester.tap(find.byKey(_nav(Tabs.notifications)));
+      expect(panels, 1);
+      expect(opened, <Tabs>[Tabs.notifications]);
+    });
+
+    testWidgets('the unseen dot has source geometry and an accessible status', (
+      WidgetTester tester,
+    ) async {
+      final SemanticsHandle handle = tester.ensureSemantics();
+      try {
+        final RailCollapse collapse = _choice();
+        await tester.pumpWidget(_host(collapse: collapse, hasUnseen: true));
+        final Rect bell = tester.getRect(find.byKey(_nav(Tabs.notifications)));
+        final Rect dot = tester.getRect(find.byKey(_dot));
+        expect(dot.size, const Size(7, 7));
+        expect(dot.left, bell.left + 24);
+        expect(dot.top, bell.top + 10);
+        expect(
+          tester
+              .getSemantics(_semantic('Notifications'))
+              .getSemanticsData()
+              .value,
+          'Unseen',
+        );
+        await tester.pumpWidget(_host(collapse: collapse));
+        expect(find.byKey(_dot), findsNothing);
+        expect(
+          tester
+              .getSemantics(_semantic('Notifications'))
+              .getSemanticsData()
+              .value,
+          isEmpty,
+        );
+      } finally {
+        handle.dispose();
+      }
+    });
+
+    testWidgets('each destination has one named semantic action', (
+      WidgetTester tester,
+    ) async {
+      final SemanticsHandle handle = tester.ensureSemantics();
+      try {
+        final List<Tabs> opened = <Tabs>[];
+        await tester.pumpWidget(
+          _host(collapse: _choice(), onSelected: opened.add),
+        );
+        expect(find.semantics.byLabel('Home'), findsOneWidget);
+        final SemanticsNode transfer = tester.getSemantics(
+          _semantic('Transfer'),
+        );
+        expect(
+          transfer.getSemanticsData().hasAction(ui.SemanticsAction.tap),
+          isTrue,
+        );
+        transfer.owner!.performAction(transfer.id, ui.SemanticsAction.tap);
+        expect(opened, <Tabs>[Tabs.transfer]);
+      } finally {
+        handle.dispose();
+      }
+    });
+
+    testWidgets('Tab focus survives expanding and Enter opens the next page', (
+      WidgetTester tester,
+    ) async {
+      final List<Tabs> opened = <Tabs>[];
+      await tester.pumpWidget(
+        _host(collapse: _choice(), onSelected: opened.add),
+      );
+      await tester.sendKeyEvent(LogicalKeyboardKey.tab);
+      await tester.pump();
+      final FocusNode? toggleFocus = primaryFocus;
+      final BoxDecoration decoration =
+          tester.widget<DecoratedBox>(find.descendant(
+            of: find.byKey(_toggle), matching: find.byType(DecoratedBox),
+          ).first).decoration
+              as BoxDecoration;
+      expect(
+        decoration.border,
+        Border.all(color: AppTokens.dark.focusRing, width: 2),
+      );
+      await tester.sendKeyEvent(LogicalKeyboardKey.enter);
+      await tester.pumpAndSettle();
+      expect(_rail(tester).width, 200);
+      expect(primaryFocus, same(toggleFocus));
+      await tester.sendKeyEvent(LogicalKeyboardKey.tab);
+      await tester.sendKeyEvent(LogicalKeyboardKey.enter);
+      await tester.pump();
+      expect(opened, <Tabs>[Tabs.dashboard]);
+    });
+
+    testWidgets(
+      'locked navigation refuses pointer, keys and semantic actions',
+      (
+        WidgetTester tester,
+      ) async {
+        final SemanticsHandle handle = tester.ensureSemantics();
+        try {
+          final RailCollapse collapse = _choice();
+          final List<Tabs> opened = <Tabs>[];
+          int panels = 0;
+          await tester.pumpWidget(
+            _host(
+              collapse: collapse,
+              selected: Tabs.lock,
+              locked: true,
+              onSelected: opened.add,
+              onNotifications: () => panels++,
+            ),
+          );
+          await tester.tap(find.byKey(_toggle), warnIfMissed: false);
+          await tester.tap(
+            find.byKey(_nav(Tabs.dashboard)),
+            warnIfMissed: false,
+          );
+          await tester.tap(
+            find.byKey(_nav(Tabs.notifications)),
+            warnIfMissed: false,
+          );
+          for (int i = 0; i < 14; i++) {
+            await tester.sendKeyEvent(LogicalKeyboardKey.tab);
+            await tester.sendKeyEvent(LogicalKeyboardKey.enter);
+            await tester.pump();
+            bool inRail = false;
+            primaryFocus?.context?.visitAncestorElements((Element ancestor) {
+              inRail = ancestor.widget is ShellRail;
+              return !inRail;
+            });
+            expect(inRail, isFalse);
+          }
+          expect(find.semantics.byLabel('Home'), findsNothing);
+          expect(find.semantics.byLabel('Notifications'), findsNothing);
+          expect(collapse.value, isTrue);
+          expect(opened, isEmpty);
+          expect(panels, 0);
+          expect(sharedPrefsService!.get(kRailCollapsedKey), isNull);
+        } finally {
+          handle.dispose();
+        }
+      },
+    );
+
+    testWidgets('locking removes focus that was already inside the rail', (
+      WidgetTester tester,
+    ) async {
+      final RailCollapse collapse = _choice(open: true);
+      final List<Tabs> opened = <Tabs>[];
+      await tester.pumpWidget(
+        _host(collapse: collapse, onSelected: opened.add),
+      );
+      await tester.sendKeyEvent(LogicalKeyboardKey.tab);
+      await tester.pump();
+      final FocusNode? previouslyFocused = primaryFocus;
+      await tester.pumpWidget(
+        _host(
+          collapse: collapse,
           locked: true,
+          selected: Tabs.lock,
           onSelected: opened.add,
         ),
       );
-
-      await tester.tap(find.byKey(_toggle), warnIfMissed: false);
-      await tester.tap(find.byKey(_nav(Tabs.dashboard)), warnIfMissed: false);
-      await tester.pumpAndSettle();
-      expect(collapse.value, isTrue);
-      expect(_rail(tester).width, _collapsedWidth);
+      await tester.sendKeyEvent(LogicalKeyboardKey.enter);
+      await tester.pump();
+      expect(primaryFocus, isNot(same(previouslyFocused)));
       expect(opened, isEmpty);
-      expect(sharedPrefsService!.get(kRailCollapsedKey), isNull);
-
-      expect(
-        tester
-            .widget<ExcludeFocus>(
-              find
-                  .ancestor(
-                    of: find.byKey(_toggle),
-                    matching: find.byType(ExcludeFocus),
-                  )
-                  .first,
-            )
-            .excluding,
-        isTrue,
-      );
-      for (int i = 0; i < 20; i++) {
-        await tester.sendKeyEvent(LogicalKeyboardKey.tab);
-        await tester.pump();
-        bool inRail = false;
-        primaryFocus?.context?.visitAncestorElements((Element ancestor) {
-          inRail = ancestor.widget is ShellRail;
-          return !inRail;
-        });
-        expect(inRail, isFalse, reason: 'Tab $i reached the rail');
-      }
+      expect(collapse.value, isFalse);
     });
 
-    testWidgets('right to left, it is the same strip on the other side', (
-      WidgetTester tester,
-    ) async {
-      await tester.pumpWidget(
-        _host(collapse: RailCollapse(), direction: TextDirection.rtl),
-      );
-
-      // The shell's padding is not directional, so the rail has the page's
-      // 18 px beside it here and not its own 10.
-      Rect rail = _rail(tester);
-      expect(rail.right, 800 - _shellPadding.right);
-      expect(rail.width, _collapsedWidth);
-      for (final Element icon in _icons().evaluate()) {
-        expect(
-          tester.getCenter(find.byWidget(icon.widget)).dx,
-          rail.center.dx,
+    testWidgets(
+      'RTL mirrors the rail, fixed icon inset, labels and unseen dot',
+      (
+        WidgetTester tester,
+      ) async {
+        final RailCollapse collapse = _choice();
+        await tester.pumpWidget(
+          _host(
+            collapse: collapse,
+            direction: TextDirection.rtl,
+            hasUnseen: true,
+          ),
         );
-      }
-
-      await tester.tap(find.byKey(_toggle));
-      await tester.pumpAndSettle();
-      rail = _rail(tester);
-      expect(rail.width, _openWidth);
-      // Icon at the start, which is the right, and its label to the left
-      // of it.
-      final Rect icon = tester.getRect(find.byIcon(Icons.home_outlined));
-      final Rect label = tester.getRect(find.text('Home'));
-      expect(icon.right, rail.right - 12);
-      expect(label.right, icon.left - 12);
-    });
-
-    testWidgets('fits the smallest window, collapsed and open', (
-      WidgetTester tester,
-    ) async {
-      _smallestWindow(tester);
-      await tester.pumpWidget(_host(collapse: RailCollapse()));
-
-      for (final double width in <double>[_collapsedWidth, _openWidth]) {
-        final Rect rail = _rail(tester);
-        expect(rail.width, width);
-        expect(tester.getRect(find.byKey(_toggle)).top, rail.top + 1);
+        expect(_rail(tester).right, 800 - _shellPadding.right);
         expect(
-          tester.getRect(find.byKey(_nav(Tabs.lock))).bottom,
-          closeTo(rail.bottom - 1, 0.01),
+          tester.getCenter(find.byKey(_icon(Tabs.dashboard))).dx,
+          _rail(tester).center.dx,
         );
-        // Rows keep their order and do not overlap.
-        expect(
-          tester.getRect(find.byKey(_nav(Tabs.accelerator))).bottom,
-          lessThan(tester.getRect(find.byKey(_nav(Tabs.notifications))).top),
-        );
-        await tester.tap(find.byKey(_toggle));
+        final Rect bell = tester.getRect(find.byKey(_nav(Tabs.notifications)));
+        expect(tester.getRect(find.byKey(_dot)).right, bell.right - 24);
+        collapse.toggle();
         await tester.pumpAndSettle();
-      }
-    });
+        final Rect icon = tester.getRect(find.byKey(_icon(Tabs.dashboard)));
+        final Rect label = tester.getRect(find.byKey(_label(Tabs.dashboard)));
+        expect(icon.center.dx, _rail(tester).right - 28);
+        expect(label.right, icon.left - 12);
+        expect(tester.takeException(), isNull);
+      },
+    );
+
+    for (final bool light in <bool>[false, true]) {
+      testWidgets(
+        'fits 1200 by 600 in ${light ? 'light' : 'dark'} with either choice',
+        (
+          WidgetTester tester,
+        ) async {
+          tester.view.physicalSize = const Size(1200, 600);
+          tester.view.devicePixelRatio = 1;
+          addTearDown(tester.view.reset);
+          final RailCollapse collapse = _choice();
+          await tester.pumpWidget(_host(collapse: collapse, light: light));
+          for (final double width in <double>[56, 200]) {
+            final Rect rail = _rail(tester);
+            expect(rail.width, width);
+            expect(tester.getRect(find.byKey(_toggle)).top, rail.top + 4);
+            expect(tester.getRect(find.byKey(_toggle)).height, 32);
+            expect(
+              tester.getRect(find.byKey(_nav(Tabs.lock))).bottom,
+              rail.bottom - 12,
+            );
+            Rect? previous;
+            for (final RailEntry entry in <RailEntry>[
+              ...kRailPages,
+              ...railWalletEntries(onLock: false),
+            ]) {
+              final Rect row = tester.getRect(find.byKey(_nav(entry.tab)));
+              expect(row.height, 40);
+              if (previous != null) {
+                expect(row.top - previous.bottom, greaterThanOrEqualTo(2));
+              }
+              previous = row;
+            }
+            expect(tester.takeException(), isNull);
+            collapse.toggle();
+            await tester.pumpAndSettle();
+          }
+          final BoxDecoration selected =
+              tester.widget<DecoratedBox>(find.byKey(_pill)).decoration
+                  as BoxDecoration;
+          expect(
+            selected.color,
+            light ? AppTokens.light.card : AppTokens.dark.card,
+          );
+        },
+      );
+    }
   });
 }

@@ -1,25 +1,27 @@
-import 'dart:isolate';
+import 'dart:async';
 
 import 'package:material_ui/material_ui.dart';
-import 'package:hive_ce/hive_ce.dart';
-import 'package:logging/logging.dart';
-import 'package:wakelock_plus/wakelock_plus.dart';
-import 'package:zenon_syrius_wallet_flutter/blocs/blocs.dart';
-import 'package:zenon_syrius_wallet_flutter/embedded_node/embedded_node.dart';
-import 'package:zenon_syrius_wallet_flutter/main.dart';
-import 'package:zenon_syrius_wallet_flutter/model/model.dart';
-import 'package:zenon_syrius_wallet_flutter/utils/utils.dart';
-import 'package:zenon_syrius_wallet_flutter/widgets/modular_widgets/settings_widgets/settings_parts.dart';
-import 'package:zenon_syrius_wallet_flutter/widgets/widgets.dart';
+import 'package:zenon_syrius_wallet_flutter/blocs/auto_receive_tx_worker.dart';
+import 'package:zenon_syrius_wallet_flutter/l10n/l10n.dart';
+import 'package:zenon_syrius_wallet_flutter/main.dart' as app;
+import 'package:zenon_syrius_wallet_flutter/utils/constants.dart';
+import 'package:zenon_syrius_wallet_flutter/utils/global.dart';
+import 'package:zenon_syrius_wallet_flutter/utils/node_transition.dart';
+import 'package:zenon_syrius_wallet_flutter/utils/node_utils.dart';
+import 'package:zenon_syrius_wallet_flutter/utils/wallet_context_revision.dart';
+import 'package:zenon_syrius_wallet_flutter/widgets/main_app_container.dart';
+import 'package:zenon_syrius_wallet_flutter/widgets/modular_widgets/settings_widgets/node_management.dart';
+import 'package:zenon_syrius_wallet_flutter/widgets/modular_widgets/settings_widgets/wallet_settings_presenter.dart';
 
+/// Entry's node picker uses the same owned transition and consent as Settings.
 class NodeManagementScreen extends StatefulWidget {
+  /// The original callback receives only a positively accepted node transition.
+  const NodeManagementScreen({this.nodeConfirmationCallback, super.key});
 
-  const NodeManagementScreen({
-    this.nodeConfirmationCallback,
-    super.key,
-  });
+  /// Completes the original creation route; absent means return to the wallet.
   final VoidCallback? nodeConfirmationCallback;
 
+  /// The existing splash route for a wallet with no saved node selection.
   static const String route = 'node-management-screen';
 
   @override
@@ -27,343 +29,111 @@ class NodeManagementScreen extends StatefulWidget {
 }
 
 class _NodeManagementScreenState extends State<NodeManagementScreen> {
-  String? _selectedNode;
+  late final VoidCallback? _confirmed = widget.nodeConfirmationCallback;
   bool? _autoReceive;
-
-  final GlobalKey<LoadingButtonState> _confirmNodeButtonKey = GlobalKey();
-  final GlobalKey<LoadingButtonState> _addNodeButtonKey = GlobalKey();
-
-  TextEditingController _newNodeController = TextEditingController();
-  GlobalKey<FormState> _newNodeKey = GlobalKey();
-
-  late String _selectedNodeConfirmed;
+  bool _autoReceiveBusy = false;
+  bool _opened = false;
 
   @override
   void initState() {
     super.initState();
-    kDefaultCommunityNodes.shuffle();
-    _autoReceive = sharedPrefsService!.get(
+    final Object? stored = app.sharedPrefsService?.get(
       kAutoReceiveKey,
       defaultValue: kAutoReceiveDefaultValue,
     );
+    _autoReceive = stored is bool ? stored : null;
+  }
+
+  void _accepted() {
+    if (!mounted ||
+        _opened ||
+        NodeTransitions.pending ||
+        ModalRoute.of(context)?.isCurrent != true) {
+      return;
+    }
+    _opened = true;
+    final VoidCallback? callback = _confirmed;
+    if (callback != null) {
+      callback();
+    } else {
+      Navigator.of(
+        context,
+        rootNavigator: true,
+      ).pushReplacementNamed<void, void>(MainAppContainer.route);
+    }
+  }
+
+  Future<void> _changeAutoReceive(bool enabled) async {
+    if (!mounted || _autoReceiveBusy || !kWalletInitCompleted) return;
+    final ModalRoute<dynamic>? route = ModalRoute.of(context);
+    final int revision = WalletContextRevision.value;
+    final AutoReceiveTxWorker? worker =
+        app.sl.isRegistered<AutoReceiveTxWorker>()
+        ? app.sl<AutoReceiveTxWorker>()
+        : null;
+    bool revoked = false;
+    bool current() =>
+        !revoked &&
+        !(revoked =
+            !mounted ||
+            route?.isCurrent != true ||
+            revision != WalletContextRevision.value);
+    final WalletSettingsBinding? binding = WalletSettingsBinding.capture(
+      scanForReceives: () async {
+        if (!current() ||
+            worker == null ||
+            !app.sl.isRegistered<AutoReceiveTxWorker>() ||
+            !identical(worker, app.sl<AutoReceiveTxWorker>())) {
+          return;
+        }
+        final ReceiveOrigin? origin = worker.captureOrigin(
+          sourceIsCurrent: current,
+        );
+        if (origin == null) return;
+        await NodeUtils.getUnreceivedTransactions(origin: origin);
+        if (origin.isCurrent) await worker.autoReceive();
+      },
+    );
+    if (binding == null || !current()) return;
+    setState(() => _autoReceiveBusy = true);
+    try {
+      final WalletPreferenceOutcome outcome = await binding.change(
+        WalletPreference.autoReceive,
+        value: enabled,
+        isCurrent: current,
+      );
+      if (current() && outcome.committed) {
+        setState(() => _autoReceive = outcome.value);
+      }
+    } finally {
+      if (mounted) setState(() => _autoReceiveBusy = false);
+    }
   }
 
   @override
-  void didChangeDependencies() {
-    super.didChangeDependencies();
-    _selectedNode ??= kCurrentNode ?? kEmbeddedNode;
-    _selectedNodeConfirmed = _selectedNode ?? kEmbeddedNode;
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return SettingsScreenFrame(
-      top: const NotificationWidget(),
-      width: 600,
-      title: 'Node',
-      note:
-          'Syrius runs its own full node, the Embedded Node. It can take up '
-          'to a day to sync, and until then nothing can be sent or received. '
-          'To start now, pick a community node.',
-      actions: <Widget>[_buildConfirmNodeSelectionButton()],
+  Widget build(BuildContext context) => Scaffold(
+    body: SingleChildScrollView(
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
-        mainAxisSize: MainAxisSize.min,
         children: <Widget>[
-          _buildNodeTiles(),
-          const SizedBox(height: 10),
-          _buildAddNodeRow(),
-          const SizedBox(height: 14),
-          const Divider(),
-          const SizedBox(height: 6),
-          _buildAutoReceiveRow(),
+          NodeSettingsSection(
+            onboarding: true,
+            isCurrent: () => mounted && !_opened,
+            onNodeChangedCallback: _accepted,
+          ),
+          SwitchListTile(
+            title: Text(currentL10n.walletSettingsAutoReceive),
+            value: _autoReceive ?? false,
+            onChanged:
+                _autoReceive == null ||
+                    _autoReceiveBusy ||
+                    !kWalletInitCompleted ||
+                    NodeTransitions.pending
+                ? null
+                : (bool value) => unawaited(_changeAutoReceive(value)),
+          ),
         ],
       ),
-    );
-  }
-
-  Widget _buildAutoReceiveRow() {
-    return Row(
-      children: <Widget>[
-        Expanded(
-          child: Text(
-            'Receive transactions automatically',
-            style: Theme.of(context).textTheme.bodyLarge,
-          ),
-        ),
-        Switch(
-          value: _autoReceive ?? false,
-          onChanged: (bool value) async {
-            if (value) {
-              NodeUtils.getUnreceivedTransactions()
-                  .then((value) {
-                    sl<AutoReceiveTxWorker>().autoReceive();
-                  })
-                  .onError((Object? error, StackTrace stackTrace) {
-                    Logger('MainAppContainer').log(
-                      Level.WARNING,
-                      '_getAutoReceiveCheckboxContainer',
-                      error,
-                      stackTrace,
-                    );
-                  });
-            } else if (sl<AutoReceiveTxWorker>().pool.isNotEmpty) {
-              sl<AutoReceiveTxWorker>().pool.clear();
-            }
-            setState(() {
-              _autoReceive = value;
-            });
-            await _changeAutoReceiveStatus(value);
-          },
-        ),
-      ],
-    );
-  }
-
-  Future<void> _changeAutoReceiveStatus(bool enabled) async {
-    try {
-      await _saveAutoReceiveValueToCache(enabled);
-      await _sendAutoReceiveNotification(enabled);
-    } on Exception catch (e) {
-      await NotificationUtils.sendNotificationError(
-        e,
-        'Something went wrong while setting automatic receive preference',
-      );
-    }
-  }
-
-  Future<void> _sendAutoReceiveNotification(bool enabled) async {
-    await sl.get<NotificationsBloc>().addNotification(
-          WalletNotification(
-            title: 'Auto-receiver ${enabled ? 'enabled' : 'disabled'}',
-            details:
-                'Auto-receiver preference was ${enabled ? 'enabled' : 'disabled'}',
-            timestamp: DateTime.now().millisecondsSinceEpoch,
-            type: NotificationType.paymentSent,
-          ),
-        );
-  }
-
-  Future<void> _saveAutoReceiveValueToCache(bool enabled) async {
-    await sharedPrefsService!.put(
-      kAutoReceiveKey,
-      enabled,
-    );
-  }
-
-  Widget _buildConfirmNodeSelectionButton() {
-    return LoadingButton(
-      text: 'Continue',
-      onPressed: _onConfirmNodeButtonPressed,
-      minimumSize: const Size(120, 40),
-      key: _confirmNodeButtonKey,
-    );
-  }
-
-  Future<void> _onConfirmNodeButtonPressed() async {
-    // Acquire WakeLock
-    if (!await WakelockPlus.enabled) {
-      WakelockPlus.enable();
-    }
-
-    try {
-      _confirmNodeButtonKey.currentState?.animateForward();
-      final String url = _selectedNode == kEmbeddedNode
-          ? kLocalhostDefaultNodeUrl
-          : _selectedNode!;
-      bool isConnectionEstablished =
-          await NodeUtils.establishConnectionToNode(url);
-      if (_selectedNode == kEmbeddedNode) {
-        // Check if node is already running
-        if (!isConnectionEstablished) {
-          // Initialize local full node
-          await Isolate.spawn(EmbeddedNode.runNode, <String>[''],
-              onExit:
-                  sl<ReceivePort>(instanceName: 'embeddedStoppedPort').sendPort,
-              debugName: 'EmbeddedNodeIsolate',);
-          kEmbeddedNodeRunning = true;
-          // The node needs a couple of seconds to actually start
-          await Future.delayed(kEmbeddedConnectionDelay);
-          isConnectionEstablished =
-              await NodeUtils.establishConnectionToNode(url);
-        }
-      } else {
-        if (isConnectionEstablished) {
-          await NodeUtils.closeEmbeddedNode();
-        }
-      }
-      if (isConnectionEstablished) {
-        await sharedPrefsService!.put(
-          kSelectedNodeKey,
-          _selectedNode,
-        );
-        kCurrentNode = _selectedNode;
-        await _sendChangingNodeSuccessNotification();
-        if (widget.nodeConfirmationCallback != null) {
-          widget.nodeConfirmationCallback!();
-        } else {
-          _navigateToHomeScreen();
-        }
-      } else {
-        throw 'Connection could not be established to $_selectedNode';
-      }
-    } catch (e) {
-      await NotificationUtils.sendNotificationError(
-        e,
-        'Connection failed',
-      );
-      setState(() {
-        _selectedNode = kCurrentNode;
-      });
-    } finally {
-      _confirmNodeButtonKey.currentState?.animateReverse();
-    }
-  }
-
-  void _navigateToHomeScreen() {
-    Navigator.of(
-      context,
-      rootNavigator: true,
-    ).pushReplacementNamed(MainAppContainer.route);
-  }
-
-  Widget _buildAddNodeRow() {
-    return Row(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: <Widget>[
-        Expanded(
-          child: Form(
-            key: _newNodeKey,
-            autovalidateMode: AutovalidateMode.onUserInteraction,
-            child: InputField(
-              controller: _newNodeController,
-              hintText: 'Node address with port',
-              onSubmitted: (String value) {
-                if (_ifUserInputValid()) {
-                  _onAddNodePressed();
-                }
-              },
-              onChanged: (String value) {
-                if (value.isNotEmpty) {
-                  setState(() {});
-                }
-              },
-              validator: InputValidators.node,
-            ),
-          ),
-        ),
-        const SizedBox(width: 10),
-        SecondaryAction(
-          child: LoadingButton.settings(
-            onPressed: _ifUserInputValid() ? _onAddNodePressed : null,
-            text: 'Add node',
-            key: _addNodeButtonKey,
-          ),
-        ),
-      ],
-    );
-  }
-
-  bool _ifUserInputValid() =>
-      InputValidators.node(_newNodeController.text) == null;
-
-  Future<void> _onAddNodePressed() async {
-    if (<String>[...kDbNodes, ...kDefaultCommunityNodes, ...kDefaultNodes]
-        .contains(_newNodeController.text)) {
-      await NotificationUtils.sendNotificationError(
-          'Node ${_newNodeController.text} already exists',
-          'Node already exists',);
-    } else {
-      _addNodeToDb();
-    }
-  }
-
-  Future<void> _addNodeToDb() async {
-    try {
-      _addNodeButtonKey.currentState?.animateForward();
-      if (!Hive.isBoxOpen(kNodesBox)) {
-        await Hive.openBox<String>(kNodesBox);
-      }
-      Hive.box<String>(kNodesBox).add(_newNodeController.text);
-      await NodeUtils.loadDbNodes();
-      await _sendAddNodeSuccessNotification();
-      setState(() {
-        _newNodeController = TextEditingController();
-        _newNodeKey = GlobalKey();
-      });
-    } catch (e) {
-      await NotificationUtils.sendNotificationError(e, 'Error while adding new node');
-    } finally {
-      _addNodeButtonKey.currentState?.animateReverse();
-    }
-  }
-
-  Widget _buildNodeTiles() {
-    return Column(
-      children: <String>{
-        ...kDefaultNodes,
-        ...kDefaultCommunityNodes,
-        ...kDbNodes,
-      }.toList().map(_buildNodeTile).toList(),
-    );
-  }
-
-  Widget _buildNodeTile(String node) {
-    return Row(
-      children: <Widget>[
-        Radio<String?>(
-          value: node,
-          groupValue: _selectedNode,
-          onChanged: (String? value) {
-            setState(() {
-              _selectedNode = value;
-            });
-          },
-        ),
-        Expanded(
-          child: SettingsNode(
-            key: ValueKey(node),
-            node: node,
-            onNodePressed: (String? value) {
-              setState(() {
-                _selectedNode = value;
-              });
-            },
-            onChangedOrDeletedNode: () {
-              setState(() {});
-            },
-            currentNode: _selectedNodeConfirmed,
-          ),
-        ),
-      ],
-    );
-  }
-
-  Future<void> _sendChangingNodeSuccessNotification() async {
-    await sl.get<NotificationsBloc>().addNotification(
-          WalletNotification(
-            title: 'Successfully connected to $_selectedNode',
-            timestamp: DateTime.now().millisecondsSinceEpoch,
-            details: 'Successfully connected to $_selectedNode',
-            type: NotificationType.changedNode,
-          ),
-        );
-  }
-
-  @override
-  void dispose() {
-    _newNodeController.dispose();
-    super.dispose();
-  }
-
-  Future<void> _sendAddNodeSuccessNotification() async {
-    await sl.get<NotificationsBloc>().addNotification(
-          WalletNotification(
-            title: 'Successfully added node ${_newNodeController.text}',
-            timestamp: DateTime.now().millisecondsSinceEpoch,
-            details: 'Successfully added node ${_newNodeController.text}',
-            type: NotificationType.changedNode,
-          ),
-        );
-  }
+    ),
+  );
 }

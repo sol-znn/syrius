@@ -15,7 +15,7 @@ import 'package:zenon_syrius_wallet_flutter/utils/app_theme.dart';
 
 /// Secondary text of a setting: what it does, in one line.
 TextStyle settingHintStyle(BuildContext context) =>
-    Theme.of(context).textTheme.titleMedium!.copyWith(fontSize: 13);
+    AppTokens.of(context).settingsHintText;
 
 /// Data shown in a setting: a node, an address, a hash, a path.
 TextStyle settingMonoStyle(BuildContext context) =>
@@ -104,7 +104,7 @@ class SettingRow extends StatelessWidget {
   Widget build(BuildContext context) {
     final ThemeData theme = Theme.of(context);
     return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+      padding: AppTokens.of(context).settingsRowPadding,
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         mainAxisSize: MainAxisSize.min,
@@ -332,7 +332,7 @@ class SettingsList extends StatelessWidget {
 }
 
 /// A section of Settings made of panels as tall as their content: they
-/// stack from the top with the panel gap between, and the section scrolls
+/// stack from the top with the page gap between, and the section scrolls
 /// as a whole when the window is shorter than they are.
 ///
 /// Nothing in it has a height of its own to outgrow, so a larger text size
@@ -347,7 +347,7 @@ class SettingsSection extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final double gap = AppTokens.of(context).panelGap;
+    final double gap = AppTokens.of(context).pageGap;
     return SingleChildScrollView(
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -686,7 +686,7 @@ class SettingsScreenFrame extends StatelessWidget {
         padding: const EdgeInsets.all(24),
         child: Column(
           children: <Widget>[
-            if (top != null) top!,
+            ?top,
             Expanded(
               child: Center(
                 child: SingleChildScrollView(
@@ -719,14 +719,15 @@ class SettingsScreenFrame extends StatelessWidget {
                             child,
                             if (actions.isNotEmpty) ...<Widget>[
                               const SizedBox(height: 24),
-                              Row(
-                                mainAxisAlignment: MainAxisAlignment.end,
-                                children: <Widget>[
-                                  for (int i = 0; i < actions.length; i++) ...[
-                                    if (i > 0) const SizedBox(width: 10),
-                                    actions[i],
-                                  ],
-                                ],
+                              Wrap(
+                                alignment: WrapAlignment.end,
+                                spacing: AppTokens.of(
+                                  context,
+                                ).settingsActionGap,
+                                runSpacing: AppTokens.of(
+                                  context,
+                                ).settingsActionGap,
+                                children: actions,
                               ),
                             ],
                           ],

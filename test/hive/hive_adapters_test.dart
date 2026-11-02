@@ -37,6 +37,10 @@ void main() {
       details: 'Test details',
       type: NotificationType.paymentReceived,
       id: 7,
+      eventKind: 'blockPublished',
+      walletScope: '321:test-wallet',
+      chainId: 321,
+      transactionHash: List<String>.filled(64, 'a').join(),
     );
 
     await notificationsBox.add(notification);
@@ -52,6 +56,10 @@ void main() {
     expect(storedNotification?.details, notification.details);
     expect(storedNotification?.type, notification.type);
     expect(storedNotification?.id, notification.id);
+    expect(storedNotification?.eventKind, notification.eventKind);
+    expect(storedNotification?.walletScope, notification.walletScope);
+    expect(storedNotification?.chainId, notification.chainId);
+    expect(storedNotification?.transactionHash, notification.transactionHash);
     expect(reopenedBox.getAt(1), isNull);
   });
 }

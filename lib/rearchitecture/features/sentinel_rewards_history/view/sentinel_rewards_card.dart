@@ -1,8 +1,8 @@
 import 'dart:math';
 
 import 'package:fl_chart/fl_chart.dart';
-import 'package:material_ui/material_ui.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:material_ui/material_ui.dart';
 import 'package:zenon_syrius_wallet_flutter/rearchitecture/features/card_parts/card_parts.dart';
 import 'package:zenon_syrius_wallet_flutter/rearchitecture/features/features.dart';
 import 'package:zenon_syrius_wallet_flutter/rearchitecture/utils/utils.dart';
@@ -44,48 +44,49 @@ class _View extends StatelessWidget {
           },
         ),
       ],
-      child: Column(
+      child: const Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: <Widget>[
-          const SentinelCollect(),
-          const Divider(),
-          Expanded(
-            child:
-                BlocBuilder<
-                  SentinelRewardsHistoryBloc,
-                  FetchState<RewardHistoryList>
-                >(
-                  builder: (_, FetchState<RewardHistoryList> state) {
-                    return StateSwitcher(
-                      child: switch (state) {
-                        // A week without rewards comes from the bloc as a
-                        // failure; here it is the empty state, with a key of
-                        // its own so it fades to a real error and back.
-                        FetchFailure<RewardHistoryList>() => CardNote.error(
-                          state.exception,
-                          key: ValueKey<String>(
-                            state.exception is NoRewardsLastWeekException
-                                ? 'empty'
-                                : 'failure',
-                          ),
-                        ),
-                        FetchInitial<RewardHistoryList>() =>
-                          const _ChartLoading(
-                            key: ValueKey<String>('loading'),
-                          ),
-                        FetchPopulated<RewardHistoryList>() => _Chart(
-                          key: const ValueKey<String>('chart'),
-                          rewardsHistoryList: state.data,
-                        ),
-                      },
-                    );
-                  },
-                ),
-          ),
+          SentinelCollect(),
+          Divider(),
+          Expanded(child: SentinelRewardsChart()),
         ],
       ),
     );
   }
+}
+
+/// The existing history states without a collection scope or action.
+///
+/// The strip stays the only sender while its history is open, so a pending
+/// collection cannot be repeated through a second rewards card.
+class SentinelRewardsChart extends StatelessWidget {
+  /// Creates the chart under a [SentinelRewardsHistoryBloc].
+  const SentinelRewardsChart({super.key});
+
+  @override
+  Widget build(BuildContext context) =>
+      BlocBuilder<SentinelRewardsHistoryBloc, FetchState<RewardHistoryList>>(
+        builder: (_, FetchState<RewardHistoryList> state) => StateSwitcher(
+          child: switch (state) {
+            FetchFailure<RewardHistoryList>() => CardNote.error(
+              state.exception,
+              key: ValueKey<String>(
+                state.exception is NoRewardsLastWeekException
+                    ? 'empty'
+                    : 'failure',
+              ),
+            ),
+            FetchInitial<RewardHistoryList>() => const _ChartLoading(
+              key: ValueKey<String>('loading'),
+            ),
+            FetchPopulated<RewardHistoryList>() => _Chart(
+              key: const ValueKey<String>('chart'),
+              rewardsHistoryList: state.data,
+            ),
+          },
+        ),
+      );
 }
 
 /// The chart while it loads: bars down the space it will fill.

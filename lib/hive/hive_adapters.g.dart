@@ -22,13 +22,17 @@ class WalletNotificationAdapter extends TypeAdapter<WalletNotification> {
       details: fields[2] as String?,
       type: fields[3] as NotificationType?,
       id: (fields[4] as num?)?.toInt(),
+      eventKind: fields[5] as String?,
+      walletScope: fields[6] as String?,
+      chainId: (fields[7] as num?)?.toInt(),
+      transactionHash: fields[8] as String?,
     );
   }
 
   @override
   void write(BinaryWriter writer, WalletNotification obj) {
     writer
-      ..writeByte(5)
+      ..writeByte(9)
       ..writeByte(0)
       ..write(obj.title)
       ..writeByte(1)
@@ -38,7 +42,15 @@ class WalletNotificationAdapter extends TypeAdapter<WalletNotification> {
       ..writeByte(3)
       ..write(obj.type)
       ..writeByte(4)
-      ..write(obj.id);
+      ..write(obj.id)
+      ..writeByte(5)
+      ..write(obj.eventKind)
+      ..writeByte(6)
+      ..write(obj.walletScope)
+      ..writeByte(7)
+      ..write(obj.chainId)
+      ..writeByte(8)
+      ..write(obj.transactionHash);
   }
 
   @override

@@ -1,6 +1,7 @@
 import 'package:material_ui/material_ui.dart';
 import 'package:zenon_syrius_wallet_flutter/rearchitecture/features/home/home.dart'
     show splitAmount;
+import 'package:zenon_syrius_wallet_flutter/rearchitecture/utils/extensions/buildcontext_extension.dart';
 import 'package:zenon_syrius_wallet_flutter/rearchitecture/utils/widgets/motion/motion.dart';
 import 'package:zenon_syrius_wallet_flutter/rearchitecture/utils/widgets/page/page_widgets.dart';
 import 'package:zenon_syrius_wallet_flutter/utils/app_colors.dart';
@@ -88,6 +89,7 @@ class AccChip extends StatelessWidget {
     this.selected = false,
     this.onPressed,
     this.tooltip,
+    this.filled = false,
     super.key,
   });
 
@@ -109,23 +111,31 @@ class AccChip extends StatelessWidget {
   /// Explains the pill on hover.
   final String? tooltip;
 
+  /// A semantic status tint, independent of the selected-filter surface.
+  final bool filled;
+
   @override
   Widget build(BuildContext context) {
     final ThemeData theme = Theme.of(context);
+    final AppTokens tokens = AppTokens.of(context);
     final Color ink = selected ? accInkOf(context) : dimColorOf(context);
     final Color line = lineColorOf(context);
     Widget pill = AnimatedContainer(
       duration: Durations.short3,
       curve: Easing.standard,
-      height: 26,
+      constraints: const BoxConstraints(minHeight: 26),
       padding: const EdgeInsets.symmetric(horizontal: 10),
       decoration: ShapeDecoration(
         // Transparent, not null: a colour can be animated to and from.
-        color: selected
+        color: filled && dotColor != null
+            ? dotColor!.withValues(alpha: 0.12)
+            : selected
             ? theme.colorScheme.primaryContainer
             : theme.colorScheme.primaryContainer.withValues(alpha: 0),
         shape: StadiumBorder(
-          side: BorderSide(color: selected ? AppColors.faint : line),
+          side: filled
+              ? BorderSide.none
+              : BorderSide(color: selected ? tokens.faint : line),
         ),
       ),
       child: Row(
@@ -145,15 +155,17 @@ class AccChip extends StatelessWidget {
             ),
             const SizedBox(width: 6),
           ],
-          AnimatedDefaultTextStyle(
-            duration: Durations.short3,
-            curve: Easing.standard,
-            style: kBodySmallTextStyle.copyWith(
-              fontFamily: kSansFontFamily,
-              fontFamilyFallback: kFontFamilyFallback,
-              color: ink,
+          Flexible(
+            child: AnimatedDefaultTextStyle(
+              duration: Durations.short3,
+              curve: Easing.standard,
+              style: kBodySmallTextStyle.copyWith(
+                fontFamily: kSansFontFamily,
+                fontFamilyFallback: kFontFamilyFallback,
+                color: filled ? dotColor ?? ink : ink,
+              ),
+              child: Text(label),
             ),
-            child: Text(label, maxLines: 1),
           ),
         ],
       ),
@@ -183,9 +195,32 @@ class AccStatusChip extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final AppTokens tokens = AppTokens.of(context);
+    final Color color = switch (status) {
+      AcceleratorProjectStatus.voting => tokens.qsrInk,
+      AcceleratorProjectStatus.active ||
+      AcceleratorProjectStatus.paid => tokens.znnInk,
+      AcceleratorProjectStatus.completed => tokens.qsrInk,
+      AcceleratorProjectStatus.closed => tokens.error,
+    };
+    final String label = switch (status) {
+      AcceleratorProjectStatus.voting => context.l10n.acceleratorVoting,
+      AcceleratorProjectStatus.active => context.l10n.acceleratorAccepted,
+      AcceleratorProjectStatus.paid => context.l10n.acceleratorPaid,
+      AcceleratorProjectStatus.completed => context.l10n.acceleratorCompleted,
+      AcceleratorProjectStatus.closed => context.l10n.acceleratorRejected,
+    };
     return AccChip(
-      label: accStatusLabel(status),
-      dotColor: accStatusColor(status),
+      label: label,
+      dotColor: color,
+      filled: true,
+      icon: switch (status) {
+        AcceleratorProjectStatus.voting => Icons.schedule,
+        AcceleratorProjectStatus.active ||
+        AcceleratorProjectStatus.paid ||
+        AcceleratorProjectStatus.completed => Icons.check,
+        AcceleratorProjectStatus.closed => Icons.close,
+      },
     );
   }
 }
@@ -224,9 +259,9 @@ class AccMeter extends StatelessWidget {
             children: <Widget>[
               for (int i = parts.length - 1; i >= 0; i--)
                 TweenAnimationBuilder<double>(
-                  tween: Tween<double>(end: ends[i]),
-                  duration: Durations.medium4,
-                  curve: Easing.standard,
+                  tween: Tween<double>(begin: ends[i], end: ends[i]),
+                  duration: const Duration(milliseconds: 150),
+                  curve: AppTokens.of(context).ease,
                   builder: (_, double end, Widget? child) =>
                       FractionallySizedBox(
                         alignment: Alignment.centerLeft,

@@ -4,7 +4,7 @@
 // "Before" is the master in tool/lottie_masters, drawn the way the call
 // sites drew it: `Lottie` with the package's defaults, loaded by the
 // package's own provider. "After" is the bundled file through [AppLottie].
-// Both write PNGs under .harness/lottie/, to be looked at: a test can count
+// Both write PNGs to a fresh test-owned temporary directory: a test can count
 // pixels, but whether a coin looks like a coin is for an eye.
 
 import 'dart:async';
@@ -19,7 +19,7 @@ import 'package:lottie/lottie.dart';
 import 'package:zenon_syrius_wallet_flutter/widgets/reusable_widgets/app_lottie.dart';
 
 const String _masters = 'tool/lottie_masters';
-const String _out = '.harness/lottie';
+final String _out = Directory.systemTemp.createTempSync('syrius-lottie-').path;
 
 /// A dark panel, lighter than the coin's rim so the rim's edge shows.
 const Color _backdrop = Color(0xFF2A2A2A);
@@ -79,7 +79,11 @@ Widget _host(Widget child) => Directionality(
 Future<ui.Image> _capture(WidgetTester tester, double dpr) async {
   final RenderRepaintBoundary boundary =
       _shot.currentContext!.findRenderObject()! as RenderRepaintBoundary;
-  return (await tester.runAsync(() => boundary.toImage(pixelRatio: dpr)))!;
+  final ui.Image image = (await tester.runAsync(
+    () => boundary.toImage(pixelRatio: dpr),
+  ))!;
+  addTearDown(image.dispose);
+  return image;
 }
 
 Future<void> _save(WidgetTester tester, ui.Image image, String path) async {
@@ -117,7 +121,7 @@ void main() {
       ..clearLiveImages();
   });
 
-  group('renders to .harness/lottie', () {
+  group('renders diagnostic captures', () {
     for (final (AppLottieAsset asset, String name, double slot) in _cases) {
       for (final double dpr in <double>[1, 1.5, 2]) {
         // The last frame is where an animation that plays once rests, so it
@@ -126,8 +130,7 @@ void main() {
           ('end', 1),
           ('mid', 0.6),
         ]) {
-          final String file =
-              '${name}_${slot.toInt()}_${dpr}x_$at.png';
+          final String file = '${name}_${slot.toInt()}_${dpr}x_$at.png';
 
           testWidgets('before/$file', (WidgetTester tester) async {
             _setDpr(tester, dpr);
@@ -144,7 +147,11 @@ void main() {
                 ),
               ),
             );
-            await _save(tester, await _capture(tester, dpr), '$_out/before/$file');
+            await _save(
+              tester,
+              await _capture(tester, dpr),
+              '$_out/before/$file',
+            );
           });
 
           testWidgets('after/$file', (WidgetTester tester) async {
@@ -163,7 +170,11 @@ void main() {
             );
             // Loaded already, so it is there on the first frame.
             expect(find.byType(Lottie), findsOneWidget);
-            await _save(tester, await _capture(tester, dpr), '$_out/after/$file');
+            await _save(
+              tester,
+              await _capture(tester, dpr),
+              '$_out/after/$file',
+            );
           });
         }
       }
@@ -251,8 +262,10 @@ void main() {
         final double farShare = far / (a.length / 4);
         // The numbers are the point of the run.
         // ignore: avoid_print
-        print('$name: mean difference ${mean.toStringAsFixed(2)}/255, '
-            '${(farShare * 100).toStringAsFixed(2)} % of pixels far off');
+        print(
+          '$name: mean difference ${mean.toStringAsFixed(2)}/255, '
+          '${(farShare * 100).toStringAsFixed(2)} % of pixels far off',
+        );
         // A shift of the artwork by two pixels fails both of these.
         expect(mean, lessThan(2.5));
         expect(farShare, lessThan(0.005));
@@ -332,17 +345,17 @@ void main() {
   group('a first visit holds no frame', () {
     for (final (AppLottieAsset asset, double? size)
         in <(AppLottieAsset, double?)>[
-      (AppLottieAsset.zts, 64),
-      (AppLottieAsset.pillar, 104),
-      (AppLottieAsset.sentinel, 104),
-      (AppLottieAsset.zts, 400),
-      (AppLottieAsset.pillar, 400),
-      (AppLottieAsset.sentinel, 400),
-      (AppLottieAsset.eye, null),
-      (AppLottieAsset.noData, 32),
-      (AppLottieAsset.map, null),
-      (AppLottieAsset.splash, null),
-    ]) {
+          (AppLottieAsset.zts, 64),
+          (AppLottieAsset.pillar, 104),
+          (AppLottieAsset.sentinel, 104),
+          (AppLottieAsset.zts, 400),
+          (AppLottieAsset.pillar, 400),
+          (AppLottieAsset.sentinel, 400),
+          (AppLottieAsset.eye, null),
+          (AppLottieAsset.noData, 32),
+          (AppLottieAsset.map, null),
+          (AppLottieAsset.splash, null),
+        ]) {
       testWidgets('${asset.name} at ${size ?? 'full size'}', (
         WidgetTester tester,
       ) async {

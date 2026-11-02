@@ -4,6 +4,7 @@ import 'package:zenon_syrius_wallet_flutter/rearchitecture/utils/cubits/timer_cu
 import 'package:zenon_syrius_wallet_flutter/rearchitecture/utils/extensions/buildcontext_extension.dart';
 import 'package:zenon_syrius_wallet_flutter/utils/app_theme.dart';
 import 'package:zenon_syrius_wallet_flutter/utils/pair.dart';
+import 'package:zenon_syrius_wallet_flutter/widgets/shell/strip/status_dot.dart';
 import 'package:znn_sdk_dart/znn_sdk_dart.dart';
 
 /// How many momentums the node is short of the network's height, or null
@@ -48,41 +49,40 @@ class SyncDot extends StatelessWidget {
     final Color color;
     final String message;
     if (state.status == TimerStatus.failure) {
-      color = Theme.of(context).colorScheme.error;
-      message = 'Disconnected';
+      color = tokens.error;
+      message = context.l10n.stripDisconnected;
     } else if (state.status != TimerStatus.success || data == null) {
       color = tokens.warn;
-      message = 'Connecting';
+      message = context.l10n.stripConnecting;
     } else {
       final SyncInfo info = data.second;
       final bool hasHeights = info.currentHeight > 0 && info.targetHeight > 0;
       if (info.state == SyncState.syncDone ||
           (hasHeights && momentumsBehind(state) == null)) {
-        color = tokens.znnInk;
-        message = 'Connected and in sync';
+        color = tokens.znn;
+        message = context.l10n.stripSynced;
       } else if (hasHeights) {
         color = tokens.warn;
-        message =
-            'Syncing, momentum ${info.currentHeight} of ${info.targetHeight}';
+        message = context.l10n.stripSyncing(
+          info.currentHeight,
+          info.targetHeight,
+        );
       } else {
         color = tokens.warn;
-        message = 'Connecting';
+        message = context.l10n.stripConnecting;
       }
     }
-    return Tooltip(
-      message: message,
-      // Wider and taller than the dot, so the tooltip is not an 8 px target.
-      child: SizedBox(
-        width: 16,
-        height: 40,
-        child: Center(
-          child: AnimatedContainer(
-            key: const Key('strip_sync'),
-            duration: Durations.short4,
-            curve: Easing.standard,
-            width: 8,
-            height: 8,
-            decoration: BoxDecoration(color: color, shape: BoxShape.circle),
+    return Semantics(
+      label: message,
+      child: Tooltip(
+        message: message,
+        excludeFromSemantics: true,
+        // Wider and taller than the dot, so the tooltip is not an 8 px target.
+        child: SizedBox(
+          width: tokens.statusDotSize * 2,
+          height: tokens.statusStripHeight - tokens.statusStripPadding.vertical,
+          child: Center(
+            child: StatusDot(color: color, fillKey: const Key('strip_sync')),
           ),
         ),
       ),

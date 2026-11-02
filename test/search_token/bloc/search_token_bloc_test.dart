@@ -1,350 +1,174 @@
-import 'package:bloc_test/bloc_test.dart';
+import 'dart:async';
+
 import 'package:flutter_test/flutter_test.dart';
-import 'package:mocktail/mocktail.dart';
-import 'package:zenon_syrius_wallet_flutter/rearchitecture/features/features.dart';
-import 'package:zenon_syrius_wallet_flutter/rearchitecture/utils/utils.dart';
-import 'package:zenon_syrius_wallet_flutter/utils/utils.dart';
+import 'package:zenon_syrius_wallet_flutter/rearchitecture/features/search_token/bloc/search_token_bloc.dart';
+import 'package:zenon_syrius_wallet_flutter/utils/global.dart';
+import 'package:zenon_syrius_wallet_flutter/utils/wallet_context_revision.dart';
+import 'package:zenon_syrius_wallet_flutter/utils/zts_utils.dart';
 import 'package:znn_sdk_dart/znn_sdk_dart.dart';
 
-class MockZenon extends Mock implements Zenon {}
-
-class MockEmbedded extends Mock implements EmbeddedApi {}
-
-class MockTokenApi extends Mock implements TokenApi {}
-
-class MockTokenList extends Mock implements TokenList {}
-
-class MockToken extends Mock implements Token {}
-
-class FakeTokenStandard extends Fake implements TokenStandard {
-  FakeTokenStandard(this.value);
-
-  final String value;
-
-  @override
-  String toString() => value;
-}
-
-class FakeAddress extends Fake implements Address {
-  FakeAddress(this.value);
-
-  final String value;
-
-  @override
-  String toString() => value;
-}
+import '../../tokens_redesign/support.dart';
 
 void main() {
-  group('SearchTokenBloc', () {
-    late MockZenon zenon;
-    late MockEmbedded embedded;
-    late MockTokenApi tokenApi;
-    late MockTokenList tokenList;
-    late List<Token> tokens;
+  late TokenTestClient transport;
+  late TokenTestSdk sdk;
+  late TokenTestGlobals globals;
+  late SearchTokenBloc bloc;
+  late List<Token> tokens;
 
-    MockToken createToken(
-      String symbol, {
-      String name = 'Token',
-      String owner = 'z1qowner',
-      String? tokenStandard,
-    }) {
-      final MockToken token = MockToken();
-      final FakeAddress ownerAddress = FakeAddress(owner);
-      final FakeTokenStandard standard = FakeTokenStandard(
-        tokenStandard ?? 'zts1${symbol.toLowerCase()}',
+  setUp(() {
+    tokens = <Token>[
+      tokenFixture(1, name: 'Alpha token', symbol: 'ALPHA'),
+      tokenFixture(2, name: 'Beta token', symbol: 'BETA', owner: tokenAddress),
+    ];
+    transport = TokenTestClient((_, _) async => tokenPage(tokens));
+    sdk = TokenTestSdk(transport);
+    globals = TokenTestGlobals()..install(sdk.zenon);
+    bloc = SearchTokenBloc(zenon: sdk.zenon, debounceDuration: Duration.zero);
+  });
+
+  tearDown(() async {
+    await bloc.close();
+    await sdk.close();
+    globals.restore();
+  });
+
+  Future<SearchTokenPopulated> search(
+    String query, {
+    bool refresh = false,
+  }) async {
+    final Future<SearchTokenState> result = nextTokenState(
+      bloc.stream,
+      (SearchTokenState state) =>
+          state is SearchTokenPopulated && state.query == query,
+    );
+    bloc.add(SearchTokenRequested(query: query, refresh: refresh));
+    return await result as SearchTokenPopulated;
+  }
+
+  test('initial and empty queries have no catalog RPC', () async {
+    expect(bloc.state, const SearchTokenInitial());
+    bloc.add(const SearchTokenRequested(query: '  '));
+    await tokenTurns();
+    expect(bloc.state, const SearchTokenInitial());
+    expect(transport.requests, isEmpty);
+  });
+
+  test(
+    'search matches name, symbol, exact owner text and ZTS case-insensitively',
+    () async {
+      expect(
+        (await search('alpha')).tokens.single.tokenStandard,
+        tokens[0].tokenStandard,
       );
-      when(() => token.name).thenReturn(name);
-      when(() => token.symbol).thenReturn(symbol);
-      when(() => token.owner).thenReturn(ownerAddress);
-      when(() => token.tokenStandard).thenReturn(standard);
-      return token;
-    }
-
-    SearchTokenBloc createBloc({
-      Duration debounceDuration = Duration.zero,
-    }) {
-      return SearchTokenBloc(
-        zenon: zenon,
-        debounceDuration: debounceDuration,
+      expect(
+        (await search('BETA TOKEN')).tokens.single.tokenStandard,
+        tokens[1].tokenStandard,
       );
-    }
+      expect(
+        (await search(
+          tokenAddress.toString().toUpperCase(),
+        )).tokens.single.symbol,
+        'BETA',
+      );
+      expect(
+        (await search(
+          tokens[0].tokenStandard.toString().toUpperCase(),
+        )).tokens.single.symbol,
+        'ALPHA',
+      );
+      expect(transport.requests, hasLength(1));
+    },
+  );
 
-    setUp(() {
-      zenon = MockZenon();
-      embedded = MockEmbedded();
-      tokenApi = MockTokenApi();
-      tokenList = MockTokenList();
-      tokens = <Token>[];
+  test(
+    'both native coins are excluded without excluding a same-symbol token',
+    () async {
+      tokens = <Token>[
+        Token.fromJson(kZnnCoin.toJson()),
+        Token.fromJson(kQsrCoin.toJson()),
+        tokenFixture(3, name: 'Native-looking name', symbol: 'ZNN'),
+      ];
+      final SearchTokenPopulated result = await search('znn');
+      expect(result.tokens, hasLength(1));
+      expect(result.tokens.single.tokenStandard, tokens.last.tokenStandard);
+    },
+  );
 
-      when(() => zenon.embedded).thenReturn(embedded);
-      when(() => embedded.token).thenReturn(tokenApi);
-      when(() => tokenList.list).thenAnswer((_) => tokens);
-      when(
-        () => tokenApi.getAll(
-          pageIndex: any(named: 'pageIndex'),
-          pageSize: any(named: 'pageSize'),
-        ),
-      ).thenAnswer((_) async => tokenList);
-    });
+  test('later catalog pages are searched together', () async {
+    final Token later = tokenFixture(rpcMaxPageSize + 1, symbol: 'LATER');
+    transport.respond = (_, List<dynamic> arguments) async => arguments[0] == 0
+        ? tokenPage(<Token>[
+            for (int i = 1; i <= rpcMaxPageSize; i++) tokenFixture(i),
+          ], count: rpcMaxPageSize + 1)
+        : tokenPage(<Token>[later], count: rpcMaxPageSize + 1);
+    final SearchTokenPopulated result = await search('later');
+    expect(result.tokens.single.tokenStandard, later.tokenStandard);
+    expect(transport.requests, hasLength(2));
+  });
 
-    test('initial state is correct', () {
-      expect(createBloc().state, const SearchTokenInitial());
-    });
+  test(
+    'no match is a complete empty result, while unavailable rows fail',
+    () async {
+      expect((await search('absent')).tokens, isEmpty);
+      transport.respond = (_, _) async => <String, dynamic>{
+        'count': 0,
+        'list': null,
+      };
+      final Future<SearchTokenState> failure = nextTokenState(
+        bloc.stream,
+        (SearchTokenState state) => state is SearchTokenFailure,
+      );
+      bloc.add(const SearchTokenRequested(query: 'alpha', refresh: true));
+      expect(await failure, isA<SearchTokenFailure>());
+    },
+  );
 
-    blocTest<SearchTokenBloc, SearchTokenState>(
-      'searches symbols case-insensitively and excludes native coins',
-      setUp: () {
-        tokens = <Token>[
-          kZnnCoin,
-          createToken('ZNNEX'),
-          createToken('OTHER'),
-        ];
-      },
-      build: createBloc,
-      act: (SearchTokenBloc bloc) =>
-          bloc.add(const SearchTokenRequested(query: 'znn')),
-      verify: (_) {
-        verify(
-          () => tokenApi.getAll(
-            pageIndex: any(named: 'pageIndex'),
-            pageSize: any(named: 'pageSize'),
-          ),
-        ).called(1);
-      },
-      expect: () => <SearchTokenState>[
-        const SearchTokenLoading(query: 'znn'),
-        SearchTokenPopulated(
-          query: 'znn',
-          tokens: <Token>[tokens[1]],
-        ),
-      ],
+  test('debounced simultaneous inputs only request the latest query', () async {
+    final Future<SearchTokenState> result = nextTokenState(
+      bloc.stream,
+      (SearchTokenState state) => state is SearchTokenPopulated,
     );
+    bloc
+      ..add(const SearchTokenRequested(query: 'alpha'))
+      ..add(const SearchTokenRequested(query: 'beta'));
+    expect((await result as SearchTokenPopulated).query, 'beta');
+    expect(transport.requests, hasLength(1));
+  });
 
-    blocTest<SearchTokenBloc, SearchTokenState>(
-      'returns all matching tokens together',
-      setUp: () {
-        tokens = <Token>[
-          createToken('ALPHA'),
-          createToken('ALPINE'),
-        ];
-      },
-      build: createBloc,
-      act: (SearchTokenBloc bloc) =>
-          bloc.add(const SearchTokenRequested(query: 'alp')),
-      expect: () => <SearchTokenState>[
-        const SearchTokenLoading(query: 'alp'),
-        SearchTokenPopulated(
-          query: 'alp',
-          tokens: tokens,
-        ),
-      ],
+  test(
+    'refresh supersedes an older result before its delayed completion',
+    () async {
+      final Completer<Object?> old = Completer<Object?>();
+      final Completer<void> started = Completer<void>();
+      transport.respond = (_, _) {
+        if (!started.isCompleted) {
+          started.complete();
+          return old.future;
+        }
+        return Future<Object?>.value(tokenPage(tokens));
+      };
+      bloc.add(const SearchTokenRequested(query: 'alpha'));
+      await started.future.timeout(const Duration(seconds: 3));
+      final SearchTokenPopulated current = await search('beta', refresh: true);
+      old.complete(tokenPage(<Token>[tokens.first]));
+      await tokenTurns();
+      expect(bloc.state, same(current));
+      expect(current.tokens.single.symbol, 'BETA');
+    },
+  );
+
+  test('a node ABA cannot reuse an earlier complete catalog cache', () async {
+    await search('alpha');
+    kCurrentNode = 'another-isolated-node';
+    WalletContextRevision.invalidate();
+    kCurrentNode = 'isolated-token-fixture';
+    WalletContextRevision.invalidate();
+    tokens = <Token>[tokenFixture(3, symbol: 'BETA')];
+    expect(
+      (await search('beta')).tokens.single.tokenStandard,
+      tokens.single.tokenStandard,
     );
-
-    late Token tokenOnSecondPage;
-
-    blocTest<SearchTokenBloc, SearchTokenState>(
-      'finds tokens from later RPC pages',
-      setUp: () {
-        tokenOnSecondPage = createToken(
-          'LATER',
-          name: 'Second Page Token',
-        );
-        final TokenList firstPage = TokenList(
-          count: rpcMaxPageSize + 1,
-          list: List<Token>.filled(
-            rpcMaxPageSize,
-            createToken('OTHER', name: 'Other Token'),
-          ),
-        );
-        final TokenList secondPage = TokenList(
-          count: rpcMaxPageSize + 1,
-          list: <Token>[tokenOnSecondPage],
-        );
-        when(
-          () => tokenApi.getAll(
-            pageIndex: any(named: 'pageIndex'),
-            pageSize: any(named: 'pageSize'),
-          ),
-        ).thenAnswer((Invocation invocation) async {
-          final int pageIndex = invocation.namedArguments[#pageIndex]! as int;
-          return pageIndex == 0 ? firstPage : secondPage;
-        });
-      },
-      build: createBloc,
-      act: (SearchTokenBloc bloc) =>
-          bloc.add(const SearchTokenRequested(query: 'later')),
-      verify: (_) {
-        expect(
-          verify(
-            () => tokenApi.getAll(
-              pageIndex: captureAny(named: 'pageIndex'),
-              pageSize: any(named: 'pageSize'),
-            ),
-          ).captured,
-          <int>[0, 1],
-        );
-      },
-      expect: () => <SearchTokenState>[
-        const SearchTokenLoading(query: 'later'),
-        SearchTokenPopulated(
-          query: 'later',
-          tokens: <Token>[tokenOnSecondPage],
-        ),
-      ],
-    );
-
-    blocTest<SearchTokenBloc, SearchTokenState>(
-      'searches tokens by name',
-      setUp: () {
-        tokens = <Token>[
-          createToken('ONE', name: 'First Token'),
-          createToken('TWO', name: 'Second Token'),
-        ];
-      },
-      build: createBloc,
-      act: (SearchTokenBloc bloc) =>
-          bloc.add(const SearchTokenRequested(query: 'SECOND')),
-      expect: () => <SearchTokenState>[
-        const SearchTokenLoading(query: 'SECOND'),
-        SearchTokenPopulated(
-          query: 'SECOND',
-          tokens: <Token>[tokens[1]],
-        ),
-      ],
-    );
-
-    blocTest<SearchTokenBloc, SearchTokenState>(
-      'searches tokens by owner',
-      setUp: () {
-        tokens = <Token>[
-          createToken('ONE', owner: 'z1qfirstowner'),
-          createToken('TWO', owner: 'z1qsecondowner'),
-        ];
-      },
-      build: createBloc,
-      act: (SearchTokenBloc bloc) =>
-          bloc.add(const SearchTokenRequested(query: 'SECONDOWNER')),
-      expect: () => <SearchTokenState>[
-        const SearchTokenLoading(query: 'SECONDOWNER'),
-        SearchTokenPopulated(
-          query: 'SECONDOWNER',
-          tokens: <Token>[tokens[1]],
-        ),
-      ],
-    );
-
-    blocTest<SearchTokenBloc, SearchTokenState>(
-      'searches tokens by token standard',
-      setUp: () {
-        tokens = <Token>[
-          createToken('ONE', tokenStandard: 'zts1firststandard'),
-          createToken('TWO', tokenStandard: 'zts1secondstandard'),
-        ];
-      },
-      build: createBloc,
-      act: (SearchTokenBloc bloc) =>
-          bloc.add(const SearchTokenRequested(query: 'SECONDSTANDARD')),
-      expect: () => <SearchTokenState>[
-        const SearchTokenLoading(query: 'SECONDSTANDARD'),
-        SearchTokenPopulated(
-          query: 'SECONDSTANDARD',
-          tokens: <Token>[tokens[1]],
-        ),
-      ],
-    );
-
-    blocTest<SearchTokenBloc, SearchTokenState>(
-      'debounces input and searches only the latest query',
-      setUp: () {
-        tokens = <Token>[
-          createToken('ALPHA'),
-          createToken('BETA'),
-        ];
-      },
-      build: () => createBloc(
-        debounceDuration: const Duration(milliseconds: 50),
-      ),
-      act: (SearchTokenBloc bloc) {
-        bloc
-          ..add(const SearchTokenRequested(query: 'alp'))
-          ..add(const SearchTokenRequested(query: 'beta'));
-      },
-      wait: const Duration(milliseconds: 100),
-      verify: (_) {
-        verify(
-          () => tokenApi.getAll(
-            pageIndex: any(named: 'pageIndex'),
-            pageSize: any(named: 'pageSize'),
-          ),
-        ).called(1);
-      },
-      expect: () => <SearchTokenState>[
-        const SearchTokenLoading(query: 'beta'),
-        SearchTokenPopulated(
-          query: 'beta',
-          tokens: <Token>[tokens[1]],
-        ),
-      ],
-    );
-
-    blocTest<SearchTokenBloc, SearchTokenState>(
-      'reuses cached tokens across queries',
-      setUp: () {
-        tokens = <Token>[
-          createToken('ALPHA'),
-          createToken('BETA'),
-        ];
-      },
-      build: createBloc,
-      act: (SearchTokenBloc bloc) async {
-        bloc.add(const SearchTokenRequested(query: 'alpha'));
-        await Future<void>.delayed(const Duration(milliseconds: 10));
-        bloc.add(const SearchTokenRequested(query: 'beta'));
-        await Future<void>.delayed(const Duration(milliseconds: 10));
-      },
-      verify: (_) {
-        verify(
-          () => tokenApi.getAll(
-            pageIndex: any(named: 'pageIndex'),
-            pageSize: any(named: 'pageSize'),
-          ),
-        ).called(1);
-      },
-      expect: () => <SearchTokenState>[
-        const SearchTokenLoading(query: 'alpha'),
-        SearchTokenPopulated(
-          query: 'alpha',
-          tokens: <Token>[tokens[0]],
-        ),
-        const SearchTokenLoading(query: 'beta'),
-        SearchTokenPopulated(
-          query: 'beta',
-          tokens: <Token>[tokens[1]],
-        ),
-      ],
-    );
-
-    blocTest<SearchTokenBloc, SearchTokenState>(
-      'emits failure when fetching all tokens fails',
-      setUp: () {
-        when(
-          () => tokenApi.getAll(
-            pageIndex: any(named: 'pageIndex'),
-            pageSize: any(named: 'pageSize'),
-          ),
-        ).thenThrow(Exception('boom'));
-      },
-      build: createBloc,
-      act: (SearchTokenBloc bloc) =>
-          bloc.add(const SearchTokenRequested(query: 'token')),
-      expect: () => <Matcher>[
-        equals(const SearchTokenLoading(query: 'token')),
-        isA<SearchTokenFailure>().having(
-          (SearchTokenFailure state) => state.exception,
-          'exception',
-          isA<FailureException>(),
-        ),
-      ],
-    );
+    expect(transport.requests, hasLength(2));
   });
 }

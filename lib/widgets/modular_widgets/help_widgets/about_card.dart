@@ -1,220 +1,471 @@
-import 'dart:io';
+import 'dart:async';
+import 'dart:math' as math;
 
 import 'package:material_ui/material_ui.dart';
 import 'package:open_filex/open_filex.dart';
-import 'package:zenon_syrius_wallet_flutter/blocs/blocs.dart';
-import 'package:zenon_syrius_wallet_flutter/model/model.dart';
+import 'package:zenon_syrius_wallet_flutter/rearchitecture/utils/extensions/buildcontext_extension.dart';
+import 'package:zenon_syrius_wallet_flutter/rearchitecture/utils/widgets/disclosure.dart';
+import 'package:zenon_syrius_wallet_flutter/rearchitecture/utils/widgets/ltr.dart';
+import 'package:zenon_syrius_wallet_flutter/rearchitecture/utils/widgets/page/page_strip.dart';
 import 'package:zenon_syrius_wallet_flutter/rearchitecture/utils/widgets/page/page_widgets.dart';
-import 'package:zenon_syrius_wallet_flutter/utils/metadata.dart';
-import 'package:zenon_syrius_wallet_flutter/utils/utils.dart';
+import 'package:zenon_syrius_wallet_flutter/seams/seam.dart';
+import 'package:zenon_syrius_wallet_flutter/utils/app_theme.dart';
+import 'package:zenon_syrius_wallet_flutter/utils/navigation_utils.dart';
+import 'package:zenon_syrius_wallet_flutter/widgets/modular_widgets/help_widgets/about_information.dart';
+import 'package:zenon_syrius_wallet_flutter/widgets/modular_widgets/help_widgets/community_card.dart';
+import 'package:zenon_syrius_wallet_flutter/widgets/modular_widgets/help_widgets/licences.dart';
 import 'package:zenon_syrius_wallet_flutter/widgets/modular_widgets/settings_widgets/settings_parts.dart';
-import 'package:zenon_syrius_wallet_flutter/widgets/widgets.dart';
-import 'package:znn_sdk_dart/znn_sdk_dart.dart';
+import 'package:zenon_syrius_wallet_flutter/widgets/reusable_widgets/buttons/copy_to_clipboard_button.dart';
+import 'package:zenon_syrius_wallet_flutter/widgets/reusable_widgets/buttons/primary_pill.dart';
 
-/// What this wallet is and what it runs on: versions, the node, this
-/// computer and where the files are. The update check is in its title row.
-///
-/// It used to be 25 collapsed panels, one value behind each. They are rows
-/// now, all visible, and the wallet's own rows no longer wait for the node.
+/// Installed wallet facts and the closed About groups, independent of RPC.
 class AboutCard extends StatefulWidget {
-  const AboutCard({super.key});
+  /// Optional sources keep finite view checks away from platform data.
+  const AboutCard({
+    this.loadInformation,
+    this.openLink,
+    this.openFolder,
+    this.loadLicences,
+    this.licencesTrailingBuilder,
+    this.afterLicences,
+    super.key,
+  });
+
+  /// Production reads PackageInfo and existing local metadata once per view.
+  final Future<AboutInformation> Function()? loadInformation;
+
+  /// Existing browser and folder actions, injectable without native calls.
+  final ValueChanged<String>? openLink;
+
+  /// The existing local-folder action, injectable without opening a window.
+  final Future<void> Function(String path)? openFolder;
+
+  /// Production consumes the actual Flutter registry on first opening.
+  final AboutLicenceLoader? loadLicences;
+
+  /// Content after the final real licence, owned by Settings.
+  final WidgetBuilder? licencesTrailingBuilder;
+
+  /// A separately owned sibling after the Licences group.
+  final Widget? afterLicences;
 
   @override
-  State createState() {
-    return AboutCardState();
-  }
+  State<AboutCard> createState() => _AboutCardState();
 }
 
-class AboutCardState extends State<AboutCard> {
-  GeneralStatsBloc? _generalStatsBloc;
+class _AboutCardState extends State<AboutCard> {
+  AboutInformation _information = AboutInformation();
+  int _informationEpoch = 0;
+  bool _licencesOpened = false;
 
   @override
   void initState() {
-    _generalStatsBloc = GeneralStatsBloc();
     super.initState();
+    _readInformation();
+  }
+
+  @override
+  void didUpdateWidget(AboutCard oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (!identical(oldWidget.loadInformation, widget.loadInformation)) {
+      _readInformation();
+    }
+  }
+
+  void _readInformation() {
+    final int epoch = ++_informationEpoch;
+    _information = AboutInformation();
+    unawaited(
+      Future<AboutInformation>.sync(
+        widget.loadInformation ?? readAboutInformation,
+      ).then(
+        (AboutInformation value) {
+          if (mounted && epoch == _informationEpoch) {
+            setState(() => _information = value);
+          }
+        },
+        onError: (Object _, StackTrace _) {
+          // An old source cannot replace a newer snapshot or expose its error.
+          if (mounted && epoch == _informationEpoch) {
+            setState(() => _information = AboutInformation());
+          }
+        },
+      ),
+    );
+  }
+
+  String _value(String? value) =>
+      value == null || value.trim().isEmpty ? context.l10n.aboutUnknown : value;
+
+  void _openLink(String url) {
+    final ValueChanged<String>? open = widget.openLink;
+    if (open != null) {
+      open(url);
+    } else {
+      unawaited(NavigationUtils.openUrl(url));
+    }
+  }
+
+  Future<void> _openFolder(String path) async {
+    final Future<void> Function(String)? open = widget.openFolder;
+    if (open != null) {
+      await open(path);
+    } else {
+      await OpenFilex.open(path);
+    }
   }
 
   @override
   Widget build(BuildContext context) {
-    return Panel(
-      title: 'About',
-      actions: <Widget>[
-        SecondaryAction(
-          child: OutlinedButton(
-            key: const Key('about_check_update'),
-            onPressed: () => NavigationUtils.openUrl(kGithubReleasesLink),
-            child: const Text('Check for updates'),
-          ),
-        ),
-        const SizedBox(width: 8),
-      ],
-      child: StreamBuilder<GeneralStats>(
-        stream: _generalStatsBloc!.stream,
-        builder: (_, AsyncSnapshot<GeneralStats> snapshot) => _buildBody(
-          snapshot.data,
-          snapshot.hasError
-              ? QuietNote.error(snapshot.error!).text
-              : 'Loading',
-        ),
-      ),
-    );
-  }
-
-  Widget _buildBody(GeneralStats? stats, String waiting) {
-    final ThemeData theme = Theme.of(context);
-    String node(String Function(GeneralStats s) read) =>
-        stats == null ? waiting : read(stats);
-    // Twenty-odd rows each with a copy button: the buttons are made small
-    // here so the rows sit close.
-    return Theme(
-      data: theme.copyWith(
-        iconButtonTheme: IconButtonThemeData(
-          style: IconButton.styleFrom(
-            minimumSize: const Size(30, 30),
-            padding: const EdgeInsets.all(6),
-            tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-          ),
-        ),
-      ),
-      child: SingleChildScrollView(
-        padding: const EdgeInsets.only(bottom: 12),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
+    final AppTokens tokens = AppTokens.of(context);
+    return LayoutBuilder(
+      builder: (BuildContext context, BoxConstraints constraints) {
+        final double licencesHeight = math.max(
+          tokens.aboutLicencesMinHeight,
+          constraints.hasBoundedHeight
+              ? constraints.maxHeight -
+                    3 * (tokens.aboutGroupHeaderHeight + tokens.pageGap)
+              : tokens.aboutLicencesMinHeight,
+        );
+        return SettingsSection(
+          key: const Key('about_page'),
           children: <Widget>[
-            const SettingGroupLabel('Syrius'),
-            const _InfoRow('Version', kWalletVersion),
-            _InfoRow('Wallet type', kWalletFile?.walletType ?? ''),
-            const _InfoRow('SDK', znnSdkVersion),
-            const _InfoRow('Branch', gitBranchName),
-            const _InfoRow('Commit', gitCommitHash),
-            const _InfoRow('Commit message', gitCommitMessage),
-            const _InfoRow('Commit date', gitCommitDate),
-            _InfoRow(
-              'Origin',
-              gitOriginUrl,
-              openTooltip: 'Open link',
-              onOpen: () => NavigationUtils.openUrl(gitOriginUrl),
-            ),
-            const SettingGroupLabel('Node'),
-            _InfoRow(
-              'Chain identifier',
-              node(
-                (GeneralStats s) =>
-                    s.frontierMomentum.chainIdentifier.toString(),
+            _buildStrip(tokens),
+            CommunityCard(openLink: _openLink),
+            Panel(
+              key: const Key('about_computer'),
+              child: Disclosure(
+                title: context.l10n.aboutComputer,
+                summary: context.l10n.aboutComputerHint,
+                keyPrefix: 'about_computer',
+                keepAlive: true,
+                child: _buildComputer(tokens),
               ),
             ),
-            _InfoRow(
-              'Client chain identifier',
-              getChainIdentifier().toString(),
+            Panel(
+              key: const Key('about_licences'),
+              child: Disclosure(
+                title: context.l10n.aboutLicences,
+                keyPrefix: 'about_licences',
+                keepAlive: true,
+                onChanged: (bool open) {
+                  if (open && !_licencesOpened) {
+                    setState(() => _licencesOpened = true);
+                  }
+                },
+                child: _licencesOpened
+                    ? SizedBox(
+                        height: licencesHeight,
+                        child: Licences(
+                          loadLicences: widget.loadLicences,
+                          trailingBuilder: widget.licencesTrailingBuilder,
+                        ),
+                      )
+                    : const SizedBox.shrink(),
+              ),
             ),
-            _InfoRow(
-              'Build',
-              node((GeneralStats s) => s.processInfo.version),
-            ),
-            _InfoRow(
-              'Commit',
-              node((GeneralStats s) => s.processInfo.commit),
-            ),
-            _InfoRow(
-              'Kernel',
-              node((GeneralStats s) => s.osInfo.kernelVersion),
-            ),
-            _InfoRow(
-              'Operating system',
-              node((GeneralStats s) => s.osInfo.os),
-            ),
-            _InfoRow(
-              'Platform',
-              node((GeneralStats s) => s.osInfo.platform),
-            ),
-            _InfoRow(
-              'Platform version',
-              node((GeneralStats s) => s.osInfo.platformVersion),
-            ),
-            _InfoRow(
-              'Processors',
-              node((GeneralStats s) => s.osInfo.numCPU.toString()),
-            ),
-            const SettingGroupLabel('This computer'),
-            _InfoRow('Hostname', Platform.localHostname),
-            _InfoRow('Local IP address', kLocalIpAddress ?? ''),
-            _InfoRow('Operating system', Platform.operatingSystem),
-            _InfoRow('Version', Platform.operatingSystemVersion),
-            _InfoRow('Processors', Platform.numberOfProcessors.toString()),
-            const SettingGroupLabel('Paths'),
-            _buildPathRow('Zenon data', znnDefaultPaths.main.absolute.path),
-            _buildPathRow('Cache', znnDefaultPaths.cache.absolute.path),
-            _buildPathRow('Wallet', znnDefaultPaths.wallet.absolute.path),
+            if (widget.afterLicences != null) widget.afterLicences!,
           ],
-        ),
-      ),
-    );
-  }
-
-  Widget _buildPathRow(String label, String path) {
-    return _InfoRow(
-      label,
-      path,
-      openTooltip: 'Open folder',
-      onOpen: () async {
-        await OpenFilex.open(path);
+        );
       },
     );
   }
 
-  @override
-  void dispose() {
-    _generalStatsBloc!.dispose();
-    super.dispose();
+  Widget _buildStrip(AppTokens tokens) {
+    final List<StripFigure> figures = <StripFigure>[
+      StripFigure(
+        label: context.l10n.aboutSyrius,
+        value: Ltr(
+          child: Text(
+            _value(_information.version),
+            key: const Key('about_version'),
+          ),
+        ),
+      ),
+      StripFigure(
+        label: context.l10n.aboutEmbeddedNode,
+        value: Ltr(
+          child: Text(
+            _value(_information.embeddedNodeVersion),
+            key: const Key('about_embedded_version'),
+          ),
+        ),
+      ),
+      StripFigure(
+        label: context.l10n.aboutBuild,
+        value: Tooltip(
+          message: _value(_information.build),
+          child: Text(
+            _value(_information.build),
+            key: const Key('about_build'),
+            textDirection: TextDirection.ltr,
+            style: tokens.dataText.copyWith(color: tokens.dim),
+          ),
+        ),
+      ),
+    ];
+    final Widget updates = SeamGate(
+      key: const Key('about_update_gate'),
+      seam: Seam.walletUpdateNotice,
+      child: Wrap(
+        spacing: tokens.inlineGap,
+        runSpacing: tokens.inlineGap,
+        crossAxisAlignment: WrapCrossAlignment.center,
+        children: <Widget>[
+          Text(
+            context.l10n.stripWalletUpdates,
+            key: const Key('about_update_label'),
+            style: tokens.compactText.copyWith(color: tokens.dim),
+          ),
+          SecondaryAction(
+            child: OutlinedButton(
+              key: const Key('about_what_changed'),
+              onPressed: () =>
+                  throw const SeamNotBuilt(Seam.walletUpdateNotice),
+              child: Text(context.l10n.aboutWhatChanged),
+            ),
+          ),
+          PrimaryPill(
+            key: const Key('about_download_verify'),
+            onPressed: () => throw const SeamNotBuilt(Seam.walletUpdateNotice),
+            icon: Icon(Icons.download_outlined, size: tokens.railIconSize),
+            child: Text(context.l10n.aboutDownloadVerify),
+          ),
+        ],
+      ),
+    );
+    // Actions wrap below the figures when text scaling uses the strip's room.
+    return LayoutBuilder(
+      builder: (BuildContext context, BoxConstraints constraints) {
+        final double scaledActions = MediaQuery.textScalerOf(
+          context,
+        ).scale(tokens.settingsMenuWidth * 2);
+        final bool stacked =
+            constraints.maxWidth <=
+            scaledActions + tokens.settingsMenuWidth * 2;
+        if (!stacked) {
+          return PageStrip(
+            key: const Key('about_strip'),
+            figures: figures,
+            actions: <Widget>[updates],
+          );
+        }
+        return Panel(
+          key: const Key('about_strip'),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: <Widget>[
+              PageStrip(figures: figures),
+              Padding(
+                padding: tokens.stripPadding,
+                child: Align(
+                  alignment: AlignmentDirectional.centerEnd,
+                  child: updates,
+                ),
+              ),
+            ],
+          ),
+        );
+      },
+    );
+  }
+
+  Widget _buildComputer(AppTokens tokens) {
+    final Map<AboutField, String> facts = _information.details;
+    Widget row(
+      String key,
+      String label,
+      String? value, {
+      bool folder = false,
+      bool link = false,
+    }) {
+      final bool present = value != null && value.trim().isNotEmpty;
+      final Uri? uri = link && present ? Uri.tryParse(value) : null;
+      final bool canOpen =
+          folder && present ||
+          uri != null &&
+              (uri.scheme == 'https' || uri.scheme == 'http') &&
+              uri.host.isNotEmpty;
+      return _InfoRow(
+        key: ValueKey<String>('about_info_$key'),
+        label: label,
+        value: _value(value),
+        copyValue: present ? value : null,
+        openTooltip: folder
+            ? context.l10n.aboutOpenFolder
+            : context.l10n.aboutOpenLink,
+        onOpen: !canOpen
+            ? null
+            : folder
+            ? () => unawaited(_openFolder(value!))
+            : () => _openLink(value!),
+      );
+    }
+
+    return Padding(
+      padding: EdgeInsetsDirectional.only(bottom: tokens.cardGap),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: <Widget>[
+          row('version', context.l10n.aboutVersion, _information.version),
+          row('build', context.l10n.aboutBuildNumber, _information.buildNumber),
+          row(
+            'wallet_type',
+            context.l10n.aboutWalletType,
+            facts[AboutField.walletType],
+          ),
+          row('sdk', context.l10n.aboutSdk, facts[AboutField.sdk]),
+          row('branch', context.l10n.aboutBranch, facts[AboutField.branch]),
+          row('commit', context.l10n.aboutCommit, facts[AboutField.commit]),
+          row(
+            'commit_message',
+            context.l10n.aboutCommitMessage,
+            facts[AboutField.commitMessage],
+          ),
+          row(
+            'commit_date',
+            context.l10n.aboutCommitDate,
+            facts[AboutField.commitDate],
+          ),
+          row(
+            'origin',
+            context.l10n.aboutOrigin,
+            facts[AboutField.origin],
+            link: true,
+          ),
+          row(
+            'hostname',
+            context.l10n.aboutHostname,
+            facts[AboutField.hostname],
+          ),
+          row('local_ip', context.l10n.aboutLocalIp, facts[AboutField.localIp]),
+          row(
+            'os',
+            context.l10n.aboutOperatingSystem,
+            facts[AboutField.operatingSystem],
+          ),
+          row(
+            'os_version',
+            context.l10n.aboutVersion,
+            facts[AboutField.operatingSystemVersion],
+          ),
+          row(
+            'processors',
+            context.l10n.aboutProcessors,
+            facts[AboutField.processors],
+          ),
+          Padding(
+            padding: tokens.settingsRowPadding,
+            child: Text(
+              usesLatinScript(context)
+                  ? context.l10n.aboutPaths.toUpperCase()
+                  : context.l10n.aboutPaths,
+              style: tokens.ledgerText,
+            ),
+          ),
+          row(
+            'zenon_data',
+            context.l10n.aboutZenonData,
+            facts[AboutField.zenonData],
+            folder: true,
+          ),
+          row(
+            'cache',
+            context.l10n.aboutCache,
+            facts[AboutField.cache],
+            folder: true,
+          ),
+          row(
+            'wallet',
+            context.l10n.aboutWallet,
+            facts[AboutField.wallet],
+            folder: true,
+          ),
+        ],
+      ),
+    );
   }
 }
 
-/// A name and a value, the value mono and copyable.
 class _InfoRow extends StatelessWidget {
-  const _InfoRow(this.label, this.value, {this.onOpen, this.openTooltip});
+  const _InfoRow({
+    required this.label,
+    required this.value,
+    this.copyValue,
+    this.onOpen,
+    this.openTooltip,
+    super.key,
+  });
 
   final String label;
   final String value;
+  final String? copyValue;
   final VoidCallback? onOpen;
   final String? openTooltip;
 
   @override
   Widget build(BuildContext context) {
-    final ThemeData theme = Theme.of(context);
+    final AppTokens tokens = AppTokens.of(context);
     return Padding(
-      padding: const EdgeInsets.fromLTRB(16, 1, 10, 1),
-      child: Row(
-        children: <Widget>[
-          SizedBox(
-            width: 170,
-            child: Text(
-              label,
-              overflow: TextOverflow.ellipsis,
-              style: settingHintStyle(context),
-            ),
-          ),
-          Expanded(
-            child: Tooltip(
-              message: value,
-              child: Text(
-                value.isEmpty ? '-' : value,
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-                style: settingMonoStyle(context).copyWith(
-                  color: theme.textTheme.bodyLarge!.color,
+      padding: EdgeInsetsDirectional.symmetric(
+        horizontal: tokens.cardPadding.horizontal / 2,
+        vertical: tokens.statusDotSize / 2,
+      ),
+      child: LayoutBuilder(
+        builder: (BuildContext context, BoxConstraints constraints) {
+          final double labelWidth = math.min(
+            tokens.aboutInfoLabelWidth,
+            constraints.maxWidth / 3,
+          );
+          return Row(
+            children: <Widget>[
+              SizedBox(
+                width: labelWidth,
+                child: Text(label, style: tokens.settingsHintText),
+              ),
+              SizedBox(width: tokens.inlineGap),
+              Expanded(
+                child: Tooltip(
+                  message: value,
+                  child: Text(
+                    value,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    textDirection: ltrUnlessRtl(value),
+                    textAlign: ltrTextAlign(context),
+                    style: tokens.dataText,
+                  ),
                 ),
               ),
-            ),
-          ),
-          if (value.isNotEmpty) CopyToClipboardButton(value, iconSize: 14),
-          if (onOpen != null)
-            IconButton(
-              tooltip: openTooltip,
-              iconSize: 14,
-              icon: const Icon(Icons.open_in_new, color: AppColors.faint),
-              onPressed: onOpen,
-            ),
-        ],
+              IconButtonTheme(
+                data: IconButtonThemeData(
+                  style: IconButton.styleFrom(
+                    minimumSize: Size.square(tokens.aboutInfoActionSize),
+                    padding: EdgeInsets.all(tokens.fieldLabelGap),
+                    tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                  ),
+                ),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: <Widget>[
+                    if (copyValue != null)
+                      CopyToClipboardButton(
+                        copyValue!,
+                        iconSize: tokens.settingsIconSize,
+                      ),
+                    if (onOpen != null)
+                      IconButton(
+                        tooltip: openTooltip,
+                        iconSize: tokens.settingsIconSize,
+                        icon: Icon(Icons.open_in_new, color: tokens.faint),
+                        onPressed: onOpen,
+                      ),
+                  ],
+                ),
+              ),
+            ],
+          );
+        },
       ),
     );
   }

@@ -1,0 +1,5 @@
+# Start at unlocked Home on an address with no stakes or staking rewards.
+# This script refuses to substitute sample data for an empty chain response.
+goto staking
+wait --key staking_empty_rewards --timeout 30
+assert --key staking_empty_rewards

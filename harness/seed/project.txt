@@ -1,0 +1,16 @@
+# seed: project
+# prerequisite: isolated-chain-321-checkpoint
+goto accelerator
+wait --key acc_create_project --timeout 30
+tap --key acc_create_project
+wait Continue --kind button --exact --timeout 30
+tap Continue --kind button --exact
+type --type TextField --nth 0 "Lab Project"
+type --type TextField --nth 1 "An isolated lab project"
+type --type TextField --nth 2 https://example.test/project
+type --type TextField --nth 3 100
+type --type TextField --nth 4 100
+tap Continue --kind button --exact
+assert Submit --kind button --exact
+publish Submit --kind button --exact
+assert Submitted --exact

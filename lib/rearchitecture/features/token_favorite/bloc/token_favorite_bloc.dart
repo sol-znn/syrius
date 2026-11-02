@@ -18,7 +18,10 @@ class TokenFavoriteBloc extends Bloc<TokenFavoriteEvent, TokenFavoriteState> {
     FavoriteTokensRepository? repository,
   }) {
     final FavoriteTokensRepository favoriteTokensRepository =
-        repository ?? HiveFavoriteTokensRepository();
+        repository ??
+        PersistedFavoriteTokensRepository(
+          HiveFavoriteTokensRepository(),
+        );
     return TokenFavoriteBloc._(
       repository: favoriteTokensRepository,
       tokenStandard: tokenStandard,
@@ -53,14 +56,20 @@ class TokenFavoriteBloc extends Bloc<TokenFavoriteEvent, TokenFavoriteState> {
     emit(const TokenFavoriteLoading());
     try {
       await _repository.add(_tokenStandard);
+      if (emit.isDone) return;
       emit(const TokenFavoriteFavorited());
     } on Object catch (error, stackTrace) {
       final AddingToFavoriteTokensException exception =
           error is AddingToFavoriteTokensException
           ? error
           : AddingToFavoriteTokensException(cause: error);
-      addError(exception, stackTrace);
+      if (emit.isDone) return;
       emit(TokenFavoriteFailure(exception: exception));
+      try {
+        addError(exception, stackTrace);
+      } on Object {
+        // Diagnostics cannot replace the storage failure.
+      }
     }
   }
 
@@ -75,14 +84,20 @@ class TokenFavoriteBloc extends Bloc<TokenFavoriteEvent, TokenFavoriteState> {
     emit(const TokenFavoriteLoading());
     try {
       await _repository.remove(_tokenStandard);
+      if (emit.isDone) return;
       emit(const TokenFavoriteNotFavorited());
     } on Object catch (error, stackTrace) {
       final RemovingFromFavoriteTokensException exception =
           error is RemovingFromFavoriteTokensException
           ? error
           : RemovingFromFavoriteTokensException(cause: error);
-      addError(exception, stackTrace);
+      if (emit.isDone) return;
       emit(TokenFavoriteFailure(exception: exception));
+      try {
+        addError(exception, stackTrace);
+      } on Object {
+        // Diagnostics cannot replace the storage failure.
+      }
     }
   }
 }

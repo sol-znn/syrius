@@ -1,98 +1,52 @@
-import 'dart:async';
-
-import 'package:collection/collection.dart';
 import 'package:zenon_syrius_wallet_flutter/blocs/base_bloc.dart';
-import 'package:zenon_syrius_wallet_flutter/main.dart';
-import 'package:zenon_syrius_wallet_flutter/model/block_data.dart';
-import 'package:zenon_syrius_wallet_flutter/utils/utils.dart';
+import 'package:zenon_syrius_wallet_flutter/blocs/p2p_swap/htlc_swap/swap_action_origin.dart';
+import 'package:zenon_syrius_wallet_flutter/blocs/p2p_swap/htlc_swap/swap_actions.dart';
 import 'package:znn_sdk_dart/znn_sdk_dart.dart';
 
+/// Read-only compatibility observer for one captured original lookup source.
 class InitialHtlcForSwapBloc extends BaseBloc<HtlcInfo?> {
-  final Duration _minimumRequiredDuration =
-      kMinSafeTimeToFindPreimage + kCounterHtlcDuration;
+  /// Uses a captured lookup source; a missing source refuses before RPC.
+  InitialHtlcForSwapBloc({this.origin});
 
+  /// Original chain readers and ownership guard for all lookups.
+  final SwapActionOrigin? origin;
+
+  /// Last unchanged backend failure, retained outside the display stream.
+  Object? originalError;
+
+  /// Original stack trace associated with [originalError].
+  StackTrace? originalStackTrace;
+
+  /// Actual lookup Future, retained even if a later lookup supersedes its UI.
+  Future<HtlcInfo>? originalLookup;
+  int _epoch = 0;
+
+  /// Requires a live deposit, its exact confirmed Create and complete history
+  /// before exposing it as a candidate for Join.
   Future<void> getInitialHtlc(Hash id) async {
+    final int epoch = ++_epoch;
+    final SwapActionOrigin? source = origin;
     try {
-      final HtlcInfo htlc = await zenon!.embedded.htlc.getById(id);
-      final String hashlock = FormatUtils.encodeHexString(htlc.hashLock);
-      if (!kDefaultAddressList.contains(htlc.hashLocked.toString())) {
-        throw 'This deposit is not intended for you.';
+      if (source == null) throw const SwapActionRefused('source');
+      final Future<HtlcInfo> original = SwapActions.initial(source, id);
+      originalLookup = original;
+      final HtlcInfo result = await original;
+      if (!disposed && epoch == _epoch && source.isCurrent) addEvent(result);
+    } on Object catch (error, trace) {
+      originalError = error;
+      originalStackTrace = trace;
+      if (!disposed && epoch == _epoch && (source?.isCurrent ?? false)) {
+        await addError(
+          const SwapActionRefused('deposit-unavailable'),
+          StackTrace.empty,
+        );
       }
-      if (kDefaultAddressList.contains(htlc.timeLocked.toString())) {
-        throw 'Cannot join a swap that you have started.';
-      }
-      if (htlcSwapsService!.getSwapByHtlcId(htlc.id.toString()) != null) {
-        throw 'This deposit is already used in another swap.';
-      }
-      if (htlcSwapsService!.getSwapByHashLock(hashlock) != null) {
-        throw "The deposit's hashlock is already used in another swap.";
-      }
-      final Duration remainingDuration =
-          Duration(seconds: htlc.expirationTime - DateTimeUtils.unixTimeNow);
-      if (remainingDuration < _minimumRequiredDuration) {
-        if (remainingDuration.inSeconds <= 0) {
-          throw 'This deposit has expired.';
-        }
-        throw 'This deposit will expire too soon for a safe swap.';
-      }
-      if (remainingDuration > kMaxAllowedInitialHtlcDuration) {
-        throw "The deposit's duration is too long. Expected ${kMaxAllowedInitialHtlcDuration.inHours} hours at most.";
-      }
-      final AccountBlock? creationBlock = await zenon!.ledger.getAccountBlockByHash(htlc.id);
-      if (htlc.expirationTime -
-              creationBlock!.confirmationDetail!.momentumTimestamp >
-          kMaxAllowedInitialHtlcDuration.inSeconds) {
-        throw 'The deposit was created too long ago.';
-      }
-
-      // Verify that the hashlock has not been used in another currently active
-      // HTLC.
-      final List<AccountBlock> htlcBlocks = await AccountBlockUtils.getAccountBlocksAfterTime(
-        htlcAddress,
-        htlc.expirationTime - kMaxAllowedInitialHtlcDuration.inSeconds,
-      );
-      if (htlcBlocks.firstWhereOrNull(
-            (AccountBlock block) =>
-                !_isInitialHtlcBlock(block, htlc.id) &&
-                _hasMatchingHashlock(block, hashlock),
-          ) !=
-          null) {
-        throw 'The hashlock is not unique.';
-      }
-      addEvent(htlc);
-    } catch (e, stackTrace) {
-      addError(e, stackTrace);
     }
   }
-}
 
-bool _isInitialHtlcBlock(AccountBlock block, Hash initialHtlcId) {
-  if (block.blockType != BlockTypeEnum.contractReceive.index) {
-    return false;
+  @override
+  void dispose() {
+    _epoch++;
+    super.dispose();
   }
-  return block.pairedAccountBlock!.hash == initialHtlcId;
-}
-
-bool _hasMatchingHashlock(AccountBlock block, String hashlock) {
-  if (block.blockType != BlockTypeEnum.contractReceive.index) {
-    return false;
-  }
-
-  final BlockData? blockData = AccountBlockUtils.getDecodedBlockData(
-    Definitions.htlc,
-    block.pairedAccountBlock!.data,
-  );
-
-  if (blockData == null || blockData.function != 'Create') {
-    return false;
-  }
-
-  if (!blockData.params.containsKey('hashLock')) {
-    return false;
-  }
-
-  return FormatUtils.encodeHexString(
-        blockData.params['hashLock'] as List<int>,
-      ) ==
-      hashlock;
 }

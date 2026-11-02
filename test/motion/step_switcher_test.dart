@@ -1,4 +1,5 @@
 import 'package:flutter/rendering.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:material_ui/material_ui.dart';
 import 'package:zenon_syrius_wallet_flutter/rearchitecture/utils/widgets/motion/motion.dart';
@@ -42,6 +43,40 @@ class _StepState extends State<_Step> {
   );
 }
 
+class _TickingStep extends StatefulWidget {
+  const _TickingStep(this.index, this.onTick);
+
+  final int index;
+  final ValueChanged<int> onTick;
+
+  @override
+  State<_TickingStep> createState() => _TickingStepState();
+}
+
+class _TickingStepState extends State<_TickingStep>
+    with SingleTickerProviderStateMixin {
+  late final AnimationController _clock = AnimationController(
+    vsync: this,
+    duration: const Duration(seconds: 1),
+    animationBehavior: AnimationBehavior.preserve,
+  )..addListener(() => widget.onTick(widget.index));
+
+  @override
+  void initState() {
+    super.initState();
+    _clock.repeat();
+  }
+
+  @override
+  Widget build(BuildContext context) => const SizedBox(height: 100);
+
+  @override
+  void dispose() {
+    _clock.dispose();
+    super.dispose();
+  }
+}
+
 /// A switcher 400 wide at the top left of the window, free to be any height.
 Widget _host(
   int step, {
@@ -72,6 +107,56 @@ double _left(WidgetTester tester, int index) =>
 
 double _switcherHeight(WidgetTester tester) =>
     tester.getSize(find.byType(StepSwitcher)).height;
+
+Widget _retainedHost(
+  int step, {
+  TextDirection direction = TextDirection.ltr,
+  bool showContent = true,
+  List<Widget>? children,
+  Key? flowKey,
+  RetainedStepLayoutBuilder? layoutBuilder,
+}) => Directionality(
+  textDirection: direction,
+  child: Align(
+    alignment: Alignment.topLeft,
+    child: SizedBox(
+      width: _width,
+      child: StepSwitcher.retained(
+        key: flowKey,
+        step: step,
+        showContent: showContent,
+        layoutBuilder: layoutBuilder,
+        children:
+            children ??
+            <Widget>[
+              for (int i = 0; i < _heights.length; i++) _Step(i),
+            ],
+      ),
+    ),
+  ),
+);
+
+void _retainedTestWidgets(
+  String name,
+  Future<void> Function(WidgetTester tester) body,
+) {
+  testWidgets(name, (WidgetTester tester) async {
+    try {
+      await body(tester);
+    } finally {
+      // A failed assertion must still release this test's retained bodies
+      // before the next test resets its mount and disposal counters.
+      await tester.pumpWidget(const SizedBox.shrink());
+    }
+  });
+}
+
+List<bool> _inputGates(WidgetTester tester) => tester
+    .widgetList<StepInteraction>(
+      find.byType(StepInteraction, skipOffstage: false),
+    )
+    .map((StepInteraction scope) => scope.interactive)
+    .toList();
 
 void main() {
   setUp(() {
@@ -357,6 +442,269 @@ void main() {
       await tester.pump(const Duration(milliseconds: 20));
       expect(_switcherHeight(tester), 240);
       await tester.pumpAndSettle();
+    });
+  });
+
+  group('retained StepSwitcher', () {
+    _retainedTestWidgets('every retained body mounts and tears down once', (
+      WidgetTester tester,
+    ) async {
+      await tester.pumpWidget(_retainedHost(0));
+      expect(_built, 3);
+      expect(_disposed, 0);
+      expect(_switcherHeight(tester), 100);
+      final _StepState first = tester.state(find.byType(_Step).first);
+
+      await tester.pumpWidget(_retainedHost(1));
+      await tester.pump(const Duration(milliseconds: 80));
+      await tester.pumpWidget(_retainedHost(0));
+      await tester.pump(const Duration(milliseconds: 80));
+      await tester.pumpWidget(_retainedHost(2));
+      await tester.pumpAndSettle();
+      expect(_built, 3);
+      expect(_disposed, 0);
+      expect(
+        tester.state(find.byType(_Step, skipOffstage: false).first),
+        same(first),
+      );
+      expect(_switcherHeight(tester), 60);
+
+      await tester.pumpWidget(_retainedHost(2, showContent: false));
+      await tester.pumpAndSettle();
+      expect(_switcherHeight(tester), 0);
+      expect(_disposed, 0);
+      expect(find.byType(_Step, skipOffstage: false), findsNWidgets(3));
+      await tester.pumpWidget(const SizedBox.shrink());
+      expect(_disposed, 3);
+      expect(tester.takeException(), isNull);
+    });
+
+    _retainedTestWidgets('same-step data updates without restarting motion', (
+      WidgetTester tester,
+    ) async {
+      await tester.pumpWidget(_retainedHost(0));
+      await tester.pumpWidget(
+        _retainedHost(
+          0,
+          children: const <Widget>[
+            _Step(0, height: 150),
+            _Step(1),
+            _Step(2),
+          ],
+        ),
+      );
+      expect(_switcherHeight(tester), 150);
+      expect(_built, 3);
+      expect(_disposed, 0);
+      expect(tester.binding.hasScheduledFrame, isFalse);
+    });
+
+    _retainedTestWidgets('only the settled body owns a running ticker', (
+      WidgetTester tester,
+    ) async {
+      final List<int> ticks = <int>[0, 0, 0];
+      Widget host(int step) => _retainedHost(
+        step,
+        children: <Widget>[
+          for (int i = 0; i < ticks.length; i++)
+            _TickingStep(i, (int index) => ticks[index]++),
+        ],
+      );
+      await tester.pumpWidget(host(0));
+      await tester.pump(const Duration(milliseconds: 50));
+      expect(ticks[0], greaterThan(0));
+      expect(ticks[1], 0);
+      expect(ticks[2], 0);
+      await tester.pumpWidget(host(1));
+      final int departed = ticks[0];
+      await tester.pump(const Duration(milliseconds: 150));
+      expect(ticks[0], departed);
+      expect(ticks[1], 0);
+      await tester.pump(const Duration(milliseconds: 150));
+      // The child's resumed ticker gets its first frame at the same clock
+      // value as the completed transition, before observing later ticks.
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 50));
+      expect(ticks[0], departed);
+      expect(
+        ticks[1],
+        greaterThan(0),
+        reason: 'Current input gates: ${_inputGates(tester)}',
+      );
+      expect(ticks[2], 0);
+      await tester.pumpWidget(const SizedBox.shrink());
+      expect(tester.takeException(), isNull);
+    });
+
+    _retainedTestWidgets('a new flow key releases each old body once', (
+      WidgetTester tester,
+    ) async {
+      await tester.pumpWidget(
+        _retainedHost(0, flowKey: const ValueKey<int>(0)),
+      );
+      await tester.pumpWidget(
+        _retainedHost(0, flowKey: const ValueKey<int>(1)),
+      );
+      expect(_built, 6);
+      expect(_disposed, 3);
+      await tester.pumpWidget(const SizedBox.shrink());
+      expect(_disposed, 6);
+    });
+
+    for (final TextDirection direction in TextDirection.values) {
+      _retainedTestWidgets('shared axis follows $direction in both ways', (
+        WidgetTester tester,
+      ) async {
+        final double side = direction == TextDirection.ltr ? 1 : -1;
+        await tester.pumpWidget(_retainedHost(0, direction: direction));
+        await tester.pumpWidget(_retainedHost(1, direction: direction));
+        expect(_left(tester, 1), 30 * side);
+        await tester.pump(const Duration(milliseconds: 150));
+        expect(_left(tester, 1) * side, inExclusiveRange(0, 30));
+        expect(_left(tester, 0) * side, lessThan(0));
+        expect(_switcherHeight(tester), inExclusiveRange(100, 240));
+        await tester.pumpAndSettle();
+        await tester.pumpWidget(_retainedHost(0, direction: direction));
+        expect(_left(tester, 0), -30 * side);
+        await tester.pump(const Duration(milliseconds: 150));
+        expect(_left(tester, 0) * side, inExclusiveRange(-30, 0));
+        await tester.pumpAndSettle();
+        expect(_left(tester, 0), 0);
+        expect(_built, 3);
+        expect(_disposed, 0);
+      });
+    }
+
+    for (final bool platformFlag in <bool>[false, true]) {
+      _retainedTestWidgets(
+        'the full retained clock survives motion flags $platformFlag',
+        (
+          WidgetTester tester,
+        ) async {
+          tester.platformDispatcher.accessibilityFeaturesTestValue =
+              FakeAccessibilityFeatures(disableAnimations: platformFlag);
+          addTearDown(
+            tester.platformDispatcher.clearAccessibilityFeaturesTestValue,
+          );
+          Widget host(int index) => MediaQuery(
+            data: const MediaQueryData(disableAnimations: true),
+            child: _retainedHost(index),
+          );
+          await tester.pumpWidget(host(0));
+          await tester.pumpWidget(host(1));
+          await tester.pump(const Duration(milliseconds: 150));
+          expect(_left(tester, 1), inExclusiveRange(0, 30));
+          expect(_left(tester, 0), lessThan(0));
+          expect(_switcherHeight(tester), inExclusiveRange(100, 240));
+          await tester.pump(const Duration(milliseconds: 140));
+          expect(_left(tester, 1), greaterThan(0));
+          await tester.pump(const Duration(milliseconds: 9));
+          expect(_inputGates(tester), <bool>[false, false, false]);
+          await tester.pump(const Duration(milliseconds: 1));
+          expect(_inputGates(tester), <bool>[false, true, false]);
+          await tester.pump();
+          expect(_left(tester, 1), 0);
+          expect(_switcherHeight(tester), 240);
+          expect(_disposed, 0);
+          expect(tester.binding.hasScheduledFrame, isFalse);
+        },
+      );
+    }
+
+    _retainedTestWidgets('interleaved entries retain state as height closes', (
+      WidgetTester tester,
+    ) async {
+      Widget layout(BuildContext context, List<Widget> entries) => Column(
+        mainAxisSize: MainAxisSize.min,
+        children: <Widget>[
+          for (int i = 0; i < entries.length; i++) ...<Widget>[
+            Text('Header $i', textDirection: TextDirection.ltr),
+            entries[i],
+          ],
+        ],
+      );
+      await tester.pumpWidget(_retainedHost(0, layoutBuilder: layout));
+      await tester.pumpWidget(_retainedHost(1, layoutBuilder: layout));
+      await tester.pump(const Duration(milliseconds: 150));
+      expect(_step(0), findsOneWidget);
+      expect(_step(1), findsOneWidget);
+      await tester.pumpAndSettle();
+      expect(_step(0), findsNothing);
+      expect(_step(1), findsOneWidget);
+      expect(_built, 3);
+      expect(_disposed, 0);
+      await tester.pumpWidget(_retainedHost(0, layoutBuilder: layout));
+      await tester.pumpAndSettle();
+      expect(_built, 3);
+      expect(_disposed, 0);
+    });
+
+    _retainedTestWidgets('departed and incoming refuse focus and semantics', (
+      WidgetTester tester,
+    ) async {
+      final SemanticsHandle semantics = tester.ensureSemantics();
+      final FocusNode oldFocus = FocusNode();
+      final FocusNode newFocus = FocusNode();
+      addTearDown(oldFocus.dispose);
+      addTearDown(newFocus.dispose);
+      int oldPresses = 0;
+      int newPresses = 0;
+      try {
+        Widget host(int index) => MaterialApp(
+          home: Scaffold(
+            body: _retainedHost(
+              index,
+              children: <Widget>[
+                TextButton(
+                  focusNode: oldFocus,
+                  onPressed: () => oldPresses++,
+                  child: const Text('Old action'),
+                ),
+                TextButton(
+                  focusNode: newFocus,
+                  onPressed: () => newPresses++,
+                  child: const Text('New action'),
+                ),
+              ],
+            ),
+          ),
+        );
+        await tester.pumpWidget(host(0));
+        oldFocus.requestFocus();
+        await tester.pump();
+        final SemanticsNode old = tester.getSemantics(find.text('Old action'));
+        final SemanticsOwner owner = old.owner!;
+        await tester.pumpWidget(host(1));
+        await tester.pump();
+        expect(oldFocus.hasFocus, isFalse);
+        expect(oldFocus.canRequestFocus, isFalse);
+        expect(newFocus.canRequestFocus, isFalse);
+        oldFocus.requestFocus();
+        newFocus.requestFocus();
+        await tester.pump();
+        expect(oldFocus.hasFocus || newFocus.hasFocus, isFalse);
+        expect(find.semantics.byLabel('Old action'), findsNothing);
+        expect(find.semantics.byLabel('New action'), findsNothing);
+        owner.performAction(old.id, SemanticsAction.tap);
+        await tester.sendKeyEvent(LogicalKeyboardKey.enter);
+        await tester.sendKeyEvent(LogicalKeyboardKey.space);
+        await tester.tapAt(const Offset(100, 20));
+        expect(oldPresses, 0);
+        expect(newPresses, 0);
+        await tester.pump(const Duration(milliseconds: 300));
+        expect(
+          newFocus.canRequestFocus,
+          isTrue,
+          reason: 'Current input gates: ${_inputGates(tester)}',
+        );
+        expect(find.semantics.byLabel('New action'), findsOneWidget);
+        await tester.tap(find.text('New action'));
+        expect(newPresses, 1);
+        expect(oldPresses, 0);
+        await tester.pumpWidget(const SizedBox.shrink());
+      } finally {
+        semantics.dispose();
+      }
     });
   });
 }

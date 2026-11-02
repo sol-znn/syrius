@@ -1,0 +1,11 @@
+# Source299 original selected-analysis failure
+
+Recorded 2026-11-01 14:57 UTC. Exact source `254e9e797e7b9dcad3c6adf93194f0c0252cca8a`, tree `3839502a276de610d0438f9999769cfb67367e0a`. The [original focused run 41318128333](https://github.com/edgepillar/syrius/actions/runs/41318128333), job 124882431293, attempt one, is terminal failure. All 928 Python controls run with three original skips and zero failures/errors; fourteen original asset controls pass.
+
+Selected analysis reports zero errors/warnings and two ALWAYS_SPECIFY_TYPES infos. Its original command exits zero with complete 284-byte output, no overflow or forced cleanup, SHA-256 `9bc40e0dad553c8829ea4a2af9428bdf4f070e8e5c9fd432a632ce0174899617`. The zero-finding gate correctly fails. Exported locations use source alias `other`: line 1230 column 67 and line 1762 column 51. These uniquely correspond among changed Dart files to the two untyped inner list spreads in `test/harness/readonly_inspection_session_test.dart`; the original raw file path is not exported.
+
+The Flutter startup/recipe step is skipped before Dart test execution. Zero current Flutter cases and zero artifacts are qualified. The single original run is terminal, with no native producer, full Windows or reader dispatch and no retry. Source299's same-mounted Node and genuine discovery-field owner cases remain unexecuted at this revision. Its original script preparations remain prepared source changes, not successful native evidence.
+
+The next correction adds explicit inner list element types without changing any expected map, command order, fault count, registration, assertion, owner fixture, script or limit. Source298's 790-case focused scope and two independently verified native failures remain separate. Source295 full Windows and closed Navigation views retain only their unchanged application/build scope; Source292 Home, Source296/297 failures and every prior FAILURE/HOLD/UNKNOWN remain intact.
+
+Acceptance stays 72/80 rows, nineteen preparations, 26 available literal outputs, 68 missing and zero of 94 accepted matches. Native101/103 remain UNKNOWN; Native104 is not admitted. No original financial/profile/seed/reopen flow is replayed, and the PR stays Draft.

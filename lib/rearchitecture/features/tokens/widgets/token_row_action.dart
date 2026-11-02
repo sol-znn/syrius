@@ -39,6 +39,14 @@ class TokenRowAction extends IconButton {
       padding: EdgeInsets.zero,
       visualDensity: VisualDensity.compact,
       mouseCursor: WidgetStateMouseCursor.clickable,
+      // Compact density reduces minimum constraints, so fix the visible size
+      // and remove the inherited tap padding to fit the four-action column.
+      style: const ButtonStyle(
+        fixedSize: WidgetStatePropertyAll<Size>(
+          Size.square(kTokenRowActionSize),
+        ),
+        tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+      ),
       constraints: const BoxConstraints.tightFor(
         width: kTokenRowActionSize,
         height: kTokenRowActionSize,

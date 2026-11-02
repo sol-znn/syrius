@@ -7,6 +7,7 @@ import 'package:zenon_syrius_wallet_flutter/rearchitecture/utils/widgets/page/pa
 import 'package:zenon_syrius_wallet_flutter/utils/app_theme.dart';
 import 'package:zenon_syrius_wallet_flutter/utils/constants.dart'
     show kSharedPrefsBox;
+import 'package:zenon_syrius_wallet_flutter/widgets/shell/page_dismiss.dart';
 
 /// How long the body takes to open or close.
 const Duration _kRevealDuration = Duration(milliseconds: 240);
@@ -292,11 +293,21 @@ class _DisclosureState extends State<Disclosure> with TickerProviderStateMixin {
 
     Widget? body;
     if (!closed || widget.keepAlive) {
-      // Out of traversal from the moment it starts to close: Tab should
-      // not land in a form that is on its way out.
-      body = ExcludeFocus(
-        excluding: !_open,
-        child: _DisclosureReveal(reveal: _reveal, child: widget.child),
+      // A closing form is already closed to input and screen readers, even
+      // while its last frame is visible. Keep the wrappers stable so a
+      // keepAlive form retains its state when it opens again.
+      body = IgnorePointer(
+        ignoring: !_open,
+        child: ExcludeSemantics(
+          excluding: !_open,
+          child: Focus(
+            canRequestFocus: false,
+            // Retained EditableText nodes can latch an inherited traversal
+            // barrier. Focusability alone closes the form without that latch.
+            descendantsAreFocusable: _open,
+            child: _DisclosureReveal(reveal: _reveal, child: widget.child),
+          ),
+        ),
       );
       if (widget.keepAlive) {
         // The same wrappers open and closed, so the body's state is never
@@ -309,24 +320,28 @@ class _DisclosureState extends State<Disclosure> with TickerProviderStateMixin {
       }
     }
 
-    return Column(
-      mainAxisSize: MainAxisSize.min,
-      crossAxisAlignment: CrossAxisAlignment.stretch,
-      children: <Widget>[
-        if (title != null)
-          _DisclosureHeader(
-            toggleKey: widget.keyPrefix == null
-                ? null
-                : ValueKey<String>('${widget.keyPrefix}_toggle'),
-            title: title,
-            count: widget.count,
-            summary: widget.summary,
-            turned: _turned,
-            open: _open,
-            onToggle: () => _setOpen(!_open),
-          ),
-        ?body,
-      ],
+    return PageDismissAction(
+      open: _open,
+      onDismiss: () => _setOpen(false),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: <Widget>[
+          if (title != null)
+            _DisclosureHeader(
+              toggleKey: widget.keyPrefix == null
+                  ? null
+                  : ValueKey<String>('${widget.keyPrefix}_toggle'),
+              title: title,
+              count: widget.count,
+              summary: widget.summary,
+              turned: _turned,
+              open: _open,
+              onToggle: () => _setOpen(!_open),
+            ),
+          ?body,
+        ],
+      ),
     );
   }
 }

@@ -433,11 +433,16 @@ class _InstallRow extends StatelessWidget {
                     // The filled main action, at the height of the
                     // secondary one beside it.
                     style: OutlinedButton.styleFrom(
-                      minimumSize: const Size(64, 32),
+                      minimumSize: Size(
+                        64,
+                        AppTokens.of(context).compactButtonHeight,
+                      ),
                       padding: const EdgeInsetsDirectional.symmetric(
-                        horizontal: 16,
+                        horizontal: 12,
                       ),
                       textStyle: kTextButtonTextStyle,
+                      visualDensity: VisualDensity.standard,
+                      tapTargetSize: MaterialTapTargetSize.shrinkWrap,
                     ),
                     onPressed: state.idle && _downloadable(state)
                         ? () => unawaited(cubit.download())
@@ -696,8 +701,7 @@ class _SourceRowState extends State<_SourceRow> {
 
   Future<void> _onSave() async {
     final String typed = _controller.text.trim();
-    if (await context.read<NodeUpdateCubit>().setRepository(typed) &&
-        mounted) {
+    if (await context.read<NodeUpdateCubit>().setRepository(typed) && mounted) {
       // What was saved, without the blanks typed around it.
       _controller.text = typed;
     }
@@ -712,8 +716,7 @@ class _SourceRowState extends State<_SourceRow> {
       builder: (BuildContext context, NodeUpdatePanelState state) {
         final String typed = _controller.text.trim();
         final bool valid = NodeUpdateSource.isValid(typed);
-        final bool savable =
-            state.idle && valid && typed != state.repository;
+        final bool savable = state.idle && valid && typed != state.repository;
         return SettingRow(
           label: l10n.nodeUpdateSourceLabel,
           hint: l10n.nodeUpdateSourceHint,

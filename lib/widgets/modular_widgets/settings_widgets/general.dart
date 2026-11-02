@@ -1,18 +1,23 @@
+import 'dart:async';
+
 import 'package:material_ui/material_ui.dart';
 import 'package:zenon_syrius_wallet_flutter/blocs/blocs.dart';
 import 'package:zenon_syrius_wallet_flutter/model/model.dart';
 import 'package:zenon_syrius_wallet_flutter/rearchitecture/utils/widgets/page/page_widgets.dart';
 import 'package:zenon_syrius_wallet_flutter/utils/app_colors.dart';
 import 'package:zenon_syrius_wallet_flutter/utils/app_theme.dart';
-import 'package:zenon_syrius_wallet_flutter/utils/constants.dart';
+import 'package:zenon_syrius_wallet_flutter/utils/explorer_links.dart';
 import 'package:zenon_syrius_wallet_flutter/utils/format_utils.dart';
+import 'package:zenon_syrius_wallet_flutter/utils/global.dart';
 import 'package:zenon_syrius_wallet_flutter/utils/navigation_utils.dart';
+import 'package:zenon_syrius_wallet_flutter/utils/node_change.dart';
 import 'package:zenon_syrius_wallet_flutter/widgets/modular_widgets/settings_widgets/settings_parts.dart';
 import 'package:zenon_syrius_wallet_flutter/widgets/widgets.dart';
 
 /// The network as the connected node sees it: its latest momentum and how
 /// many peers it has.
 class GeneralWidget extends StatefulWidget {
+  /// Creates the connected node's network figures.
   const GeneralWidget({super.key});
 
   @override
@@ -21,8 +26,9 @@ class GeneralWidget extends StatefulWidget {
   }
 }
 
+/// Owns the network refresh source for this panel's lifetime.
 class GeneralWidgetState extends State<GeneralWidget> {
-  GeneralStatsBloc? _generalStatsBloc;
+  late final GeneralStatsBloc _generalStatsBloc;
 
   @override
   void initState() {
@@ -97,13 +103,37 @@ class GeneralWidgetState extends State<GeneralWidget> {
                 ),
               ),
               CopyToClipboardButton(hash, iconSize: 16),
-              IconButton(
-                tooltip: 'Open in explorer',
-                visualDensity: VisualDensity.compact,
-                iconSize: 16,
-                icon: const Icon(Icons.open_in_new, color: AppColors.faint),
-                onPressed: () => NavigationUtils.openUrl(
-                  '$kExplorer/momentum/${generalStats.frontierMomentum.hash}',
+              StreamBuilder<void>(
+                stream: NodeChange.stream,
+                builder: (BuildContext context, _) => IconButton(
+                  tooltip: 'Open in explorer',
+                  visualDensity: VisualDensity.compact,
+                  iconSize: 16,
+                  icon: const Icon(Icons.open_in_new, color: AppColors.faint),
+                  onPressed:
+                      ExplorerLinks.momentum(
+                            hash,
+                            chainId:
+                                generalStats.frontierMomentum.chainIdentifier ==
+                                    kNodeChainId
+                                ? kNodeChainId
+                                : null,
+                          ) ==
+                          null
+                      ? null
+                      : () {
+                          final Uri? link = ExplorerLinks.momentum(
+                            hash,
+                            chainId:
+                                generalStats.frontierMomentum.chainIdentifier ==
+                                    kNodeChainId
+                                ? kNodeChainId
+                                : null,
+                          );
+                          if (link != null) {
+                            unawaited(NavigationUtils.openUrl(link.toString()));
+                          }
+                        },
                 ),
               ),
             ],
@@ -115,7 +145,7 @@ class GeneralWidgetState extends State<GeneralWidget> {
 
   Widget _buildStreamBuilder() {
     return StreamBuilder<GeneralStats>(
-      stream: _generalStatsBloc!.stream,
+      stream: _generalStatsBloc.stream,
       builder: (_, AsyncSnapshot<GeneralStats> snapshot) {
         if (snapshot.hasData) {
           return _buildBody(snapshot.data!);
@@ -129,7 +159,7 @@ class GeneralWidgetState extends State<GeneralWidget> {
 
   @override
   void dispose() {
-    _generalStatsBloc!.dispose();
+    _generalStatsBloc.dispose();
     super.dispose();
   }
 }

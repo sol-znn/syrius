@@ -1,3 +1,6 @@
+import 'dart:async';
+
+import 'package:bloc/bloc.dart';
 import 'package:bloc_test/bloc_test.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:mocktail/mocktail.dart';
@@ -8,6 +11,7 @@ import 'package:zenon_syrius_wallet_flutter/utils/utils.dart';
 import 'package:znn_sdk_dart/znn_sdk_dart.dart';
 
 import '../../helpers/hydrated_bloc.dart';
+import '../../token_actions_redesign/support.dart' show ActionTerminalObserver;
 
 class MockZenon extends Mock implements Zenon {}
 
@@ -41,7 +45,19 @@ void main() {
     late Hash sendBlockHash;
     late TokenStandard newTokenStandard;
     late NewTokenData tokenData;
-    late IssueTokenBloc bloc;
+
+    IssueTokenBloc makeBloc() => IssueTokenBloc(
+      accountBlockUtils: accountBlockUtils,
+      zenon: zenon,
+      zenonAddressUtils: zenonAddressUtils,
+    );
+
+    ActionTerminalObserver<IssueTokenState> terminalObserver() =>
+        ActionTerminalObserver<IssueTokenState>(
+          target: (BlocBase<dynamic> candidate) => candidate is IssueTokenBloc,
+          terminal: (IssueTokenState state) =>
+              state is IssueTokenDone || state is IssueTokenFailure,
+        );
 
     setUp(() {
       zenon = MockZenon();
@@ -97,21 +113,130 @@ void main() {
         ),
       ).thenAnswer((_) async => response);
       when(() => zenonAddressUtils.refreshBalance()).thenAnswer((_) {});
-
-      bloc = IssueTokenBloc(
-        accountBlockUtils: accountBlockUtils,
-        zenon: zenon,
-        zenonAddressUtils: zenonAddressUtils,
-      );
     });
 
     test('initial state is correct', () {
+      final IssueTokenBloc bloc = makeBloc();
+      addTearDown(bloc.close);
       expect(bloc.state, const IssueTokenInitial());
     });
 
+    for (final bool accepted in <bool>[true, false]) {
+      test(
+        'terminal observer errors retain original issuance: $accepted',
+        () async {
+          final StateError originalError = StateError(
+            'Synthetic issuance result',
+          );
+          if (!accepted) {
+            when(
+              () => accountBlockUtils.createAccountBlock(
+                any(),
+                any(),
+                address: any(named: 'address'),
+                waitForRequiredPlasma: any(named: 'waitForRequiredPlasma'),
+              ),
+            ).thenThrow(originalError);
+          }
+          final ActionTerminalObserver<IssueTokenState> observer =
+              terminalObserver();
+          final BlocObserver previous = Bloc.observer;
+          Bloc.observer = observer;
+          final IssueTokenBloc bloc = makeBloc();
+          final Future<IssueTokenState> delivery = bloc.stream
+              .firstWhere(observer.terminal)
+              .timeout(const Duration(seconds: 1));
+          try {
+            bloc.add(IssueTokenRequested(tokenData: tokenData));
+            final IssueTokenState terminal = await delivery;
+            expect(observer.attempted, <IssueTokenState>[terminal]);
+            expect(bloc.state, same(terminal));
+            expect(observer.reported, contains(same(observer.displayError)));
+            if (accepted) {
+              final IssueTokenDone done = terminal as IssueTokenDone;
+              expect(done.accountBlock, same(response));
+              expect(done.newTokenStandard, newTokenStandard);
+              expect(bloc.lastAccepted, same(response));
+              verify(zenonAddressUtils.refreshBalance).called(1);
+            } else {
+              final IssueTokenFailure failure = terminal as IssueTokenFailure;
+              expect(failure.error, same(originalError));
+              expect(failure.exception, isA<FailureException>());
+              expect(observer.reported, contains(same(originalError)));
+              expect(bloc.lastAccepted, isNull);
+              verifyNever(zenonAddressUtils.refreshBalance);
+            }
+            verify(
+              () => accountBlockUtils.createAccountBlock(
+                template,
+                any(),
+                address: emptyAddress,
+                waitForRequiredPlasma: true,
+              ),
+            ).called(1);
+          } finally {
+            Bloc.observer = previous;
+            await bloc.close();
+          }
+        },
+      );
+    }
+
+    test(
+      'preparation error survives terminal and diagnostic observers',
+      () async {
+        final StateError originalError = StateError(
+          'Synthetic issuance builder',
+        );
+        when(
+          () => tokenApi.issueToken(
+            any(),
+            any(),
+            any(),
+            any(),
+            any(),
+            any(),
+            any(),
+            any(),
+            any(),
+          ),
+        ).thenThrow(originalError);
+        final ActionTerminalObserver<IssueTokenState> observer =
+            terminalObserver();
+        final BlocObserver previous = Bloc.observer;
+        Bloc.observer = observer;
+        final IssueTokenBloc bloc = makeBloc();
+        final Future<IssueTokenState> delivery = bloc.stream
+            .firstWhere(observer.terminal)
+            .timeout(const Duration(seconds: 1));
+        try {
+          bloc.add(IssueTokenRequested(tokenData: tokenData));
+          final IssueTokenFailure terminal =
+              await delivery as IssueTokenFailure;
+          expect(observer.attempted, <IssueTokenState>[terminal]);
+          expect(bloc.state, same(terminal));
+          expect(terminal.error, same(originalError));
+          expect(terminal.exception, isA<FailureException>());
+          expect(observer.reported, contains(same(originalError)));
+          expect(bloc.lastAccepted, isNull);
+          verifyNever(
+            () => accountBlockUtils.createAccountBlock(
+              any(),
+              any(),
+              address: any(named: 'address'),
+              waitForRequiredPlasma: any(named: 'waitForRequiredPlasma'),
+            ),
+          );
+        } finally {
+          Bloc.observer = previous;
+          await bloc.close();
+        }
+      },
+    );
+
     blocTest<IssueTokenBloc, IssueTokenState>(
       'emits [loading, done] on success',
-      build: () => bloc,
+      build: makeBloc,
       act: (IssueTokenBloc bloc) => bloc.add(
         IssueTokenRequested(tokenData: tokenData),
       ),
@@ -140,6 +265,108 @@ void main() {
       ],
     );
 
+    late StateError observerError;
+    blocTest<IssueTokenBloc, IssueTokenState>(
+      'retains the exact issuance response when balance observation fails',
+      setUp: () {
+        observerError = StateError('optional balance observer');
+        when(zenonAddressUtils.refreshBalance).thenThrow(observerError);
+      },
+      build: makeBloc,
+      act: (IssueTokenBloc bloc) => bloc.add(
+        IssueTokenRequested(tokenData: tokenData),
+      ),
+      expect: () => <Matcher>[
+        isA<IssueTokenLoading>(),
+        isA<IssueTokenDone>()
+            .having(
+              (IssueTokenDone state) => state.accountBlock,
+              'original response',
+              same(response),
+            )
+            .having(
+              (IssueTokenDone state) => state.newTokenStandard,
+              'original token standard',
+              newTokenStandard,
+            ),
+      ],
+      errors: () => <Matcher>[same(observerError)],
+    );
+
+    late StateError originalError;
+    blocTest<IssueTokenBloc, IssueTokenState>(
+      'reports an arbitrary original error and completes the failed form',
+      setUp: () {
+        originalError = StateError('original publication error');
+        when(
+          () => accountBlockUtils.createAccountBlock(
+            any(),
+            any(),
+            address: any(named: 'address'),
+            waitForRequiredPlasma: any(named: 'waitForRequiredPlasma'),
+          ),
+        ).thenThrow(originalError);
+      },
+      build: makeBloc,
+      act: (IssueTokenBloc bloc) => bloc.add(
+        IssueTokenRequested(tokenData: tokenData),
+      ),
+      expect: () => <Matcher>[
+        isA<IssueTokenLoading>(),
+        isA<IssueTokenFailure>(),
+      ],
+      errors: () => <Matcher>[same(originalError)],
+      verify: (_) => verifyNever(zenonAddressUtils.refreshBalance),
+    );
+
+    for (final bool accepted in <bool>[true, false]) {
+      late Completer<AccountBlockTemplate> original;
+      late Completer<void> started;
+      late StateError failure;
+      blocTest<IssueTokenBloc, IssueTokenState>(
+        'closed form retains the original outcome without emission: $accepted',
+        setUp: () {
+          original = Completer<AccountBlockTemplate>();
+          started = Completer<void>();
+          failure = StateError('original or optional observer error');
+          when(
+            () => accountBlockUtils.createAccountBlock(
+              any(),
+              any(),
+              address: any(named: 'address'),
+              waitForRequiredPlasma: any(named: 'waitForRequiredPlasma'),
+            ),
+          ).thenAnswer((_) {
+            started.complete();
+            return original.future;
+          });
+          when(zenonAddressUtils.refreshBalance).thenThrow(failure);
+        },
+        build: makeBloc,
+        act: (IssueTokenBloc bloc) async {
+          bloc.add(IssueTokenRequested(tokenData: tokenData));
+          await started.future.timeout(const Duration(seconds: 2));
+          await bloc.close().timeout(const Duration(seconds: 2));
+          if (accepted) {
+            original.complete(response);
+          } else {
+            original.completeError(failure);
+          }
+          await Future<void>.delayed(Duration.zero);
+        },
+        expect: () => <IssueTokenState>[const IssueTokenLoading()],
+        errors: () => <Matcher>[same(failure)],
+        verify: (IssueTokenBloc bloc) {
+          expect(bloc.isClosed, isTrue);
+          if (accepted) {
+            verify(zenonAddressUtils.refreshBalance).called(1);
+          } else {
+            verifyNever(zenonAddressUtils.refreshBalance);
+          }
+        },
+      );
+    }
+
     blocTest<IssueTokenBloc, IssueTokenState>(
       'emits [loading, failure] on SyriusException',
       setUp: () {
@@ -152,7 +379,7 @@ void main() {
           ),
         ).thenThrow(FailureException());
       },
-      build: () => bloc,
+      build: makeBloc,
       act: (IssueTokenBloc bloc) => bloc.add(
         IssueTokenRequested(tokenData: tokenData),
       ),
@@ -178,7 +405,7 @@ void main() {
           ),
         ).thenThrow(Exception('boom'));
       },
-      build: () => bloc,
+      build: makeBloc,
       act: (IssueTokenBloc bloc) => bloc.add(
         IssueTokenRequested(tokenData: tokenData),
       ),

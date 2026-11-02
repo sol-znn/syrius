@@ -1,27 +1,24 @@
 import 'package:zenon_syrius_wallet_flutter/blocs/p2p_swap/htlc_swap/reclaim_htlc_swap_funds_bloc.dart';
-import 'package:zenon_syrius_wallet_flutter/main.dart';
-import 'package:zenon_syrius_wallet_flutter/utils/constants.dart';
-import 'package:zenon_syrius_wallet_flutter/utils/date_time_utils.dart';
-import 'package:zenon_syrius_wallet_flutter/utils/format_utils.dart';
-import 'package:zenon_syrius_wallet_flutter/utils/global.dart';
+import 'package:zenon_syrius_wallet_flutter/blocs/p2p_swap/htlc_swap/swap_action_origin.dart';
+import 'package:zenon_syrius_wallet_flutter/blocs/p2p_swap/htlc_swap/swap_actions.dart';
 import 'package:znn_sdk_dart/znn_sdk_dart.dart';
 
+/// Recovery retains the original owner across lookup and fresh reclaim proof.
 class RecoverHtlcSwapFundsBloc extends ReclaimHtlcSwapFundsBloc {
-  Future<void> recoverFunds({required Hash htlcId}) async {
-    try {
-      final HtlcInfo htlc = await zenon!.embedded.htlc.getById(htlcId);
+  /// Keeps recovery on the original chain readers, store and member signers.
+  RecoverHtlcSwapFundsBloc({super.origin});
 
-      if (!kDefaultAddressList.contains(htlc.timeLocked.toString())) {
-        throw 'The deposit does not belong to you.';
-      }
-
-      if (htlc.expirationTime - DateTimeUtils.unixTimeNow > 0) {
-        throw 'The deposit is locked until ${FormatUtils.formatDate(htlc.expirationTime * 1000, dateFormat: kDefaultDateTimeFormat)}.';
-      }
-
-      reclaimFunds(htlcId: htlcId, selfAddress: htlc.timeLocked);
-    } catch (e, stackTrace) {
-      addError(e, stackTrace);
+  /// Looks up the exact deposit and permits reclaim only for its owned sender.
+  Future<void> recoverFunds({required Hash htlcId}) => execute((
+    SwapActionOrigin source,
+  ) async {
+    source.requireCurrent();
+    final HtlcInfo deposit = await source.readHtlc(htlcId.toString());
+    source.requireCurrent();
+    if (deposit.id != htlcId ||
+        !source.members.contains(deposit.timeLocked.toString())) {
+      throw const SwapActionRefused('owner');
     }
-  }
+    return SwapActions.reclaim(source, htlcId, deposit.timeLocked.toString());
+  }, (SwapActionResult result) => result.block);
 }

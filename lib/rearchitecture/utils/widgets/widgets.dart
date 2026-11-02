@@ -4,6 +4,7 @@ export 'card_scaffold_password_field.dart';
 export 'dropdowns/dropdowns.dart';
 export 'infinite_scroll_grid/export.dart';
 export 'infinite_scroll_table/export.dart';
+export 'list_entrance.dart';
 export 'motion/motion.dart';
 export 'new_card_scaffold.dart';
 export 'page/page_widgets.dart';

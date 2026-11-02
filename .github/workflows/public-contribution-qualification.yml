@@ -1,0 +1,874 @@
+name: Public Contribution Qualification
+run-name: Desktop redesign qualification at ${{ github.sha }}
+
+on:
+  workflow_dispatch:
+    inputs:
+      desktop_builds:
+        description: Build Debug and Release on Linux, macOS and Windows
+        type: boolean
+        default: true
+      presentation_smoke:
+        description: Check isolated Windows presentation and actual process exit
+        type: boolean
+        default: true
+      devnet_tests:
+        description: Run the isolated Linux Docker devnet BDD tests
+        type: boolean
+        default: true
+      windows_baseline:
+        description: Record hosted Windows tools, Dart baseline and DLL map/export checks
+        type: boolean
+        default: false
+      windows_inventory_only:
+        description: Record hosted Windows tools without repeating builds or wallet tests
+        type: boolean
+        default: false
+      entry_capture_smoke:
+        description: Capture genuine Welcome and empty Import on isolated hosted Windows
+        type: boolean
+        default: false
+      windows_debug_loop:
+        description: Exercise an owned ordinary Windows debug process without a wallet
+        type: boolean
+        default: false
+      windows_wallet_tour:
+        description: Run a fresh Windows wallet tour against the corrected owned chain-321 lab
+        type: boolean
+        default: false
+      windows_wallet_inspection:
+        description: Inspect a fresh readonly Windows wallet in both themes against the owned lab
+        type: boolean
+        default: false
+      readonly_catalog_family:
+        description: Select one original readonly catalog for the owned Windows inspection
+        type: choice
+        default: details
+        options:
+          - home
+          - settings
+          - navigation
+          - details
+      chain321_lab:
+        description: Qualify isolated chain-321 production on Linux Docker and native Windows
+        type: boolean
+        default: false
+      chain321_backend:
+        description: Select chain-321 execution or retained-manifest inspection backends
+        type: choice
+        default: both
+        options:
+          - both
+          - native
+          - docker
+      native_stack_diagnostic:
+        description: Observe bounded loopback shutdown frames after actual native stop timeouts
+        type: boolean
+        default: false
+      chain321_node_source:
+        description: Select the original pin, upstream pin or explicit producer lab correction
+        type: choice
+        default: original
+        options:
+          - original
+          - upstream
+          - lab-fix
+      inspect_chain321_run:
+        description: Inspect an original completed chain-321 run without repeating builds
+        type: string
+        default: ''
+      inspect_chain321_head:
+        description: Exact source SHA required for the retained lab inspection
+        type: string
+        default: ''
+      inspect_wallet_inspection_run:
+        description: Independently inspect a completed readonly wallet run without runtime replay
+        type: string
+        default: ''
+      inspect_wallet_inspection_head:
+        description: Exact producer source SHA required for the readonly wallet artifacts
+        type: string
+        default: ''
+      inspect_windows_inventory_run:
+        description: Inspect a completed inventory without repeating tool queries
+        type: string
+        default: ''
+      inspect_windows_inventory_head:
+        description: Exact source SHA required for the retained inventory inspection
+        type: string
+        default: ''
+      inspect_windows_run:
+        description: Inspect original baseline and entry receipts without repeating runtime
+        type: string
+        default: ''
+      inspect_windows_head:
+        description: Exact source SHA required for the retained Windows qualification
+        type: string
+        default: ''
+      analysis_delta:
+        description: Attribute analyzer changes on fixed sources without builds or wallet execution
+        type: boolean
+        default: false
+      harness_tests_only:
+        description: Test the Windows harness without building a native wallet or lab
+        type: boolean
+        default: false
+      windows_startup_probe:
+        description: Observe one original Release startup without a node or wallet import
+        type: boolean
+        default: false
+
+permissions:
+  contents: read
+
+env:
+  FLUTTER_VERSION: "3.47.7"
+
+jobs:
+  windows-startup-probe:
+    if: inputs.windows_startup_probe
+    name: Observe original Windows Release startup
+    runs-on: windows-latest
+    timeout-minutes: 30
+    env:
+      GIT_CONFIG_COUNT: "1"
+      GIT_CONFIG_KEY_0: core.autocrlf
+      GIT_CONFIG_VALUE_0: "false"
+      SYRIUS_WINDOWS_STARTUP_PROBE: "true"
+    steps:
+      - name: Checkout the dispatched source
+        uses: actions/checkout@v6
+        with:
+          persist-credentials: false
+
+      - name: Test all isolated controllers before SDK allocation
+        env:
+          SYRIUS_HOSTED_RUNNER: ${{ runner.environment }}
+        run: python -B -m tool.ci.run_wallet_tour_tests --all-controllers
+
+      - name: Set up the single pinned Flutter SDK
+        id: startup_flutter
+        uses: subosito/flutter-action@v2
+        with:
+          flutter-version: ${{ env.FLUTTER_VERSION }}
+          channel: stable
+          cache: true
+          pub-cache: 'false'
+
+      - name: Restore unchanged locked harness dependencies
+        env:
+          SYRIUS_HOSTED_RUNNER: ${{ runner.environment }}
+          SYRIUS_HARNESS_TESTS_ONLY: "true"
+          PUB_CACHE: ${{ steps.startup_flutter.outputs['PUB-CACHE-PATH'] }}
+        run: python -B -m tool.ci.prepare_harness_tests
+
+      - name: Analyze the original entry and focused tests
+        run: python -B -m tool.ci.windows_debug_loop --analyze
+
+      - name: Test original startup ownership and finite diagnostics
+        env:
+          SYRIUS_STARTUP_ASSET_FIDELITY: "true"
+          PUB_CACHE: ${{ steps.startup_flutter.outputs['PUB-CACHE-PATH'] }}
+        run: python -B -m tool.ci.run_harness_tour_tests
+
+      - name: Generate source metadata
+        run: dart run tool/generate_git_metadata.dart
+
+      - name: Enable Windows desktop
+        run: flutter config --enable-windows-desktop
+
+      - name: Build the ordinary Release harness target
+        run: flutter build windows --release --no-pub --target harness/app/main.dart --dart-define-from-file=.dart_tool/git_metadata.json
+
+      - name: Observe the original startup and normal process exit
+        timeout-minutes: 3
+        run: python -B -m tool.ci.windows_startup_probe
+
+      - name: Observe natural startup in a fresh original process
+        timeout-minutes: 3
+        run: python -B -m tool.ci.windows_startup_probe --natural-only
+
+      - name: Retain only finite startup observations
+        if: always() && hashFiles('.harness/ci-startup-probe/manifest.json') != ''
+        uses: actions/upload-artifact@v7
+        with:
+          name: windows-startup-probe-${{ github.sha }}-${{ github.run_id }}-${{ github.run_attempt }}
+          compression-level: 0
+          include-hidden-files: true
+          if-no-files-found: error
+          path: .harness/ci-startup-probe/manifest.json
+
+      - name: Retain only finite natural startup observations
+        if: always() && hashFiles('.harness/ci-natural-startup-probe/manifest.json') != ''
+        uses: actions/upload-artifact@v7
+        with:
+          name: windows-natural-startup-probe-${{ github.sha }}-${{ github.run_id }}-${{ github.run_attempt }}
+          compression-level: 0
+          include-hidden-files: true
+          if-no-files-found: error
+          path: .harness/ci-natural-startup-probe/manifest.json
+
+  harness-tests-only:
+    if: inputs.harness_tests_only
+    name: Test harness without native wallet or lab
+    runs-on: windows-latest
+    timeout-minutes: 25
+    env:
+      GIT_CONFIG_COUNT: "1"
+      GIT_CONFIG_KEY_0: core.autocrlf
+      GIT_CONFIG_VALUE_0: "false"
+      SYRIUS_HARNESS_TESTS_ONLY: "true"
+    steps:
+      - name: Checkout the dispatched harness source
+        uses: actions/checkout@v6
+        with:
+          persist-credentials: false
+
+      - name: Admit the isolated test lane before SDK allocation
+        env:
+          SYRIUS_HOSTED_RUNNER: ${{ runner.environment }}
+        run: python -B -m tool.ci.prepare_harness_tests --admission-only
+
+      - name: Test all isolated controllers before SDK allocation
+        env:
+          SYRIUS_HOSTED_RUNNER: ${{ runner.environment }}
+        run: python -B -m tool.ci.run_wallet_tour_tests --all-controllers
+
+      - name: Observe original asset controls before SDK allocation
+        timeout-minutes: 1
+        env:
+          SYRIUS_HOSTED_RUNNER: ${{ runner.environment }}
+        run: python -B -m tool.ci.run_asset_tests
+
+      - name: Set up the single pinned Flutter SDK
+        id: harness_flutter
+        uses: subosito/flutter-action@v2
+        with:
+          flutter-version: ${{ env.FLUTTER_VERSION }}
+          channel: stable
+          cache: true
+          pub-cache: 'false'
+
+      - name: Restore unchanged locked harness dependencies
+        env:
+          SYRIUS_HOSTED_RUNNER: ${{ runner.environment }}
+          PUB_CACHE: ${{ steps.harness_flutter.outputs['PUB-CACHE-PATH'] }}
+        run: python -B -m tool.ci.prepare_harness_tests
+
+      - name: Analyze the original harness and focused tests
+        run: python -B -m tool.ci.windows_debug_loop --analyze
+
+      - name: Test original startup ownership and recipe diagnostics
+        env:
+          PUB_CACHE: ${{ steps.harness_flutter.outputs['PUB-CACHE-PATH'] }}
+        run: python -B -m tool.ci.run_harness_tour_tests
+
+  analysis-delta:
+    if: inputs.analysis_delta
+    name: Attribute source-bound analyzer changes
+    runs-on: windows-latest
+    timeout-minutes: 45
+    env:
+      GIT_CONFIG_COUNT: "1"
+      GIT_CONFIG_KEY_0: core.autocrlf
+      GIT_CONFIG_VALUE_0: "false"
+    steps:
+      - name: Checkout the dispatched analyzer controller
+        uses: actions/checkout@v6
+        with:
+          persist-credentials: false
+
+      - name: Test finite analysis location controls in memory
+        run: python -B -m tool.ci.analysis_delta --controls-only
+
+      - name: Set up the single pinned Flutter SDK
+        id: analysis_flutter
+        uses: subosito/flutter-action@v2
+        with:
+          flutter-version: ${{ env.FLUTTER_VERSION }}
+          channel: stable
+          cache: true
+          pub-cache: 'false'
+
+      - name: Attribute fixed historical and current analyzer changes
+        env:
+          PUB_CACHE: ${{ steps.analysis_flutter.outputs['PUB-CACHE-PATH'] }}
+        run: python -B -m tool.ci.analysis_delta
+
+  desktop-builds:
+    if: inputs.desktop_builds
+    name: ${{ matrix.target }} Debug and Release
+    runs-on: ${{ matrix.runner }}
+    timeout-minutes: 75
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - runner: ubuntu-24.04
+            target: linux
+          - runner: macos-26
+            target: macos
+          - runner: windows-latest
+            target: windows
+    defaults:
+      run:
+        shell: bash
+    steps:
+      - name: Checkout the dispatched source
+        uses: actions/checkout@v6
+        with:
+          persist-credentials: false
+
+      - name: Record the exact source
+        run: |
+          test "$(git rev-parse HEAD)" = "$GITHUB_SHA"
+          git rev-parse HEAD
+          git rev-parse 'HEAD^{tree}'
+
+      - name: Install Linux desktop dependencies
+        if: runner.os == 'Linux'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y \
+            clang cmake ninja-build pkg-config libgtk-3-dev liblzma-dev \
+            libnotify-dev libayatana-appindicator3-dev libsecret-1-dev \
+            libjsoncpp-dev
+
+      - name: Set up Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          flutter-version: ${{ env.FLUTTER_VERSION }}
+          channel: stable
+          cache: true
+
+      - name: Record the toolchain
+        run: flutter --version
+
+      - name: Restore locked dependencies
+        run: |
+          flutter pub get --enforce-lockfile
+          git diff --exit-code -- pubspec.lock analysis_options.yaml
+
+      - name: Generate source metadata
+        run: dart run tool/generate_git_metadata.dart
+
+      - name: Enable the desktop target
+        run: flutter config --enable-${{ matrix.target }}-desktop
+
+      # Both configurations share one runner and dependency cache. Compiling
+      # here does not establish native startup, capture or motion acceptance.
+      - name: Build Debug
+        run: flutter build ${{ matrix.target }} --debug --no-pub --dart-define-from-file=.dart_tool/git_metadata.json
+
+      - name: Build Release
+        run: flutter build ${{ matrix.target }} --release --no-pub --dart-define-from-file=.dart_tool/git_metadata.json
+
+      - name: Test the presentation controller
+        if: runner.os == 'Windows' && inputs.presentation_smoke
+        run: |
+          python --version
+          python -B -m unittest discover -s test/ci -p test_windows_presentation_smoke.py
+
+      - name: Build the isolated Windows presentation target
+        if: runner.os == 'Windows' && inputs.presentation_smoke
+        run: flutter build windows --debug --no-pub --target harness/app/main.dart --dart-define-from-file=.dart_tool/git_metadata.json
+
+      - name: Check isolated Windows presentation
+        if: runner.os == 'Windows' && inputs.presentation_smoke
+        timeout-minutes: 5
+        run: python -B tool/ci/windows_presentation_smoke.py
+
+      - name: Verify source inputs remain unchanged
+        run: git diff --exit-code -- pubspec.lock analysis_options.yaml assets/community-nodes.json
+
+  # This lane can run with desktop_builds=false without repeating Linux or
+  # macOS. It qualifies this hosted runner, not the owner's Windows machine.
+  windows-container-capability:
+    if: inputs.windows_inventory_only
+    name: Observe Windows Arm container capability
+    runs-on: windows-11-arm
+    timeout-minutes: 5
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          persist-credentials: false
+          fetch-depth: 1
+
+      - name: Observe finite platform facts without installation
+        shell: pwsh -NoLogo -NoProfile -NonInteractive -File {0}
+        env:
+          SYRIUS_WINDOWS_CONTAINER_CAPABILITY: "true"
+        run: tool/ci/windows_container_capability.ps1
+
+  windows-baseline:
+    if: inputs.windows_baseline || inputs.windows_inventory_only
+    name: ${{ inputs.windows_inventory_only && 'Hosted Windows inventory' || 'Hosted Windows baseline' }}
+    runs-on: windows-latest
+    timeout-minutes: ${{ inputs.windows_inventory_only && 15 || 100 }}
+    # Match the controllers' explicit isolation from system/global Git config.
+    # Apply this before checkout so CRLF conversion cannot create a false diff.
+    env:
+      GIT_CONFIG_COUNT: "1"
+      GIT_CONFIG_KEY_0: core.autocrlf
+      GIT_CONFIG_VALUE_0: "false"
+    defaults:
+      run:
+        shell: bash
+    steps:
+      - name: Checkout the dispatched source
+        uses: actions/checkout@v6
+        with:
+          persist-credentials: false
+
+      - name: Set up Flutter
+        id: baseline_flutter
+        uses: subosito/flutter-action@v2
+        with:
+          flutter-version: ${{ env.FLUTTER_VERSION }}
+          channel: stable
+          cache: true
+          pub-cache: 'false'
+
+      - name: Cache locked pub dependencies
+        if: ${{ !inputs.windows_inventory_only }}
+        uses: actions/cache@v5
+        with:
+          path: ${{ steps.baseline_flutter.outputs['PUB-CACHE-PATH'] }}
+          key: >-
+            windows-baseline-pub-${{ runner.os }}-${{ runner.arch }}-flutter-${{ env.FLUTTER_VERSION }}-${{ hashFiles('pubspec.lock', 'patched_packages/reown_core-1.3.8/pubspec.lock') }}
+
+      - name: Test the Windows baseline controller
+        run: python -B -m unittest discover -s test/ci -p test_windows_baseline.py
+
+      # Raw child output, including doctor paths, stays in bounded private
+      # memory. Only allowlisted observations reach the Actions transcript.
+      # DLL mapping can initialize its runtime. No export is called here.
+      - name: Qualify the hosted Windows baseline
+        run: python -B tool/ci/windows_baseline.py ${{ inputs.windows_inventory_only && '--inventory-only' || '' }}
+
+      - name: Retain the finite inventory manifest
+        if: always() && inputs.windows_inventory_only && hashFiles('.harness/ci-windows-inventory/manifest.json') != ''
+        uses: actions/upload-artifact@v7
+        with:
+          name: windows-inventory-${{ github.sha }}-${{ github.run_id }}-${{ github.run_attempt }}
+          compression-level: 0
+          include-hidden-files: true
+          if-no-files-found: error
+          path: .harness/ci-windows-inventory/manifest.json
+
+  # This independent lane admits only genuine ordinary startup and empty entry
+  # captures. It establishes neither mockup matches nor wallet/chain readiness.
+  windows-entry-capture:
+    if: inputs.entry_capture_smoke
+    name: Ordinary Windows entry captures
+    runs-on: windows-latest
+    timeout-minutes: 35
+    env:
+      GIT_CONFIG_COUNT: "1"
+      GIT_CONFIG_KEY_0: core.autocrlf
+      GIT_CONFIG_VALUE_0: "false"
+    defaults:
+      run:
+        shell: bash
+    steps:
+      - name: Checkout the dispatched source
+        uses: actions/checkout@v6
+        with:
+          persist-credentials: false
+
+      - name: Set up Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          flutter-version: ${{ env.FLUTTER_VERSION }}
+          channel: stable
+          cache: true
+
+      - name: Restore locked dependencies
+        run: |
+          flutter pub get --enforce-lockfile
+          git diff --exit-code -- pubspec.lock analysis_options.yaml
+
+      - name: Generate source metadata
+        run: dart run tool/generate_git_metadata.dart
+
+      - name: Enable Windows desktop
+        run: flutter config --enable-windows-desktop
+
+      - name: Build the ordinary Windows harness target
+        run: flutter build windows --debug --no-pub --target harness/app/main.dart --dart-define-from-file=.dart_tool/git_metadata.json
+
+      - name: Test the finite entry controller
+        run: python -B -m unittest discover -s test/ci -p test_windows_entry_capture_smoke.py
+
+      - name: Capture genuine ordinary entry and observe original process exit
+        timeout-minutes: 5
+        run: python -B tool/ci/windows_entry_capture_smoke.py
+
+      # Explicit files preserve partial captures without exposing the profile,
+      # token, process output or a recursive directory archive.
+      - name: Retain entry evidence and finite manifest
+        if: always() && hashFiles('.harness/ci-entry-capture/manifest.json') != ''
+        uses: actions/upload-artifact@v7
+        with:
+          name: windows-entry-capture-${{ github.sha }}-${{ github.run_id }}-${{ github.run_attempt }}
+          compression-level: 0
+          include-hidden-files: true
+          if-no-files-found: error
+          path: |
+            .harness/ci-entry-capture/welcome-dark.png
+            .harness/ci-entry-capture/welcome-light.png
+            .harness/ci-entry-capture/import-dark.png
+            .harness/ci-entry-capture/import-light.png
+            .harness/ci-entry-capture/manifest.json
+
+  windows-debug-loop:
+    if: inputs.windows_debug_loop
+    name: Hosted Windows debug loop
+    runs-on: windows-latest
+    timeout-minutes: 35
+    env:
+      GIT_CONFIG_COUNT: "1"
+      GIT_CONFIG_KEY_0: core.autocrlf
+      GIT_CONFIG_VALUE_0: "false"
+    defaults:
+      run:
+        shell: bash
+    steps:
+      - name: Checkout the dispatched source
+        uses: actions/checkout@v6
+        with:
+          persist-credentials: false
+
+      - name: Test finite debug protocol and controller boundaries
+        run: python -B -m tool.ci.run_debug_tests
+
+      - name: Set up the frontend controller runtime
+        uses: actions/setup-node@v6
+        with:
+          node-version: '24'
+
+      - name: Test frontend socket and request bindings in memory
+        run: node --test --test-isolation=none test/ci/windows_devtools_frontend.test.mjs
+
+      - name: Set up Flutter
+        id: debug_flutter
+        uses: subosito/flutter-action@v2
+        with:
+          flutter-version: ${{ env.FLUTTER_VERSION }}
+          channel: stable
+          cache: true
+
+      - name: Restore locked dependencies
+        id: debug_dependencies
+        run: |
+          flutter pub get --enforce-lockfile
+          git diff --exit-code -- pubspec.lock analysis_options.yaml
+
+      - name: Generate source metadata
+        run: dart run tool/generate_git_metadata.dart
+
+      - name: Enable Windows desktop
+        run: flutter config --enable-windows-desktop
+
+      - name: Analyze the debug client and harness entry and tour
+        if: ${{ !cancelled() && steps.debug_flutter.outcome == 'success' && steps.debug_dependencies.outcome == 'success' }}
+        timeout-minutes: 5
+        run: python -B tool/ci/windows_debug_loop.py --analyze
+
+      - name: Test full tour coverage and unreachable page refusal
+        timeout-minutes: 5
+        run: python -B tool/ci/run_harness_tour_tests.py
+
+      - name: Observe breakpoint, reload, restart and original process exit
+        timeout-minutes: 25
+        run: python -B tool/ci/windows_debug_loop.py
+
+      - name: Retain only the finite debug manifest
+        if: always() && hashFiles('.harness/ci-windows-debug/manifest.json') != ''
+        uses: actions/upload-artifact@v7
+        with:
+          name: windows-debug-loop-${{ github.sha }}-${{ github.run_id }}-${{ github.run_attempt }}
+          compression-level: 0
+          include-hidden-files: true
+          if-no-files-found: error
+          path: .harness/ci-windows-debug/manifest.json
+
+  devnet-tests:
+    if: inputs.devnet_tests
+    uses: ./.github/workflows/blockchain-integration-tests.yml
+
+  chain321-lab:
+    if: inputs.chain321_lab || inputs.windows_wallet_tour || inputs.windows_wallet_inspection
+    name: ${{ inputs.windows_wallet_inspection && 'Windows readonly inspection with owned chain-321' || inputs.windows_wallet_tour && 'Windows wallet tour with owned chain-321' || format('Chain-321 {0} lab', matrix.backend) }}
+    runs-on: ${{ matrix.runner }}
+    timeout-minutes: ${{ (inputs.windows_wallet_tour || inputs.windows_wallet_inspection) && 65 || 40 }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include: ${{ fromJSON((inputs.windows_wallet_tour || inputs.windows_wallet_inspection || inputs.chain321_backend == 'native') && '[{"runner":"windows-latest","backend":"native"}]' || inputs.chain321_backend == 'docker' && '[{"runner":"ubuntu-24.04","backend":"docker"}]' || '[{"runner":"ubuntu-24.04","backend":"docker"},{"runner":"windows-latest","backend":"native"}]') }}
+    env:
+      GIT_CONFIG_COUNT: "1"
+      GIT_CONFIG_KEY_0: core.autocrlf
+      GIT_CONFIG_VALUE_0: "false"
+      SYRIUS_NATIVE_STACK_DIAGNOSTIC: ${{ matrix.backend == 'native' && inputs.native_stack_diagnostic }}
+      SYRIUS_LAB_NODE_SOURCE: ${{ inputs.chain321_node_source }}
+      SYRIUS_WINDOWS_WALLET_TOUR: ${{ inputs.windows_wallet_tour }}
+      SYRIUS_WINDOWS_WALLET_INSPECTION: ${{ inputs.windows_wallet_inspection }}
+      SYRIUS_READONLY_CATALOG_FAMILY: ${{ inputs.readonly_catalog_family }}
+    steps:
+      - name: Checkout the dispatched wallet source
+        uses: actions/checkout@v6
+        with:
+          persist-credentials: false
+
+      - name: Validate hosted lab admission before SDK allocation
+        env:
+          SYRIUS_HOSTED_RUNNER: ${{ runner.environment }}
+        run: python -B -m tool.ci.hosted_chain321 --backend ${{ matrix.backend }} --admission-only
+
+      - name: Check asset bytes and opt-in phases in memory
+        timeout-minutes: 1
+        env:
+          SYRIUS_HOSTED_RUNNER: ${{ runner.environment }}
+        run: python -B -m tool.ci.run_asset_tests
+
+      - name: Test all isolated controllers before SDK allocation
+        if: inputs.windows_wallet_tour || inputs.windows_wallet_inspection
+        env:
+          SYRIUS_HOSTED_RUNNER: ${{ runner.environment }}
+        run: python -B -m tool.ci.run_wallet_tour_tests --all-controllers
+
+      - name: Set up Flutter for the owned wallet tour
+        if: inputs.windows_wallet_tour || inputs.windows_wallet_inspection
+        uses: subosito/flutter-action@v2
+        with:
+          flutter-version: ${{ env.FLUTTER_VERSION }}
+          channel: stable
+          cache: true
+
+      - name: Restore locked wallet dependencies
+        if: inputs.windows_wallet_tour || inputs.windows_wallet_inspection
+        shell: bash
+        run: |
+          flutter pub get --enforce-lockfile
+          git diff --exit-code -- pubspec.lock analysis_options.yaml
+          dart run tool/generate_git_metadata.dart
+          flutter config --enable-windows-desktop
+
+      - name: Analyze the gated wallet entry and tour
+        if: inputs.windows_wallet_tour || inputs.windows_wallet_inspection
+        run: python -B tool/ci/windows_debug_loop.py --analyze
+
+      - name: Test page coverage and refusal before wallet build
+        if: inputs.windows_wallet_tour || inputs.windows_wallet_inspection
+        run: python -B tool/ci/run_harness_tour_tests.py
+
+      - name: Checkout the exact lab node source
+        uses: actions/checkout@v6
+        with:
+          repository: zenon-network/go-zenon
+          ref: ${{ (inputs.chain321_node_source == 'upstream' || inputs.chain321_node_source == 'lab-fix') && '2d1b929cc3fa5269cf133757d4a6963821137984' || '590f43ca7a24dccd8e883bc8903a0cb02e54528a' }}
+          path: .harness/ci-node-source
+          persist-credentials: false
+
+      - name: Set up the pinned node compiler
+        uses: actions/setup-go@v6
+        with:
+          go-version: '1.24.1'
+          cache: false
+
+      - name: Test hosted lab isolation and original-handle rules
+        if: ${{ !inputs.windows_wallet_tour && !inputs.windows_wallet_inspection }}
+        run: python -B -m unittest discover -s test/ci -v
+
+      - name: Build, observe and stop the original isolated lab
+        env:
+          SYRIUS_HOSTED_RUNNER: ${{ runner.environment }}
+          SYRIUS_NATIVE_STACK_DIAGNOSTIC: ${{ matrix.backend == 'native' && inputs.native_stack_diagnostic }}
+          SYRIUS_LAB_NODE_SOURCE: ${{ inputs.chain321_node_source }}
+        run: python -B -m tool.ci.hosted_chain321 --backend ${{ matrix.backend }}
+
+      # No node data, keys, profile, private command output or source archive.
+      - name: Retain the finite chain-321 manifest
+        if: always() && hashFiles('.harness/ci-chain321/manifest.json') != ''
+        uses: actions/upload-artifact@v7
+        with:
+          name: chain321-${{ matrix.backend }}-${{ github.sha }}-${{ github.run_id }}-${{ github.run_attempt }}
+          compression-level: 0
+          include-hidden-files: true
+          if-no-files-found: error
+          path: .harness/ci-chain321/manifest.json
+
+      # Wallet material and page pixels stay in the private fresh runner.
+      - name: Retain only the finite wallet tour manifest
+        if: always() && inputs.windows_wallet_tour && hashFiles('.harness/ci-wallet-tour/manifest.json') != ''
+        uses: actions/upload-artifact@v7
+        with:
+          name: wallet-tour-${{ github.sha }}-${{ github.run_id }}-${{ github.run_attempt }}
+          compression-level: 0
+          include-hidden-files: true
+          if-no-files-found: error
+          path: .harness/ci-wallet-tour/manifest.json
+
+      - name: Admit only finite inspection artifact paths
+        id: inspection_paths
+        if: always() && inputs.windows_wallet_inspection && hashFiles('.harness/ci-wallet-inspection/manifest.json') != ''
+        env:
+          SYRIUS_HOSTED_RUNNER: ${{ runner.environment }}
+        run: python -B -m tool.ci.windows_wallet_inspection --artifact-paths
+
+      # A failed inspection retains its finite manifest without page pixels.
+      - name: Retain the admitted readonly inspection observations
+        if: always() && steps.inspection_paths.outcome == 'success'
+        uses: actions/upload-artifact@v7
+        with:
+          name: wallet-inspection-${{ github.sha }}-${{ github.run_id }}-${{ github.run_attempt }}
+          compression-level: 0
+          include-hidden-files: true
+          if-no-files-found: error
+          path: ${{ steps.inspection_paths.outputs.paths }}
+
+      - name: Retain the admitted literal catalog captures
+        if: always() && steps.inspection_paths.outcome == 'success' && steps.inspection_paths.outputs.catalog_paths != ''
+        uses: actions/upload-artifact@v7
+        with:
+          name: ${{ steps.inspection_paths.outputs.catalog_family }}-${{ github.sha }}-${{ github.run_id }}-${{ github.run_attempt }}
+          compression-level: 0
+          include-hidden-files: true
+          if-no-files-found: error
+          path: ${{ steps.inspection_paths.outputs.catalog_paths }}
+
+      - name: Retain admitted viewport observations
+        if: always() && steps.inspection_paths.outcome == 'success' && steps.inspection_paths.outputs.viewport_paths != ''
+        uses: actions/upload-artifact@v7
+        with:
+          name: viewport-observation-${{ github.sha }}-${{ github.run_id }}-${{ github.run_attempt }}
+          compression-level: 0
+          include-hidden-files: true
+          if-no-files-found: error
+          path: ${{ steps.inspection_paths.outputs.viewport_paths }}
+
+  inspect-windows-inventory:
+    if: inputs.inspect_windows_inventory_run != ''
+    name: Inspect retained Windows inventory
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    permissions:
+      contents: read
+      actions: read
+    steps:
+      - name: Checkout the dispatched inspector source
+        uses: actions/checkout@v6
+        with:
+          persist-credentials: false
+          sparse-checkout: |
+            tool/ci
+            test/ci
+            tools/devnet/lab
+
+      - name: Test finite inventory projection in memory
+        run: python -B -m unittest discover -s test/ci -p test_inspect_windows_inventory.py -v
+
+      - name: Inspect the original finite inventory manifest
+        timeout-minutes: 3
+        env:
+          GH_TOKEN: ${{ github.token }}
+          SYRIUS_HOSTED_RUNNER: ${{ runner.environment }}
+          INVENTORY_INSPECT_RUN: ${{ inputs.inspect_windows_inventory_run }}
+          INVENTORY_INSPECT_HEAD: ${{ inputs.inspect_windows_inventory_head }}
+        run: python -B -m tool.ci.inspect_windows_inventory
+
+  inspect-windows-qualification:
+    if: inputs.inspect_windows_run != ''
+    name: Inspect retained Windows qualification
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    permissions:
+      contents: read
+      actions: read
+    steps:
+      - name: Checkout the dispatched inspector source
+        uses: actions/checkout@v6
+        with:
+          persist-credentials: false
+          sparse-checkout: |
+            tool/ci
+            test/ci
+            tools/devnet/lab
+
+      - name: Test retained Windows receipt controls in memory
+        run: python -B -m unittest discover -s test/ci -p test_inspect_windows_qualification.py -v
+
+      - name: Inspect original baseline log and entry archive in memory
+        timeout-minutes: 3
+        env:
+          GH_TOKEN: ${{ github.token }}
+          SYRIUS_HOSTED_RUNNER: ${{ runner.environment }}
+          WINDOWS_INSPECT_RUN: ${{ inputs.inspect_windows_run }}
+          WINDOWS_INSPECT_HEAD: ${{ inputs.inspect_windows_head }}
+        run: python -B -m tool.ci.inspect_windows_qualification
+
+  inspect-wallet-inspection:
+    if: inputs.inspect_wallet_inspection_run != ''
+    name: Inspect retained readonly wallet inspection
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    permissions:
+      contents: read
+      actions: read
+    steps:
+      - name: Checkout the dispatched independent reader source
+        uses: actions/checkout@v6
+        with:
+          persist-credentials: false
+          sparse-checkout: |
+            tool/ci
+            test/ci
+            tools/devnet/lab
+            harness
+
+      - name: Test both retained lab and readonly archive boundaries in memory
+        run: python -B -m tool.ci.run_readonly_reader_tests
+
+      - name: Inspect the original source-bound lab and wallet archives
+        timeout-minutes: 3
+        env:
+          GH_TOKEN: ${{ github.token }}
+          SYRIUS_HOSTED_RUNNER: ${{ runner.environment }}
+          WALLET_INSPECT_RUN: ${{ inputs.inspect_wallet_inspection_run }}
+          WALLET_INSPECT_HEAD: ${{ inputs.inspect_wallet_inspection_head }}
+        run: python -B -m tool.ci.inspect_wallet_inspection
+
+  inspect-chain321:
+    if: inputs.inspect_chain321_run != ''
+    name: Inspect retained chain-321 evidence
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    permissions:
+      contents: read
+      actions: read
+    steps:
+      - name: Checkout the dispatched inspector source
+        uses: actions/checkout@v6
+        with:
+          persist-credentials: false
+          sparse-checkout: |
+            tool/ci
+            test/ci
+            tools/devnet/lab
+
+      - name: Test archive and credential boundaries in memory
+        run: python -B -m unittest discover -s test/ci -p test_inspect_chain321.py -v
+
+      - name: Inspect only the original finite manifests
+        timeout-minutes: 3
+        env:
+          GH_TOKEN: ${{ github.token }}
+          SYRIUS_HOSTED_RUNNER: ${{ runner.environment }}
+          LAB_INSPECT_RUN: ${{ inputs.inspect_chain321_run }}
+          LAB_INSPECT_HEAD: ${{ inputs.inspect_chain321_head }}
+          LAB_INSPECT_BACKEND: ${{ inputs.chain321_backend }}
+          LAB_INSPECT_NODE_SOURCE: ${{ inputs.chain321_node_source }}
+        run: python -B -m tool.ci.inspect_chain321

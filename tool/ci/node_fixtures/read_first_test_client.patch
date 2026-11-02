@@ -1,0 +1,19 @@
+diff --git a/p2p/legacy/shutdown_test.go b/p2p/legacy/shutdown_test.go
+--- a/p2p/legacy/shutdown_test.go
++++ b/p2p/legacy/shutdown_test.go
+@@ -49,7 +49,14 @@
+ 		fd.Close()
+ 		return nil, err
+ 	}
+-	if _, err := cli.doProtoHandshake(&protoHandshake{Version: baseProtocolVersion, Name: "probe", ID: discover.PubkeyID(&cliKey.PublicKey), Caps: caps}); err != nil {
++	// Read the early rejection before writing a protocol handshake. A concurrent
++	// write can turn the disconnect reason into a socket reset on Windows.
++	our := &protoHandshake{Version: baseProtocolVersion, Name: "probe", ID: discover.PubkeyID(&cliKey.PublicKey), Caps: caps}
++	if _, err := readProtocolHandshake(cli.rw, our); err != nil {
++		fd.Close()
++		return nil, err
++	}
++	if err := p2p.Send(cli.rw, handshakeMsg, our); err != nil {
+ 		fd.Close()
+ 		return nil, err
+ 	}

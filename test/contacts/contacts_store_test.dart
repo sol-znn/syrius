@@ -189,23 +189,63 @@ void main() {
       expect(store.search('nobody'), isEmpty);
     });
 
-    test('tell listeners of every change and of no refusal', () async {
-      int changes = 0;
-      store.addListener(() => changes++);
+    test('tell listeners when admitted operations settle', () async {
+      final List<ContactsWriteOutcome> settled = <ContactsWriteOutcome>[];
+      final List<bool> pendingAtNotification = <bool>[];
+      store.addListener(() {
+        settled.add(store.writeOutcomes.last);
+        pendingAtNotification.add(store.hasPendingWrite);
+      });
 
       await store.add(name: 'Alice', address: _alice);
       await store.rename(_alice, 'Alicia');
       await store.setNote(_alice, 'rent');
       await store.noteSent(_me, _alice);
       await store.remove(_alice);
-      expect(changes, 5);
+      expect(settled, hasLength(5));
+      expect(settled, store.writeOutcomes);
+      for (final ContactsWriteOutcome outcome in settled) {
+        expect(outcome.committed, isTrue);
+        expect(outcome.write, isNull);
+        expect(outcome.error, isNull);
+      }
+      final List<Contact> contacts = List<Contact>.of(store.contacts);
+      final List<RecentRecipient> recent = List<RecentRecipient>.of(
+        store.recent(_me),
+      );
 
       await expectLater(
         store.add(name: '', address: _alice),
         _refuses(ContactError.emptyName),
       );
+      expect(settled, hasLength(6));
+      expect(settled, store.writeOutcomes);
+      final ContactsWriteOutcome refusal = settled.last;
+      expect(refusal.committed, isFalse);
+      expect(refusal.write, isNull);
+      expect(
+        refusal.error,
+        isA<ContactsException>().having(
+          (ContactsException error) => error.error,
+          'error',
+          ContactError.emptyName,
+        ),
+      );
+      expect(refusal.stackTrace, isNotNull);
+      expect(store.contacts, contacts);
+      expect(store.recent(_me), recent);
+      expect(pendingAtNotification, List<bool>.filled(6, false));
+      expect(store.hasPendingWrite, isFalse);
+
+      final List<ContactsWriteOutcome> beforeIgnored =
+          List<ContactsWriteOutcome>.of(settled);
       await store.noteSent(_me, 'nowhere');
-      expect(changes, 5);
+      expect(settled, beforeIgnored);
+      expect(store.writeOutcomes, beforeIgnored);
+      expect(store.contacts, contacts);
+      expect(store.recent(_me), recent);
+      expect(pendingAtNotification, List<bool>.filled(6, false));
+      expect(store.hasPendingWrite, isFalse);
     });
   });
 
@@ -454,6 +494,21 @@ void main() {
       await next.open();
       return next;
     }
+
+    test('a refused opening stays distinct from an empty saved book', () async {
+      await store.add(name: 'Alice', address: _alice);
+      final Directory obstacle = Directory('${dir.path}/contacts_box.hive')
+        ..createSync();
+      await expectLater(store.open(), throwsA(isA<Object>()));
+      expect(store.readFailed, isTrue);
+      expect(store.isPersistent, isFalse);
+      expect(store.byAddress(_alice)?.name, 'Alice');
+      obstacle.deleteSync();
+      await store.open();
+      expect(store.readFailed, isFalse);
+      expect(store.isPersistent, isTrue);
+      expect((await restart()).byAddress(_alice)?.name, 'Alice');
+    });
 
     test('contacts and recipients are there after a restart', () async {
       await store.open();

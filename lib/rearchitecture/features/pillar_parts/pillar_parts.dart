@@ -588,7 +588,15 @@ class DepositProgress extends StatelessWidget {
 ButtonStyle stepSecondaryButtonStyle(BuildContext context, {Color? line}) =>
     cardSecondaryButtonStyle(context, line: line).copyWith(
       backgroundColor: const WidgetStatePropertyAll<Color>(Colors.transparent),
-      minimumSize: const WidgetStatePropertyAll<Size>(Size(64, 40)),
+      minimumSize: WidgetStatePropertyAll<Size>(
+        Size(64, AppTokens.of(context).buttonHeight),
+      ),
+      padding: const WidgetStatePropertyAll<EdgeInsetsGeometry>(
+        EdgeInsets.symmetric(horizontal: 16),
+      ),
+      textStyle: const WidgetStatePropertyAll<TextStyle>(
+        kOutlinedButtonTextStyle,
+      ),
     );
 
 /// The buttons of a step: the one filled action first, then the quiet ones.

@@ -1,11 +1,12 @@
 // BDD Usage comments intentionally mirror Gherkin placeholders.
-// ignore_for_file: unintended_html_in_doc_comment, non_constant_identifier_names
+// ignore_for_file: unintended_html_in_doc_comment
+// ignore_for_file: non_constant_identifier_names
 
 import 'dart:async';
 
-import 'package:material_ui/material_ui.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:material_ui/material_ui.dart';
 import 'package:nested/nested.dart';
 import 'package:provider/provider.dart';
 import 'package:zenon_syrius_wallet_flutter/l10n/app_localizations.dart';
@@ -40,6 +41,9 @@ Future<void> iFuseQsrToFromTheFusePlasmaCard(
         ],
         child: MultiBlocProvider(
           providers: <SingleChildWidget>[
+            BlocProvider<SendTransactionBloc>(
+              create: (_) => SendTransactionBloc(),
+            ),
             BlocProvider<MultipleBalanceBloc>.value(
               value: app.sl<MultipleBalanceBloc>(),
             ),
@@ -51,10 +55,7 @@ Future<void> iFuseQsrToFromTheFusePlasmaCard(
             ),
           ],
           child: Scaffold(
-            body: FusePlasmaCard(
-              plasmaStatsResults: const <PlasmaInfoWrapper>[],
-              onPlasmaFused: () {},
-            ),
+            body: FusePlasmaCard(onPlasmaFused: () {}),
           ),
         ),
       ),
@@ -69,8 +70,25 @@ Future<void> iFuseQsrToFromTheFusePlasmaCard(
     find.byKey(const Key('fuse_plasma_amount_field')),
     fuseAmount,
   );
+  final Finder beneficiaryField = find.byKey(
+    const Key('fuse_plasma_beneficiary_address_field'),
+  );
+  if (beneficiaryField.evaluate().isEmpty) {
+    final Finder selector = find.byKey(
+      const Key('fuse_plasma_beneficiary_selector'),
+    );
+    expect(selector, findsOneWidget);
+    await tester.tap(selector);
+    await tester.pumpAndSettle();
+    final Finder another = find.byKey(
+      const Key('fuse_plasma_another_address_option'),
+    );
+    expect(another, findsOneWidget);
+    await tester.tap(another);
+    await tester.pumpAndSettle();
+  }
   await tester.enterText(
-    find.byKey(const Key('fuse_plasma_beneficiary_address_field')),
+    beneficiaryField,
     fuseAddress,
   );
   await tester.pumpAndSettle();

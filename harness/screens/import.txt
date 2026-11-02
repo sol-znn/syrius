@@ -1,0 +1,2 @@
+# prerequisite: pending F06/N06 reversible Import preparation without wallet publication or seed disclosure
+assert --key import_screen_marker

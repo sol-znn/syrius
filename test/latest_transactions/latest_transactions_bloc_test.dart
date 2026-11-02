@@ -1,5 +1,3 @@
-import 'dart:async';
-
 import 'package:bloc_test/bloc_test.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:mocktail/mocktail.dart';
@@ -96,8 +94,8 @@ void main() {
       );
     });
 
-    tearDown(() {
-      unawaited(latestTransactionsBloc.close());
+    tearDown(() async {
+      await latestTransactionsBloc.close();
     });
 
     test('initial state is correct', () {
@@ -112,49 +110,47 @@ void main() {
         const InfiniteListState<AccountBlock> initialState =
             InfiniteListState<AccountBlock>.initial();
 
-        final Map<String, dynamic>? serialized = latestTransactionsBloc.toJson(
+        final Map<String, dynamic> serialized = latestTransactionsBloc.toJson(
           initialState,
         );
         final InfiniteListState<AccountBlock>? deserialized =
-            latestTransactionsBloc.fromJson(serialized!);
+            latestTransactionsBloc.fromJson(serialized);
 
         expect(deserialized, equals(initialState));
       });
 
-      test('can (de)serialize success state', () {
+      test('unbound success rows are not restored as scoped history', () {
         final InfiniteListState<AccountBlock> successState =
             InfiniteListState<AccountBlock>(
               status: InfiniteListStatus.success,
               data: <AccountBlock>[accountBlock],
             );
 
-        final Map<String, dynamic>? serialized = latestTransactionsBloc.toJson(
+        final Map<String, dynamic> serialized = latestTransactionsBloc.toJson(
           successState,
         );
         final InfiniteListState<AccountBlock>? deserialized =
             latestTransactionsBloc.fromJson(
-              serialized!,
+              serialized,
             );
-        expect(deserialized, isA<InfiniteListState<AccountBlock>>());
-        expect(deserialized!.status, equals(InfiniteListStatus.success));
-        expect(deserialized.data, isA<List<AccountBlock>?>());
+        expect(deserialized, isNull);
       });
 
-      test('can (de)serialize failure state', () {
+      test('an unbound failure is not restored as a current read', () {
         final InfiniteListState<AccountBlock> failureState =
             InfiniteListState<AccountBlock>(
               status: InfiniteListStatus.failure,
               error: exception,
             );
 
-        final Map<String, dynamic>? serialized = latestTransactionsBloc.toJson(
+        final Map<String, dynamic> serialized = latestTransactionsBloc.toJson(
           failureState,
         );
         final InfiniteListState<AccountBlock>? deserialized =
             latestTransactionsBloc.fromJson(
-              serialized!,
+              serialized,
             );
-        expect(deserialized, equals(failureState));
+        expect(deserialized, isNull);
       });
     });
 

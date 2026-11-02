@@ -8,24 +8,16 @@ const double kStripLeadSize = 48;
 
 /// The style of a figure's value in a [PageStrip].
 ///
-/// The face and weight of `Figure`'s value, a pixel smaller: a strip holds
-/// four of them beside a button where a card holds one. A value that is a
-/// plain `Text` inherits it; a unit inside a `Text.rich` sets its own size
-/// and colour over it.
+/// The mockup's 19 px mono value: a strip holds four of them beside a
+/// button where a card holds one. A plain `Text` inherits it; a unit inside
+/// a `Text.rich` sets its own size and colour over it.
 TextStyle stripValueStyle(BuildContext context) =>
-    monoStyle(Theme.of(context).textTheme.headlineSmall).copyWith(
-      fontSize: 19,
-      fontWeight: FontWeight.w500,
-      height: 1.3,
-    );
+    AppTokens.of(context).stripAmountText;
 
 /// The style of what stands beside a value in a [PageStrip]: its worth in
 /// dollars, a weight. Small and faint, so the value is read first.
 TextStyle stripTrailingStyle(BuildContext context) =>
-    monoStyle(Theme.of(context).textTheme.titleMedium).copyWith(
-      fontSize: 13,
-      color: AppTokens.of(context).faint,
-    );
+    AppTokens.of(context).dollarText;
 
 /// One headline figure of a [PageStrip]: a ledger label over a value.
 ///
@@ -91,16 +83,13 @@ class PageStrip extends StatelessWidget {
   Widget build(BuildContext context) {
     final AppTokens tokens = AppTokens.of(context);
     return Material(
-      color: Theme.of(context).colorScheme.primary,
+      color: tokens.card,
       borderRadius: BorderRadius.circular(tokens.cardRadius),
       clipBehavior: Clip.antiAlias,
       child: Padding(
-        // The inset of a panel's title, so the first label stands over the
-        // list's first column.
-        padding: EdgeInsetsDirectional.symmetric(
-          horizontal: 16,
-          vertical: tokens.cardGap,
-        ),
+        // The strip's inset differs from the list title's: its figures
+        // have the extra room drawn in the mockup's stripcard rule.
+        padding: tokens.stripPadding,
         // As tall as the lead slot with or without a lead, so the strip
         // does not change height between a page that has one and its
         // neighbour.
@@ -123,7 +112,7 @@ class PageStrip extends StatelessWidget {
                 ),
               ),
               for (final Widget action in actions) ...<Widget>[
-                SizedBox(width: tokens.cardGap),
+                SizedBox(width: tokens.inlineGap),
                 action,
               ],
             ],
@@ -178,7 +167,7 @@ class _StripFigureViewState extends State<_StripFigureView> {
                 child: figure.value,
               ),
               if (figure.trailing != null) ...<Widget>[
-                SizedBox(width: tokens.cardGap),
+                SizedBox(width: tokens.pageGap),
                 DefaultTextStyle.merge(
                   style: stripTrailingStyle(context),
                   maxLines: 1,

@@ -23,11 +23,19 @@ class FlutterWindow : public Win32Window {
                          LPARAM const lparam) noexcept override;
 
  private:
+  struct NativeWindowOwner;
+
+  // Retire pending replies before the engine or its native windows disappear.
+  void RetireNativeWindow();
+
   // The project to run.
   flutter::DartProject project_;
 
   // The Flutter instance hosted by this window.
   std::unique_ptr<flutter::FlutterViewController> flutter_controller_;
+
+  // Callback state outlives replies without retaining this FlutterWindow.
+  std::shared_ptr<NativeWindowOwner> native_window_owner_;
 };
 
 #endif  // RUNNER_FLUTTER_WINDOW_H_

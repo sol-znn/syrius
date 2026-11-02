@@ -25,13 +25,31 @@ class ToggleRailIntent extends Intent {
   const ToggleRailIntent();
 }
 
+/// Refreshes only the active page's existing reads.
+class RefreshPageIntent extends Intent {
+  /// Creates the refresh intent.
+  const RefreshPageIntent();
+}
+
+/// Changes the shared balance visibility choice.
+class ToggleBalancesIntent extends Intent {
+  /// Creates the visibility intent.
+  const ToggleBalancesIntent();
+}
+
+/// Replays the lock well without unlocking or navigating.
+class ReplayLockIntent extends Intent {
+  /// Creates the lock animation intent.
+  const ReplayLockIntent();
+}
+
 /// Whether the chord key is Cmd. On macOS Ctrl with a letter edits text
 /// (Ctrl+K kills to the end of the line), and Cmd is where a Mac user looks
 /// for an application's shortcuts.
-final bool _kChordIsMeta = defaultTargetPlatform == TargetPlatform.macOS;
+bool get _kChordIsMeta => defaultTargetPlatform == TargetPlatform.macOS;
 
 /// The chord key's name, for the hints in the palette.
-final String kChordName = _kChordIsMeta ? 'Cmd' : 'Ctrl';
+String get kChordName => _kChordIsMeta ? 'Cmd' : 'Ctrl';
 
 /// [key] with the chord key and nothing else held.
 SingleActivator _chord(LogicalKeyboardKey key) =>
@@ -46,7 +64,6 @@ const List<LogicalKeyboardKey> _kDigitKeys = <LogicalKeyboardKey>[
   LogicalKeyboardKey.digit6,
   LogicalKeyboardKey.digit7,
   LogicalKeyboardKey.digit8,
-  LogicalKeyboardKey.digit9,
 ];
 
 const List<LogicalKeyboardKey> _kNumpadKeys = <LogicalKeyboardKey>[
@@ -58,15 +75,14 @@ const List<LogicalKeyboardKey> _kNumpadKeys = <LogicalKeyboardKey>[
   LogicalKeyboardKey.numpad6,
   LogicalKeyboardKey.numpad7,
   LogicalKeyboardKey.numpad8,
-  LogicalKeyboardKey.numpad9,
 ];
 
 /// The shell's bindings while the wallet is unlocked.
-final Map<ShortcutActivator, Intent> kShellShortcuts =
+Map<ShortcutActivator, Intent> get kShellShortcuts =>
     <ShortcutActivator, Intent>{
       for (
         int i = 0;
-        i < kRailPages.length && i < 9;
+        i < kRailPages.length && i < 8;
         i++
       ) ...<ShortcutActivator, Intent>{
         _chord(_kDigitKeys[i]): OpenPageIntent(kRailPages[i].tab),
@@ -75,4 +91,16 @@ final Map<ShortcutActivator, Intent> kShellShortcuts =
       _chord(LogicalKeyboardKey.keyL): const OpenPageIntent(Tabs.lock),
       _chord(LogicalKeyboardKey.keyK): const OpenGoToIntent(),
       _chord(LogicalKeyboardKey.keyB): const ToggleRailIntent(),
+      _chord(LogicalKeyboardKey.keyR): const RefreshPageIntent(),
+      _chord(LogicalKeyboardKey.keyH): const ToggleBalancesIntent(),
+      _chord(LogicalKeyboardKey.comma): const OpenPageIntent(Tabs.settings),
+      const SingleActivator(LogicalKeyboardKey.escape): const DismissIntent(),
+    };
+
+/// The locked shell exposes only the animation's replay chord.
+Map<ShortcutActivator, Intent> get kLockedShellShortcuts =>
+    <ShortcutActivator, Intent>{
+      _chord(LogicalKeyboardKey.keyL): const ReplayLockIntent(),
+      const SingleActivator(LogicalKeyboardKey.escape):
+          const DoNothingAndStopPropagationIntent(),
     };

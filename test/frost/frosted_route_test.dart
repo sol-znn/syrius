@@ -36,8 +36,12 @@ Widget _opener({bool dismissible = true, List<Object?>? answers}) => Builder(
   ),
 );
 
-BackdropFilter _filter(WidgetTester tester) =>
-    tester.widget<BackdropFilter>(find.byType(BackdropFilter));
+BackdropFilter _filter(WidgetTester tester) => tester.widget<BackdropFilter>(
+  find.descendant(
+    of: find.byType(FrostedBarrier),
+    matching: find.byType(BackdropFilter),
+  ),
+);
 
 FrostedBarrier _barrier(WidgetTester tester) =>
     tester.widget<FrostedBarrier>(find.byType(FrostedBarrier));
@@ -265,7 +269,8 @@ void main() {
 
       await tester.tap(find.text('open'));
       await tester.pumpAndSettle();
-      expect(find.byType(BackdropFilter), findsOneWidget);
+      expect(find.byType(BackdropFilter), findsNWidgets(2));
+      expect(find.byType(FrostedSurface), findsOneWidget);
       expect(_filter(tester).filter, _blur(kFrostSigma));
       await tester.tap(find.byKey(const Key('dialog_yes_button')));
       await tester.pumpAndSettle();
@@ -315,7 +320,8 @@ void main() {
 
       await tester.tap(find.text('open'));
       await tester.pumpAndSettle();
-      expect(find.byType(BackdropFilter), findsOneWidget);
+      expect(find.byType(BackdropFilter), findsNWidgets(2));
+      expect(find.byType(FrostedSurface), findsOneWidget);
       await tester.tapAt(const Offset(10, 10));
       await tester.pumpAndSettle();
       expect(answers, isEmpty);
@@ -381,8 +387,17 @@ void main() {
 
       await tester.tap(find.text('open'));
       await tester.pumpAndSettle();
-      expect(find.byType(BackdropFilter), findsOneWidget);
+      expect(find.byType(BackdropFilter), findsNWidgets(2));
       expect(_filter(tester).filter, _blur(kFrostSigma));
+      final BackdropFilter paletteFilter = tester.widget<BackdropFilter>(
+        find.descendant(
+          of: find.byType(GoToPalette<int>),
+          matching: find.byType(BackdropFilter),
+        ),
+      );
+      expect(paletteFilter.filter, _blur(AppTokens.dark.dialogBlur));
+      expect(paletteFilter.backdropGroupKey, isNull);
+      expect(_filter(tester).backdropGroupKey, isNull);
       expect(
         _tint(tester),
         AppTheme.darkTheme.colorScheme.scrim.withValues(

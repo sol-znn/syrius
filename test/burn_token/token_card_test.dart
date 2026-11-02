@@ -1,42 +1,16 @@
-import 'dart:io';
-
-import 'package:bloc_test/bloc_test.dart';
-import 'package:material_ui/material_ui.dart';
-import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:hive_ce/hive_ce.dart';
-import 'package:mocktail/mocktail.dart';
+import 'package:material_ui/material_ui.dart';
 import 'package:zenon_syrius_wallet_flutter/l10n/app_localizations.dart';
 import 'package:zenon_syrius_wallet_flutter/l10n/l10n.dart';
 import 'package:zenon_syrius_wallet_flutter/rearchitecture/features/features.dart';
-import 'package:zenon_syrius_wallet_flutter/utils/constants.dart';
 import 'package:zenon_syrius_wallet_flutter/utils/global.dart';
 import 'package:znn_sdk_dart/znn_sdk_dart.dart';
-
-class MockMultipleBalanceBloc
-    extends MockBloc<MultipleBalanceEvent, MultipleBalanceState>
-    implements MultipleBalanceBloc {}
 
 void main() {
   const String owner = 'z1qq6eg8n43g032hanpsfp02qcdmv7zfj3y2lt5d';
   const String holder = 'z1qp3yph55qgresyytz83anynr2f4z39x2z3ej3e';
 
-  late Directory hiveDirectory;
-  late MockMultipleBalanceBloc multipleBalanceBloc;
-
-  setUpAll(() async {
-    hiveDirectory = Directory.systemTemp.createTempSync(
-      'syrius_token_card_test_',
-    );
-    Hive.init(hiveDirectory.path);
-    await Hive.openBox<dynamic>(kFavoriteTokensBox);
-  });
-
   setUp(() {
-    multipleBalanceBloc = MockMultipleBalanceBloc();
-    when(
-      () => multipleBalanceBloc.state,
-    ).thenReturn(const MultipleBalanceState());
     kSelectedAddress = holder;
     kDefaultAddressList = <String?>[holder];
     kAddressLabelMap = <String, String>{holder: 'Holder'};
@@ -48,19 +22,11 @@ void main() {
     kAddressLabelMap = <String, String>{};
   });
 
-  tearDownAll(() async {
-    await Hive.close();
-    if (hiveDirectory.existsSync()) {
-      hiveDirectory.deleteSync(recursive: true);
-    }
-  });
-
   testWidgets('allows a non-owner to burn a publicly burnable token', (
     WidgetTester tester,
   ) async {
     await _pumpTokenCard(
       tester,
-      multipleBalanceBloc,
       _buildToken(owner: owner, isBurnable: true),
     );
 
@@ -78,7 +44,6 @@ void main() {
 
     await _pumpTokenCard(
       tester,
-      multipleBalanceBloc,
       _buildToken(owner: owner, isBurnable: false),
     );
 
@@ -98,7 +63,6 @@ void main() {
 
     await _pumpTokenCard(
       tester,
-      multipleBalanceBloc,
       _buildToken(owner: owner, isBurnable: false),
     );
 
@@ -122,24 +86,33 @@ Token _buildToken({required String owner, required bool isBurnable}) => Token(
 
 Future<void> _pumpTokenCard(
   WidgetTester tester,
-  MultipleBalanceBloc multipleBalanceBloc,
   Token token,
 ) async {
   await tester.pumpWidget(
-    BlocProvider<MultipleBalanceBloc>.value(
-      value: multipleBalanceBloc,
-      child: MaterialApp(
-        localizationsDelegates: appLocalizationsDelegates,
-        supportedLocales: AppLocalizations.supportedLocales,
-        home: Scaffold(
-          body: SizedBox(
-            width: 700,
-            height: 500,
-            child: TokenCard(token: token, favoritesCallback: () {}),
+    MaterialApp(
+      localizationsDelegates: appLocalizationsDelegates,
+      supportedLocales: AppLocalizations.supportedLocales,
+      home: Scaffold(
+        body: SizedBox(
+          width: 700,
+          height: 500,
+          child: TokenCard(
+            token: token,
+            favoritesCallback: () {},
+            favoriteRepository: _Favorites(),
           ),
         ),
       ),
     ),
   );
   await tester.pump();
+}
+
+class _Favorites implements FavoriteTokensRepository {
+  @override
+  bool contains(TokenStandard standard) => false;
+  @override
+  Future<void> add(TokenStandard standard) async {}
+  @override
+  Future<void> remove(TokenStandard standard) async {}
 }

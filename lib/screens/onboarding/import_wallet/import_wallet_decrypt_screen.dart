@@ -1,15 +1,23 @@
+import 'dart:async';
+
 import 'package:material_ui/material_ui.dart';
-import 'package:stacked/stacked.dart';
-import 'package:zenon_syrius_wallet_flutter/blocs/blocs.dart';
-import 'package:zenon_syrius_wallet_flutter/screens/onboarding/onboarding_scaffold.dart';
-import 'package:zenon_syrius_wallet_flutter/screens/screens.dart';
-import 'package:zenon_syrius_wallet_flutter/utils/utils.dart';
+import 'package:zenon_syrius_wallet_flutter/rearchitecture/utils/extensions/buildcontext_extension.dart';
+import 'package:zenon_syrius_wallet_flutter/screens/onboarding/entry_action_boundary.dart';
+import 'package:zenon_syrius_wallet_flutter/screens/onboarding/import_wallet/import_decrypt_attempt.dart';
+import 'package:zenon_syrius_wallet_flutter/screens/onboarding/import_wallet/import_draft.dart';
+import 'package:zenon_syrius_wallet_flutter/screens/onboarding/import_wallet/import_surface.dart';
+import 'package:zenon_syrius_wallet_flutter/screens/onboarding/import_wallet/import_wallet_password_screen.dart';
+import 'package:zenon_syrius_wallet_flutter/screens/onboarding/onboarding_step_route.dart';
 import 'package:zenon_syrius_wallet_flutter/utils/wallet_file.dart';
-import 'package:zenon_syrius_wallet_flutter/widgets/widgets.dart';
+import 'package:zenon_syrius_wallet_flutter/utils/wallet_utils.dart';
 import 'package:znn_sdk_dart/znn_sdk_dart.dart';
 
+/// Authenticates the originally selected file before passing on its valid seed.
 class ImportWalletDecryptScreen extends StatefulWidget {
+  /// Captures the admitted private file path for one decrypt continuation.
   const ImportWalletDecryptScreen(this.path, {super.key});
+
+  /// Original private encrypted-file path; never used as presentation text.
   final String path;
 
   @override
@@ -18,104 +26,128 @@ class ImportWalletDecryptScreen extends StatefulWidget {
 }
 
 class _ImportWalletDecryptScreenState extends State<ImportWalletDecryptScreen> {
-  String? _passwordErrorText;
-
-  final TextEditingController _passwordController = TextEditingController();
-
-  final GlobalKey<LoadingButtonState> _loadingButtonKey = GlobalKey();
-
-  late LoadingButton _loadingButton;
+  final TextEditingController _password = TextEditingController();
+  Object _source = Object();
+  ImportDecryptAttempt<WalletFile>? _attempt;
+  ImportDecryptStatus? _error;
+  bool _busy = false;
 
   @override
-  Widget build(BuildContext context) {
-    return OnboardingScaffold(
-      step: 2,
-      title: 'Unlock the wallet file',
-      subtitle: 'Enter the password it was saved with',
-      onBack: () {
-        Navigator.pop(context);
-      },
-      primary: _getDecryptKeyStoreFileViewModel(),
-      child: PasswordInputField(
-        hintText: 'Password',
-        controller: _passwordController,
-        onChanged: (String value) {
-          setState(() {});
-        },
-        errorText: _passwordErrorText,
-        onSubmitted: (String value) {
-          if (_passwordController.text.isNotEmpty) {
-            _loadingButton.onPressed!();
+  void didUpdateWidget(ImportWalletDecryptScreen oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.path != widget.path) {
+      _source = Object();
+      _password.clear();
+      _error = null;
+      // The old attempt still owns its original futures and release.
+      _attempt = null;
+      _busy = false;
+    }
+  }
+
+  Future<void> _decrypt(
+    EntryActionLease lease,
+    Object source,
+    String path,
+    String password,
+  ) async {
+    if (_busy ||
+        !lease.isCurrent ||
+        !identical(source, _source) ||
+        password.isEmpty) {
+      return;
+    }
+    const Future<WalletFile> Function(String, String) decryptor =
+        WalletUtils.decryptWalletFile;
+    final ImportDecryptAttempt<WalletFile> attempt =
+        ImportDecryptAttempt<WalletFile>(
+          path: path,
+          source: source,
+          decrypt: decryptor,
+          accessOriginal: (WalletFile original) {
+            if (original is! KeyStoreWalletFile) {
+              throw const FormatException('Unsupported wallet file');
+            }
+            return original.access<String>(
+              (Wallet wallet) async => (wallet as KeyStore).mnemonic!,
+            );
+          },
+          isCurrent: () =>
+              mounted &&
+              lease.isCurrent &&
+              identical(source, _source) &&
+              widget.path == path,
+          validateSeed: (String seed) {
+            final List<String> words = seed.trim().split(RegExp(r'\s+'));
+            return ImportSeedDraft(seed, expectedWords: words.length).valid;
+          },
+          isIncorrectPassword: (Object error) =>
+              error is IncorrectPasswordException,
+        );
+    setState(() {
+      _attempt = attempt;
+      _busy = true;
+      _error = null;
+    });
+    final ImportDecryptOutcome outcome = await attempt.start(password);
+    if (!mounted || !identical(_attempt, attempt)) return;
+    setState(() => _busy = false);
+    if (!lease.isCurrent ||
+        !identical(source, _source) ||
+        widget.path != path) {
+      return;
+    }
+    if (outcome.status == ImportDecryptStatus.ready) {
+      final String seed = outcome.seed!;
+      Navigator.of(context).push<void>(
+        OnboardingStepRoute<void>(
+          builder: (_) => ImportWalletPasswordScreen(seed),
+        ),
+      );
+    } else if (outcome.status != ImportDecryptStatus.stale) {
+      setState(() => _error = outcome.status);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) => EntryActionBoundary(
+    source: _source,
+    builder: (BuildContext context, EntryActionLease lease) {
+      final Object source = _source;
+      final String path = widget.path;
+      final String password = _password.text;
+      return ImportUnlockSurface(
+        password: _password,
+        busy: _busy,
+        error: _error == null
+            ? null
+            : _error == ImportDecryptStatus.incorrectPassword
+            ? context.l10n.importPasswordIncorrect
+            : context.l10n.importDecryptFailed,
+        onChanged: () {
+          if (lease.isCurrent && identical(source, _source)) {
+            setState(() {
+              _source = Object();
+              _error = null;
+            });
           }
         },
-      ),
-    );
-  }
-
-  LoadingButton _getLoadingButton(DecryptWalletFileBloc model) {
-    return LoadingButton.onboarding(
-      key: _loadingButtonKey,
-      onPressed: _passwordController.text.isNotEmpty
-          ? () async {
-              _loadingButtonKey.currentState!.animateForward();
-              await model.decryptWalletFile(
-                widget.path,
-                _passwordController.text,
-              );
-            }
-          : null,
-      text: 'Continue',
-    );
-  }
-
-  ViewModelBuilder<DecryptWalletFileBloc> _getDecryptKeyStoreFileViewModel() {
-    return ViewModelBuilder<DecryptWalletFileBloc>.reactive(
-      onViewModelReady: (DecryptWalletFileBloc model) {
-        model.stream.listen(
-          (WalletFile? walletFile) {
-            if (walletFile != null && walletFile is KeyStoreWalletFile) {
-              _loadingButtonKey.currentState!.animateReverse();
-              setState(() {
-                _passwordErrorText = null;
-              });
-              walletFile
-                  .access(
-                    (Wallet wallet) =>
-                        Future.value((wallet as KeyStore).mnemonic!),
-                  )
-                  .then(
-                    (String value) => NavigationUtils.push(
-                      context,
-                      ImportWalletPasswordScreen(value),
-                    ),
-                  );
-            }
-          },
-          onError: (error) {
-            _loadingButtonKey.currentState!.animateReverse();
-            if (error is IncorrectPasswordException) {
-              setState(() {
-                _passwordErrorText = 'Incorrect password';
-              });
-            } else {
-              setState(() {
-                _passwordErrorText = error.toString();
-              });
-            }
-          },
-        );
-      },
-      builder: (_, DecryptWalletFileBloc model, __) {
-        _loadingButton = _getLoadingButton(model);
-        return _getLoadingButton(model);
-      },
-      viewModelBuilder: DecryptWalletFileBloc.new,
-    );
-  }
+        onBack: lease.guard(() => Navigator.pop(context)),
+        onContinue: _busy || password.isEmpty
+            ? null
+            : lease.guard(() {
+                if (_password.text == password) {
+                  unawaited(_decrypt(lease, source, path, password));
+                }
+              }),
+      );
+    },
+  );
 
   @override
   void dispose() {
-    _passwordController.dispose();
+    _source = Object();
+    _password.dispose();
     super.dispose();
   }
 }

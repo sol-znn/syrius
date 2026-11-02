@@ -5,7 +5,7 @@ nextTypeId: 102
 types:
   WalletNotification:
     typeId: 100
-    nextIndex: 5
+    nextIndex: 9
     fields:
       title:
         index: 0
@@ -17,6 +17,14 @@ types:
         index: 3
       id:
         index: 4
+      eventKind:
+        index: 5
+      walletScope:
+        index: 6
+      chainId:
+        index: 7
+      transactionHash:
+        index: 8
   NotificationType:
     typeId: 101
     nextIndex: 16

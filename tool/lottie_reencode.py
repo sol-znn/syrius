@@ -2,7 +2,7 @@
 """Rebuilds the Lottie assets the wallet ships from their masters.
 
     python tool/lottie_reencode.py                  # all of it
-    python tool/lottie_reencode.py --only launch    # the two launch files alone
+    python tool/lottie_reencode.py --only launch    # the launch files alone
     python tool/lottie_reencode.py --only lottie    # the Lottie files alone
     python tool/lottie_reencode.py --check          # report sizes, write nothing
 
@@ -67,9 +67,12 @@ The container is written here and not by Pillow's `save_all`. That goes
 through libwebp's animation encoder, which folds a frame that matches the one
 before into that one's duration; the film ends on six identical frames and
 came out as 50. The lock screen replays frames 14 to 56 by number, so all 56
-have to be there. Each frame after the first stores only the box that
-changed since the one before, coded on its own from the master's pixels, so
-nothing drifts from frame to frame and the still ending costs a few bytes.
+have to be there. Changed rectangles are coded from the master's pixels,
+and the still ending costs a few bytes. The full film's last independent
+frame is also stored as launch_end.webp, with its original compressed
+payload. Pixel equality with the final canvas is required before writing
+it. Skip can then decode that same ending without decoding every unseen
+intermediate frame; normal playback keeps every original frame and clock.
 """
 
 from __future__ import annotations
@@ -126,6 +129,7 @@ PAD = 4
 
 LAUNCH_MASTER = MASTERS / "ic_anim_splash.json"
 LAUNCH_OUT = ROOT / "assets" / "images" / "launch.webp"
+LAUNCH_END_OUT = ROOT / "assets" / "images" / "launch_end.webp"
 
 # The worst frame has to stay at 40 dB or better against its JPEG. 80 is on
 # the line and 75 is under it; 84 leaves a margin for 1.13 MB. The worst
@@ -369,6 +373,39 @@ def _launch(master: dict, width: int, options: dict) -> tuple[bytes, str]:
     )
 
 
+def _launch_ending(data: bytes) -> bytes:
+    """Reuse the last independent payload only if it is the final canvas."""
+    film = Image.open(io.BytesIO(data))
+    width, height = film.size
+    candidate = None
+    at = 12
+    while at < len(data):
+        tag = data[at:at + 4]
+        size = int.from_bytes(data[at + 4:at + 8], "little")
+        body = data[at + 8:at + 8 + size]
+        if len(body) != size:
+            raise SystemExit("the launch container is incomplete")
+        if tag == b"ANMF":
+            x, y, w, h = (
+                int.from_bytes(body[start:start + 3], "little")
+                for start in (0, 3, 6, 9)
+            )
+            if (x, y, w + 1, h + 1, body[15]) == (0, 0, width, height, 2):
+                candidate = body[16:]
+        at += 8 + size + (size & 1)
+    if at != len(data) or candidate is None:
+        raise SystemExit("the launch has no independent ending")
+    still = b"RIFF" + struct.pack("<I", len(candidate) + 4) + b"WEBP" + candidate
+    ending = Image.open(io.BytesIO(still))
+    film.seek(film.n_frames - 1)
+    if (ending.n_frames != 1 or ending.size != film.size
+            or ImageChops.difference(
+                ending.convert("RGB"), film.convert("RGB"),
+            ).getbbox() is not None):
+        raise SystemExit("the independent ending differs from the final canvas")
+    return still
+
+
 def _dump(doc: dict) -> bytes:
     return json.dumps(doc, separators=(",", ":"), ensure_ascii=False).encode("utf-8")
 
@@ -386,7 +423,7 @@ def main() -> int:
     parser.add_argument(
         "--only",
         choices=("lottie", "launch"),
-        help="one half of the work: the Lottie files, or the two launch WebPs",
+        help="one half of the work: the Lottie files, or the launch WebPs",
     )
     args = parser.parse_args()
 
@@ -399,6 +436,11 @@ def main() -> int:
         ):
             data, note = _launch(master, width, options)
             _write(path, data, args.check, LAUNCH_MASTER.stat().st_size, note)
+            if path == LAUNCH_OUT:
+                _write(
+                    LAUNCH_END_OUT, _launch_ending(data), args.check,
+                    len(data), "one pixel-identical ending, original VP8 payload",
+                )
     if args.only == "launch":
         return 0
 

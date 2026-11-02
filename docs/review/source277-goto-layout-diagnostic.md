@@ -1,0 +1,15 @@
+# Source277 Go To layout diagnostic
+
+Source c8d1687e8899c2be18d71218c6c2ed86ba4716fb, tree bbc4ae11d8e86300f82eaa6d8852c3be7e32bcd9, has one original harness-only attempt: [run 41270607722](https://github.com/edgepillar/syrius/actions/runs/41270607722), job 124742429567. It completed with failure and no retained artifacts. It was not retried. The [original Source276 failure](source276-goto-layout-failure.md) is retained separately.
+
+The selected analysis has zero findings. The 918 Python controls have three original skips, no failures or errors; all fourteen original asset observations complete. The Dart engine passed 776 cases, failed one and skipped none. Its complete 397278-byte output has SHA-256 5ae9a333e27604597d9bda6e4cdfb02ddac791379ceb93d8876eabd91fa5db72. It exited one normally in 151.719 seconds without a timeout, forced kill or output overflow.
+
+The fixed diagnostic identifies dark theme, right-to-left layout and 2x text scaling. Flutter reports a RenderFlex overflow of 449 pixels at the bottom, with the source widget at go_to_palette.dart line 499, column 34. This is the outer palette Column. The printed test context is line 164. These facts identify an occurrence rather than qualifying the layout or healing the prior failure.
+
+Source inspection shows the footer's shortcut summary sharing a Row with fixed movement/open controls. A narrow remaining summary slot can grow vertically with scaled mixed-direction text. Source278 gives scaled or narrower footers a full-width summary under wrapping controls. The existing row is retained at the reference width and 1x text scale. No text scale is clamped. This proposed explanation and correction still require the unchanged geometry test to pass.
+
+The actual eight-Home review on Source275 also observed unselected Go To labels and icons dimmer than the reference. The reference markup uses normal foreground ink for them, and SeamGate explicitly preserves a control's normal appearance while blocking its interaction. Source278 uses the existing foreground token for those labels and icons. Secondary details, keyboard hints, selection background, keyboard dispatch, focus and the highlight animation stay unchanged. The existing geometry case gains selected/unselected ink checks in both themes, directions and scales; no old input or assertion is removed.
+
+Expected focused counts remain 777/779; the strict 240-second engine deadline and four-MiB output cap remain. Native capture and independent reading of eight Home images and 36 total PNGs, plus a fresh full Windows baseline and inspector, remain required after the focused gate. The expected full count is 4849 passes and one original skip, not execution proof. No native wallet or lab was selected by the failed diagnostic attempt. Settings preparation remains private and deferred.
+
+The main ledger remains 72/80, with zero accepted matches and 82 missing literal outputs. All original FAILURE/HOLD/UNKNOWN evidence remains. Native101 Send and Native103 Token confirmation/effect are UNKNOWN; Native104 is not admitted.

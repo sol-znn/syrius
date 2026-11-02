@@ -1,0 +1,8 @@
+# prerequisite: explicit isolated chain-321 profile, unlocked, index 1 selected
+# Run only if the profile has exactly indexes 0 and 1. This derives index 2
+# through Settings. It does not fund it or submit an account block.
+goto settings
+tap --key settings_addresses
+wait --key settings_add_address --timeout 30
+tap --key settings_add_address
+assert --key addresses_settings_page

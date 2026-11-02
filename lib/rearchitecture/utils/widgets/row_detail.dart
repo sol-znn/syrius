@@ -44,9 +44,8 @@ class RowDetailGroup extends StatefulWidget {
 
   /// The group round [context], or null. The caller is rebuilt when the
   /// open row changes.
-  static RowDetailGroupState? maybeOf(BuildContext context) => context
-      .dependOnInheritedWidgetOfExactType<_RowDetailGroupScope>()
-      ?.state;
+  static RowDetailGroupState? maybeOf(BuildContext context) =>
+      context.dependOnInheritedWidgetOfExactType<_RowDetailGroupScope>()?.state;
 
   @override
   State<RowDetailGroup> createState() => RowDetailGroupState();
@@ -366,13 +365,21 @@ class _RowDetailState extends State<RowDetail> with TickerProviderStateMixin {
             children: <Widget>[
               row,
               if (!closed)
-                // Out of traversal from the moment it starts to close: Tab
-                // should not land in a detail that is on its way out.
-                ExcludeFocus(
-                  excluding: !_open,
-                  child: _RowDetailReveal(
-                    reveal: _reveal,
-                    child: Builder(builder: widget.detail),
+                // Closing details refuse input and semantic actions while
+                // the same body can still reverse its reveal.
+                IgnorePointer(
+                  ignoring: !_open,
+                  child: ExcludeSemantics(
+                    excluding: !_open,
+                    child: Focus(
+                      canRequestFocus: false,
+                      // Keep retained EditableText traversal flags unchanged.
+                      descendantsAreFocusable: _open,
+                      child: _RowDetailReveal(
+                        reveal: _reveal,
+                        child: Builder(builder: widget.detail),
+                      ),
+                    ),
                   ),
                 ),
             ],
@@ -480,9 +487,7 @@ class RowDetailChevron extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final Animation<double> turned =
-        context
-            .dependOnInheritedWidgetOfExactType<_RowDetailScope>()
-            ?.turned ??
+        context.dependOnInheritedWidgetOfExactType<_RowDetailScope>()?.turned ??
         kAlwaysDismissedAnimation;
     final bool rtl = Directionality.of(context) == TextDirection.rtl;
     return RotationTransition(

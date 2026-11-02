@@ -1,42 +1,26 @@
-import 'dart:async';
+import 'package:zenon_syrius_wallet_flutter/blocs/accelerator/accelerator_action_bloc.dart';
+import 'package:zenon_syrius_wallet_flutter/widgets/modular_widgets/accelerator_widgets/accelerator_action_controller.dart';
 
-import 'package:zenon_syrius_wallet_flutter/blocs/blocs.dart';
-import 'package:zenon_syrius_wallet_flutter/main.dart';
-import 'package:zenon_syrius_wallet_flutter/utils/plasma_purpose.dart';
-import 'package:zenon_syrius_wallet_flutter/utils/utils.dart';
-import 'package:znn_sdk_dart/znn_sdk_dart.dart';
+/// Compatibility observer for one original Accelerator project-creation intent.
+class CreateProjectBloc extends AcceleratorActionBloc {
+  /// Retains the original injected or captured action capabilities.
+  CreateProjectBloc({super.source, super.controller});
 
-class CreateProjectBloc extends BaseBloc<AccountBlockTemplate?> {
-  void createProject(
+  /// Submits copied metadata and exact native funding units for the project.
+  Future<AcceleratorActionOutcome> createProject(
     String name,
     String description,
     String url,
     BigInt znnFundsNeeded,
     BigInt qsrFundsNeeded,
-  ) {
-    try {
-      addEvent(null);
-      final AccountBlockTemplate transactionParams =
-          zenon!.embedded.accelerator.createProject(
-        name,
-        description,
-        url,
-        znnFundsNeeded,
-        qsrFundsNeeded,
-      );
-      AccountBlockUtils().createAccountBlock(
-        transactionParams,
-        PlasmaPurpose.createProject.message,
-      ).then(
-        (AccountBlockTemplate block) {
-          ZenonAddressUtils().refreshBalance();
-          addEvent(block);
-        },
-      ).onError(
-        addError,
-      );
-    } catch (e, stackTrace) {
-      addError(e, stackTrace);
-    }
-  }
+  ) => run(
+    AcceleratorActionRequest(
+      kind: AcceleratorActionKind.createProject,
+      name: name,
+      description: description,
+      url: url,
+      znn: znnFundsNeeded,
+      qsr: qsrFundsNeeded,
+    ),
+  );
 }

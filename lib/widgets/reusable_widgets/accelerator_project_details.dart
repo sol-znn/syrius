@@ -1,20 +1,13 @@
 import 'package:material_ui/material_ui.dart';
-import 'package:zenon_syrius_wallet_flutter/l10n/app_localizations.dart';
 import 'package:zenon_syrius_wallet_flutter/rearchitecture/utils/extensions/buildcontext_extension.dart';
-import 'package:zenon_syrius_wallet_flutter/utils/app_colors.dart';
 import 'package:zenon_syrius_wallet_flutter/utils/app_theme.dart';
-import 'package:zenon_syrius_wallet_flutter/utils/constants.dart';
 import 'package:zenon_syrius_wallet_flutter/utils/format_utils.dart';
-import 'package:zenon_syrius_wallet_flutter/utils/global.dart';
+import 'package:zenon_syrius_wallet_flutter/widgets/modular_widgets/accelerator_widgets/accelerator_vote_policy.dart';
 import 'package:znn_sdk_dart/znn_sdk_dart.dart';
 
-/// The ledger line under a project or phase name: owner, id, age and, while
-/// a project is voted on, when voting closes.
-///
-/// One line that fades rather than wraps, so every row of a list keeps the
-/// same height. Labels are faint, values mono.
+/// Copied owner, exact hash and creation time. No mutable wallet label lookup.
 class AcceleratorProjectDetails extends StatelessWidget {
-  /// Creates the line from whichever parts are known.
+  /// Displays supplied original facts without a wallet or asynchronous lookup.
   const AcceleratorProjectDetails({
     this.owner,
     this.hash,
@@ -24,91 +17,64 @@ class AcceleratorProjectDetails extends StatelessWidget {
     super.key,
   });
 
-  /// The project's owner.
+  /// Original canonical owner address, with the full identifier in its tooltip.
   final Address? owner;
 
-  /// The project's or phase's id.
+  /// Exact original project or phase hash, with its full tooltip value.
   final Hash? hash;
 
-  /// When it was created, in Unix seconds.
+  /// Original creation time in Unix seconds, absent when unknown.
   final int? creationTimestamp;
 
-  /// Its status; a project in voting also shows when voting closes.
+  /// Original status used by the project-only display countdown.
   final AcceleratorProjectStatus? acceleratorProjectStatus;
 
-  /// Phases have no voting deadline of their own.
+  /// Whether the original target is a phase, which has no invented age expiry.
   final bool isPhase;
-
   @override
   Widget build(BuildContext context) {
-    final TextStyle value = monoStyle(
-      Theme.of(context).textTheme.titleMedium!.copyWith(fontSize: 12),
-    );
-    final TextStyle label = value.copyWith(
-      fontFamily: kSansFontFamily,
-      color: AppColors.faint,
-    );
-    final List<(String, String)> parts = <(String, String)>[
-      if (owner != null) ('Owner ', _getOwnerDetails()),
-      if (hash != null) ('ID ', hash!.toShortString()),
-      if (creationTimestamp != null) ...<(String, String)>[
-        ('Created ', _formatData(creationTimestamp! * 1000)),
-        if (!isPhase &&
-            acceleratorProjectStatus == AcceleratorProjectStatus.voting)
-          _getTimeUntilVotingCloses(context.l10n),
-      ],
+    final AppTokens tokens = AppTokens.of(context);
+    String createdLabel() {
+      final String label = context.l10n.acceleratorCreated;
+      final String date = FormatUtils.formatDate(creationTimestamp! * 1000);
+      return '$label $date';
+    }
+
+    final List<String> parts = <String>[
+      if (owner != null)
+        '${context.l10n.acceleratorOwner} ${owner!.toShortString()}',
+      if (hash != null) hash!.toShortString(),
+      if (creationTimestamp != null) createdLabel(),
     ];
-    return Text.rich(
-      TextSpan(
-        children: <InlineSpan>[
-          for (int i = 0; i < parts.length; i++) ...<InlineSpan>[
-            if (i > 0) TextSpan(text: '  ·  ', style: label),
-            TextSpan(text: parts[i].$1, style: label),
-            TextSpan(text: parts[i].$2, style: value),
-          ],
-        ],
+    if (!isPhase &&
+        creationTimestamp != null &&
+        acceleratorProjectStatus == AcceleratorProjectStatus.voting) {
+      final int remaining =
+          creationTimestamp! +
+          AcceleratorVotePolicy.projectVotingSeconds -
+          DateTime.now().millisecondsSinceEpoch ~/ 1000;
+      if (remaining >= 0) {
+        parts.add(
+          context.l10n.acceleratorClosesIn(
+            FormatUtils.formatDurationCoarse(
+              context.l10n,
+              Duration(seconds: remaining),
+            ),
+          ),
+        );
+      }
+    }
+    return Tooltip(
+      message: <String>[
+        if (owner != null) owner.toString(),
+        if (hash != null) hash.toString(),
+      ].join('\n'),
+      child: Text(
+        parts.join(' · '),
+        maxLines: 1,
+        overflow: TextOverflow.ellipsis,
+        style: tokens.dataText.copyWith(fontSize: 12, color: tokens.dim),
       ),
-      maxLines: 1,
-      overflow: TextOverflow.fade,
-      softWrap: false,
     );
-  }
-
-  String _formatData(int transactionMillis) {
-    final int currentMillis = DateTime.now().millisecondsSinceEpoch;
-    if (currentMillis - transactionMillis <=
-        const Duration(
-          days: 1,
-        ).inMilliseconds) {
-      return FormatUtils.formatDataShort(currentMillis - transactionMillis);
-    }
-    return FormatUtils.formatDate(transactionMillis);
-  }
-
-  /// The label and the value of the time left to vote.
-  ///
-  /// One message, cut where the time stands in it, so that the time keeps
-  /// the value's style and each language its own order of words. What a
-  /// language says after the time stays with it, in the value.
-  (String, String) _getTimeUntilVotingCloses(AppLocalizations l10n) {
-    final DateTime creationDate = DateTime.fromMillisecondsSinceEpoch(
-      (creationTimestamp ?? 0) * 1000,
-    );
-    final DateTime votingEnds = creationDate.add(kProjectVotingPeriod);
-    final Duration difference = votingEnds.difference(DateTime.now());
-    if (difference.isNegative) {
-      return ('Voting closed', '');
-    }
-    const String mark = '\u0000';
-    final List<String> around = l10n.acceleratorClosesIn(mark).split(mark);
-    final String left = FormatUtils.formatDurationCoarse(l10n, difference);
-    return (around.first, '$left${around.skip(1).join()}');
-  }
-
-  String _getOwnerDetails() {
-    if (kDefaultAddressList.contains(owner.toString())) {
-      return kAddressLabelMap[owner.toString()] ?? owner!.toShortString();
-    }
-    return owner!.toShortString();
   }
 }

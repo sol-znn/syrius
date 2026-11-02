@@ -31,9 +31,13 @@ class DeployPillarBloc extends Bloc<DeployPillarEvent, DeployPillarState> {
     DeployPillarRequested event,
     Emitter<DeployPillarState> emit,
   ) async {
+    if (emit.isDone) return;
+    late final DeployPillarState terminal;
     try {
       emit(const DeployPillarLoading());
-      if (await _pillarNameAlreadyExists(event.pillarName)) {
+      final bool nameExists = await _pillarNameAlreadyExists(event.pillarName);
+      if (emit.isDone) return;
+      if (nameExists) {
         throw PillarNameAlreadyExistsException();
       }
       final AccountBlockTemplate transactionParams = _zenon.embedded.pillar
@@ -51,15 +55,53 @@ class DeployPillarBloc extends Bloc<DeployPillarEvent, DeployPillarState> {
             waitForRequiredPlasma: true,
           );
 
-      _zenonAddressUtils.refreshBalance();
-
-      emit(DeployPillarDone(accountBlock: response));
+      terminal = DeployPillarDone(accountBlock: response);
     } on SyriusException catch (e, stackTrace) {
-      addError(e, stackTrace);
-      emit(DeployPillarFailure(exception: e));
-    } on Exception catch (e, stackTrace) {
-      addError(e, stackTrace);
-      emit(DeployPillarFailure(exception: FailureException()));
+      _reportError(e, stackTrace);
+      terminal = DeployPillarFailure(exception: e, error: e);
+    } on Object catch (e, stackTrace) {
+      _reportError(e, stackTrace);
+      terminal = DeployPillarFailure(exception: FailureException(), error: e);
+    }
+    if (!emit.isDone) emit(terminal);
+    if (terminal is DeployPillarDone) {
+      try {
+        _zenonAddressUtils.refreshBalance();
+      } on Object catch (error, trace) {
+        _reportError(error, trace);
+      }
+    }
+  }
+
+  @override
+  void onChange(Change<DeployPillarState> change) {
+    if (change.nextState is! DeployPillarDone &&
+        change.nextState is! DeployPillarFailure) {
+      super.onChange(change);
+      return;
+    }
+    try {
+      super.onChange(change);
+    } on Object catch (error, trace) {
+      // Terminal observer failure cannot replace the original delivered state.
+      _reportError(error, trace);
+    }
+  }
+
+  @override
+  void onError(Object error, StackTrace stackTrace) {
+    try {
+      super.onError(error, stackTrace);
+    } on Object {
+      // A diagnostic observer cannot replace an original preparation or result.
+    }
+  }
+
+  void _reportError(Object error, StackTrace trace) {
+    try {
+      addError(error, trace);
+    } on Object {
+      // Diagnostic observers cannot strand a form or replace acceptance.
     }
   }
 

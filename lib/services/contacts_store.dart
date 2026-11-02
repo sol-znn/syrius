@@ -77,6 +77,9 @@ enum ContactError {
 
   /// No contact has that address.
   notFound,
+
+  /// The captured editor or original storage attachment left before admission.
+  sourceChanged,
 }
 
 /// A refusal of the address book, for a screen to put into words.
@@ -89,6 +92,41 @@ class ContactsException implements Exception {
 
   @override
   String toString() => 'ContactsException(${error.name})';
+}
+
+/// The original persistence attempt, retained independently of any editor.
+class ContactsWriteOutcome {
+  /// A null write denotes a refused or in-memory-only operation.
+  const ContactsWriteOutcome({
+    required this.key,
+    required this.committed,
+    this.write,
+    this.error,
+    this.stackTrace,
+  });
+
+  /// The original storage key.
+  final String key;
+
+  /// Whether the original write completed successfully.
+  final bool committed;
+
+  /// The identical backend Future, when persistence was admitted.
+  final Future<void>? write;
+
+  /// The unchanged original refusal or backend error.
+  final Object? error;
+
+  /// Its original trace.
+  final StackTrace? stackTrace;
+}
+
+class _ContactsLane {
+  Future<void> tail = Future<void>.value();
+  final List<ContactsWriteOutcome> outcomes = <ContactsWriteOutcome>[];
+  Map<String, Contact>? committedContacts;
+  bool contactsComplete = true;
+  int pending = 0;
 }
 
 /// A name for an address.
@@ -330,6 +368,24 @@ class ContactsStore extends ChangeNotifier {
   final DateTime Function() _clock;
 
   Box<dynamic>? _box;
+  int _attachment = 0;
+  final Object _memoryIdentity = Object();
+  static final Expando<_ContactsLane> _lanes = Expando<_ContactsLane>();
+  final Set<_ContactsLane> _observedLanes = <_ContactsLane>{};
+
+  /// Captured original storage, without opening or following a replacement.
+  Object get storageIdentity => isPersistent ? _box! : _memoryIdentity;
+
+  /// Every admitted original write remains observable after an editor leaves.
+  List<ContactsWriteOutcome> get writeOutcomes =>
+      List<ContactsWriteOutcome>.unmodifiable(
+        _observedLanes.expand((_ContactsLane lane) => lane.outcomes),
+      );
+
+  /// Remounted editors cannot issue another write while this Box is writing.
+  bool get hasPendingWrite =>
+      _observedLanes.any((_ContactsLane lane) => lane.pending > 0) ||
+      (_lanes[storageIdentity]?.pending ?? 0) > 0;
 
   // By address, which is what makes a contact the same contact.
   final Map<String, Contact> _contacts = <String, Contact>{};
@@ -341,6 +397,16 @@ class ContactsStore extends ChangeNotifier {
   /// Whether changes are being written to disk.
   bool get isPersistent => _box?.isOpen ?? false;
 
+  bool _readFailed = false;
+  bool _contactsReadComplete = true;
+
+  /// A failed opening cannot establish that the saved address book is empty.
+  bool get readFailed => _readFailed;
+
+  /// Convenience getters retain legacy damaged-entry behavior, while editors
+  /// refuse to replace an incomplete saved book with a partial reconstruction.
+  bool get contactsReadComplete => _contactsReadComplete;
+
   /// Opens the box and reads it. Safe to call again, and after the boxes
   /// were closed under the store, as "Delete cache" closes them.
   ///
@@ -348,6 +414,19 @@ class ContactsStore extends ChangeNotifier {
   /// whose address or name the box already has: the stored one was made
   /// first.
   Future<void> open() async {
+    final bool wasFailed = _readFailed;
+    try {
+      await _open();
+      _readFailed = false;
+      if (wasFailed) notifyListeners();
+    } on Object {
+      _readFailed = true;
+      notifyListeners();
+      rethrow;
+    }
+  }
+
+  Future<void> _open() async {
     if (isPersistent) return;
     final Box<dynamic> box = Hive.isBoxOpen(kContactsBox)
         ? Hive.box<dynamic>(kContactsBox)
@@ -364,7 +443,12 @@ class ContactsStore extends ChangeNotifier {
       _contacts[contact.address] = contact;
       contactsChanged = true;
     }
-    if (contactsChanged) await _writeContacts();
+    if (contactsChanged) {
+      if (!_contactsReadComplete) {
+        throw const ContactsException(ContactError.sourceChanged);
+      }
+      await _writeContacts();
+    }
     for (final MapEntry<String, List<RecentRecipient>> entry
         in earlyRecent.entries) {
       final List<RecentRecipient> stored =
@@ -378,12 +462,30 @@ class ContactsStore extends ChangeNotifier {
   }
 
   void _attach(Box<dynamic> box) {
+    _attachment++;
     _box = box;
     _contacts.clear();
     _recent.clear();
-    for (final Object? entry in _decodeList(box.get(_contactsKey))) {
-      final Contact? contact = Contact.fromJson(entry);
-      if (contact != null) _contacts[contact.address] = contact;
+    final _ContactsLane lane = _lanes[box] ??= _ContactsLane();
+    _observedLanes.add(lane);
+    if (lane.pending > 0 && lane.committedContacts != null) {
+      _contacts.addAll(lane.committedContacts!);
+      _contactsReadComplete = lane.contactsComplete;
+    } else {
+      final Object? raw = box.get(_contactsKey);
+      _contactsReadComplete = _completeContacts(raw);
+      for (final Object? entry in _decodeList(raw)) {
+        final Contact? contact = Contact.fromJson(entry);
+        if (contact != null) {
+          final Contact? previous = lane.committedContacts?[contact.address];
+          _contacts[contact.address] = previous == contact
+              ? previous!
+              : contact;
+        }
+      }
+      lane
+        ..committedContacts = Map<String, Contact>.of(_contacts)
+        ..contactsComplete = _contactsReadComplete;
     }
     for (final Object? key in box.keys) {
       if (key is! String || !key.startsWith(_recentKeyPrefix)) continue;
@@ -414,29 +516,54 @@ class ContactsStore extends ChangeNotifier {
     }
   }
 
-  Future<void> _writeContacts() async {
-    if (!isPersistent) return;
-    await _box!.put(
-      _contactsKey,
-      jsonEncode(<Map<String, dynamic>>[
-        for (final Contact contact in contacts) contact.toJson(),
-      ]),
-    );
+  static bool _completeContacts(Object? stored) {
+    if (stored == null) return true;
+    if (stored is! String) return false;
+    try {
+      final Object? decoded = jsonDecode(stored);
+      if (decoded is! List) return false;
+      final Set<String> addresses = <String>{};
+      final Set<String> names = <String>{};
+      for (final Object? entry in decoded) {
+        final Contact? contact = Contact.fromJson(entry);
+        if (contact == null ||
+            normalize(contact.address) != contact.address ||
+            contact.name.trim() != contact.name ||
+            contact.name.isEmpty ||
+            contact.name.length > kContactNameMaxLength ||
+            !addresses.add(contact.address) ||
+            !names.add(contact.name.toLowerCase())) {
+          return false;
+        }
+      }
+      return true;
+    } on Object {
+      return false;
+    }
+  }
+
+  Future<void> _writeContacts() {
+    final List<Contact> early = List<Contact>.of(_contacts.values);
+    return _change<void>(_contactsKey, null, (Map<String, Contact> next) {
+      for (final Contact contact in early) {
+        if (next.containsKey(contact.address) ||
+            next.values.any(
+              (Contact saved) =>
+                  saved.name.toLowerCase() == contact.name.toLowerCase(),
+            )) {
+          continue;
+        }
+        next[contact.address] = contact;
+      }
+    });
   }
 
   // One entry per sending address, so that a send rewrites one account's
   // list and not every account's.
-  Future<void> _writeRecent(String from) async {
-    if (!isPersistent) return;
-    await _box!.put(
-      '$_recentKeyPrefix$from',
-      jsonEncode(<List<Object>>[
-        for (final RecentRecipient entry
-            in _recent[from] ?? const <RecentRecipient>[])
-          <Object>[entry.address, entry.at.millisecondsSinceEpoch],
-      ]),
-    );
-  }
+  Future<void> _writeRecent(String from) => _persistRecent(
+    from,
+    List<RecentRecipient>.of(_recent[from] ?? const <RecentRecipient>[]),
+  );
 
   static List<RecentRecipient> _mergeRecent(
     List<RecentRecipient> a,
@@ -500,11 +627,11 @@ class ContactsStore extends ChangeNotifier {
   }
 
   /// Every contact, by name without regard to case.
-  List<Contact> get contacts => _contacts.values.toList()
-    ..sort((Contact a, Contact b) {
-      final int byName = a.name.toLowerCase().compareTo(b.name.toLowerCase());
-      return byName != 0 ? byName : a.address.compareTo(b.address);
-    });
+  List<Contact> get contacts =>
+      _contacts.values.toList()..sort((Contact a, Contact b) {
+        final int byName = a.name.toLowerCase().compareTo(b.name.toLowerCase());
+        return byName != 0 ? byName : a.address.compareTo(b.address);
+      });
 
   /// The contact with [address], or null. Null for a string that is not an
   /// address: a field asks this on every keystroke.
@@ -532,13 +659,16 @@ class ContactsStore extends ChangeNotifier {
     required String name,
     required String address,
     String? note,
-  }) async {
+    bool Function()? isCurrent,
+  }) => _change<Contact>(_contactsKey, isCurrent, (Map<String, Contact> next) {
     final String checkedName = _checkedName(name);
     final String checkedAddress = _require(address);
-    if (_contacts.containsKey(checkedAddress)) {
+    if (next.containsKey(checkedAddress)) {
       throw const ContactsException(ContactError.addressTaken);
     }
-    if (_nameOwner(checkedName) != null) {
+    if (next.values.any(
+      (Contact value) => value.name.toLowerCase() == checkedName.toLowerCase(),
+    )) {
       throw const ContactsException(ContactError.nameTaken);
     }
     final Contact contact = Contact(
@@ -551,69 +681,174 @@ class ContactsStore extends ChangeNotifier {
         _clock().millisecondsSinceEpoch,
       ),
     );
-    _contacts[checkedAddress] = contact;
-    notifyListeners();
-    await _writeContacts();
+    next[checkedAddress] = contact;
     return contact;
-  }
+  });
 
   /// Gives the contact with [address] another name, and returns it.
   ///
   /// Throws [ContactsException]: no such contact, or the name is empty, too
   /// long or another contact's. Its own name in another case is allowed.
-  Future<Contact> rename(String address, String name) async {
-    final Contact current = _existing(address);
+  Future<Contact> rename(
+    String address,
+    String name, {
+    Contact? expected,
+    bool Function()? isCurrent,
+  }) => _change<Contact>(_contactsKey, isCurrent, (Map<String, Contact> next) {
+    final Contact current =
+        next[_plain(address)] ??
+        (throw const ContactsException(ContactError.notFound));
+    if (expected != null && !identical(current, expected)) {
+      throw const ContactsException(ContactError.sourceChanged);
+    }
     final String checkedName = _checkedName(name);
-    final Contact? owner = _nameOwner(checkedName);
-    if (owner != null && owner.address != current.address) {
+    if (next.values.any(
+      (Contact value) =>
+          value.address != current.address &&
+          value.name.toLowerCase() == checkedName.toLowerCase(),
+    )) {
       throw const ContactsException(ContactError.nameTaken);
     }
-    return _replace(
-      Contact(
-        name: checkedName,
-        address: current.address,
-        note: current.note,
-        added: current.added,
-      ),
+    final Contact contact = Contact(
+      name: checkedName,
+      address: current.address,
+      note: current.note,
+      added: current.added,
     );
-  }
+    next[current.address] = contact;
+    return contact;
+  });
 
   /// Replaces the note of the contact with [address]; null or blank removes
   /// it.
   ///
   /// Throws [ContactsException] when there is no such contact.
-  Future<Contact> setNote(String address, String? note) async {
-    final Contact current = _existing(address);
-    return _replace(
-      Contact(
-        name: current.name,
-        address: current.address,
-        note: _checkedNote(note),
-        added: current.added,
-      ),
-    );
-  }
+  Future<Contact> setNote(String address, String? note) =>
+      _change<Contact>(_contactsKey, null, (Map<String, Contact> next) {
+        final Contact current =
+            next[_plain(address)] ??
+            (throw const ContactsException(ContactError.notFound));
+        final Contact contact = Contact(
+          name: current.name,
+          address: current.address,
+          note: _checkedNote(note),
+          added: current.added,
+        );
+        next[current.address] = contact;
+        return contact;
+      });
 
   /// Removes the contact with [address]. What was sent to it stays in the
   /// recent recipients: that it was sent to is still true.
   ///
   /// Throws [ContactsException] when there is no such contact.
-  Future<void> remove(String address) async {
-    final Contact current = _existing(address);
-    _contacts.remove(current.address);
-    notifyListeners();
-    await _writeContacts();
-  }
+  Future<void> remove(String address, {bool Function()? isCurrent}) =>
+      _change<void>(_contactsKey, isCurrent, (Map<String, Contact> next) {
+        if (next.remove(_plain(address)) == null) {
+          throw const ContactsException(ContactError.notFound);
+        }
+      });
 
-  Contact _existing(String address) =>
-      byAddress(address) ??
-      (throw const ContactsException(ContactError.notFound));
-
-  Future<Contact> _replace(Contact contact) async {
-    _contacts[contact.address] = contact;
-    notifyListeners();
-    await _writeContacts();
-    return contact;
+  Future<T> _change<T>(
+    String key,
+    bool Function()? sourceIsCurrent,
+    T Function(Map<String, Contact>) change,
+  ) {
+    final Box<dynamic>? box = isPersistent ? _box : null;
+    final Object identity = box ?? _memoryIdentity;
+    final int attachment = _attachment;
+    final _ContactsLane lane = _lanes[identity] ??= _ContactsLane();
+    _observedLanes.add(lane);
+    final Completer<T> completion = Completer<T>();
+    bool revoked = false;
+    bool current() =>
+        !revoked &&
+        !(revoked =
+            attachment != _attachment ||
+            (box != null && (!identical(box, _box) || !box.isOpen)) ||
+            (sourceIsCurrent?.call() == false));
+    lane.pending++;
+    final Future<void> previous = lane.tail;
+    final Completer<void> finished = Completer<void>();
+    lane.tail = finished.future;
+    unawaited(() async {
+      Future<void>? write;
+      try {
+        await previous;
+        if (!current() || !_contactsReadComplete || !lane.contactsComplete) {
+          throw const ContactsException(ContactError.sourceChanged);
+        }
+        // Another store over the same Box may have committed while queued.
+        // Keep unchanged objects so an exact editor receipt remains useful.
+        final Map<String, Contact> next = <String, Contact>{};
+        if (box == null) {
+          next.addAll(_contacts);
+        } else if (lane.committedContacts != null) {
+          next.addAll(lane.committedContacts!);
+        } else {
+          for (final Object? entry in _decodeList(box.get(_contactsKey))) {
+            final Contact? saved = Contact.fromJson(entry);
+            if (saved != null) {
+              final Contact? held = _contacts[saved.address];
+              next[saved.address] = held == saved ? held! : saved;
+            }
+          }
+        }
+        final T result = change(next);
+        if (!current()) {
+          throw const ContactsException(ContactError.sourceChanged);
+        }
+        if (box != null) {
+          write = box.put(
+            key,
+            jsonEncode(<Map<String, dynamic>>[
+              for (final Contact contact in next.values) contact.toJson(),
+            ]),
+          );
+          await write;
+        }
+        lane
+          ..committedContacts = Map<String, Contact>.of(next)
+          ..contactsComplete = true;
+        // Admission owns the original result even after its view disappears.
+        // A replaced attachment must never receive that old completion.
+        if (attachment == _attachment &&
+            (box == null || identical(_box, box))) {
+          _contacts
+            ..clear()
+            ..addAll(next);
+        }
+        lane.outcomes.add(
+          ContactsWriteOutcome(
+            key: key,
+            committed: true,
+            write: write,
+          ),
+        );
+        completion.complete(result);
+      } on Object catch (error, trace) {
+        lane.outcomes.add(
+          ContactsWriteOutcome(
+            key: key,
+            committed: false,
+            write: write,
+            error: error,
+            stackTrace: trace,
+          ),
+        );
+        completion.completeError(error, trace);
+      } finally {
+        lane.pending--;
+        finished.complete();
+        // A display observer cannot replace the retained storage outcome.
+        try {
+          notifyListeners();
+        } on Object {
+          /* Original already retained. */
+        }
+      }
+    }());
+    return completion.future;
   }
 
   /// Records that [from] sent to [to], now.
@@ -621,22 +856,99 @@ class ContactsStore extends ChangeNotifier {
   /// Never throws for what it is given: it is called once the transfer has
   /// gone, and a failure here would be reported as a failure of the send.
   /// A string that is not an address is not recorded.
-  Future<void> noteSent(String from, String to) async {
+  Future<void> noteSent(String from, String to) {
     final String? sender = normalize(from);
     final String? recipient = normalize(to);
-    if (sender == null || recipient == null) return;
+    if (sender == null || recipient == null) return Future<void>.value();
     final DateTime now = DateTime.fromMillisecondsSinceEpoch(
       _clock().millisecondsSinceEpoch,
     );
-    final List<RecentRecipient> list = <RecentRecipient>[
+    return _persistRecent(sender, <RecentRecipient>[
       RecentRecipient(recipient, now),
-      ...(_recent[sender] ?? const <RecentRecipient>[]).where(
-        (RecentRecipient entry) => entry.address != recipient,
-      ),
-    ];
-    _recent[sender] = list.take(kRecentRecipientsKept).toList();
-    notifyListeners();
-    await _writeRecent(sender);
+    ]);
+  }
+
+  Future<void> _persistRecent(String sender, List<RecentRecipient> accepted) {
+    final Box<dynamic>? box = isPersistent ? _box : null;
+    final int attachment = _attachment;
+    final Object identity = box ?? _memoryIdentity;
+    final _ContactsLane lane = _lanes[identity] ??= _ContactsLane();
+    _observedLanes.add(lane);
+    final Future<void> previous = lane.tail;
+    final Completer<void> finished = Completer<void>();
+    final Completer<void> completion = Completer<void>();
+    lane.tail = finished.future;
+    lane.pending++;
+    unawaited(() async {
+      Future<void>? write;
+      final String key = '$_recentKeyPrefix$sender';
+      try {
+        await previous;
+        if (attachment != _attachment ||
+            (box != null && (!identical(box, _box) || !box.isOpen))) {
+          throw const ContactsException(ContactError.sourceChanged);
+        }
+        final List<RecentRecipient> saved = box == null
+            ? (_recent[sender] ?? const <RecentRecipient>[])
+            : <RecentRecipient>[
+                for (final Object? entry in _decodeList(box.get(key)))
+                  if (entry is List &&
+                      entry.length == 2 &&
+                      entry[0] is String &&
+                      entry[1] is int)
+                    RecentRecipient(
+                      entry[0] as String,
+                      DateTime.fromMillisecondsSinceEpoch(entry[1] as int),
+                    ),
+              ];
+        final List<RecentRecipient> committed = _mergeRecent(accepted, saved);
+        // The accepted transfer is already a fact. Keep that fact in memory
+        // even if persisting its history fails; user-authored edits above
+        // publish only after a successful original write.
+        if (attachment == _attachment &&
+            (box == null || identical(box, _box))) {
+          _recent[sender] = committed;
+        }
+        if (box != null) {
+          write = box.put(
+            key,
+            jsonEncode(<List<Object>>[
+              for (final RecentRecipient entry in committed)
+                <Object>[entry.address, entry.at.millisecondsSinceEpoch],
+            ]),
+          );
+          await write;
+        }
+        lane.outcomes.add(
+          ContactsWriteOutcome(
+            key: key,
+            committed: true,
+            write: write,
+          ),
+        );
+        completion.complete();
+      } on Object catch (error, trace) {
+        lane.outcomes.add(
+          ContactsWriteOutcome(
+            key: key,
+            committed: false,
+            write: write,
+            error: error,
+            stackTrace: trace,
+          ),
+        );
+        completion.completeError(error, trace);
+      } finally {
+        lane.pending--;
+        finished.complete();
+        try {
+          notifyListeners();
+        } on Object {
+          /* Original already retained. */
+        }
+      }
+    }());
+    return completion.future;
   }
 
   /// The addresses [from] sent to, newest first, each once, at most
@@ -644,9 +956,8 @@ class ContactsStore extends ChangeNotifier {
   List<RecentRecipient> recent(
     String from, {
     int limit = kRecentRecipientsShown,
-  }) => (_recent[_plain(from)] ?? const <RecentRecipient>[])
-      .take(limit)
-      .toList();
+  }) =>
+      (_recent[_plain(from)] ?? const <RecentRecipient>[]).take(limit).toList();
 
   /// When [to] was last sent to: by [from], or by any address of the wallet
   /// when [from] is not given. Null when never.

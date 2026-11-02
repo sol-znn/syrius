@@ -18,19 +18,28 @@ final class DeploySentinelInitial extends DeploySentinelState {
 /// Failure state emitted when deployment fails.
 final class DeploySentinelFailure extends DeploySentinelState {
   /// Creates a new [DeploySentinelFailure] state.
-  const DeploySentinelFailure({required this.exception});
+  const DeploySentinelFailure({required this.exception, this.error});
 
   /// The error that caused the deployment operation to fail.
   final SyriusException exception;
 
+  /// The original preparation or publication error before display mapping.
+  final Object? error;
+
   @override
-  List<Object> get props => <Object>[exception];
+  List<Object> get props => <Object>[exception, ?error];
 }
 
 /// Success state emitted when deployment finishes.
 final class DeploySentinelDone extends DeploySentinelState {
   /// Creates a new [DeploySentinelDone] state.
-  const DeploySentinelDone();
+  const DeploySentinelDone({this.accountBlock});
+
+  /// The exact accepted response. Legacy empty states cannot confirm a hash.
+  final AccountBlockTemplate? accountBlock;
+
+  @override
+  List<Object> get props => <Object>[?accountBlock];
 }
 
 /// Loading state emitted while deployment is in progress.

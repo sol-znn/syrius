@@ -43,6 +43,7 @@ void main() {
 
       when(() => mockZenon.embedded).thenReturn(mockEmbedded);
       when(() => mockEmbedded.pillar).thenReturn(mockPillar);
+      when(() => pillarInfo.ownerAddress).thenReturn(emptyAddress);
       when(() => pillarInfo.toJson()).thenReturn(<String, dynamic>{
         'name': 'pillar-name',
         'rank': 1,

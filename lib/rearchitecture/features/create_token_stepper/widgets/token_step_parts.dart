@@ -1,7 +1,7 @@
 import 'dart:math' as math;
 
-import 'package:material_ui/material_ui.dart';
 import 'package:flutter/services.dart';
+import 'package:material_ui/material_ui.dart';
 import 'package:zenon_syrius_wallet_flutter/rearchitecture/utils/utils.dart';
 import 'package:zenon_syrius_wallet_flutter/utils/app_theme.dart';
 import 'package:zenon_syrius_wallet_flutter/widgets/reusable_widgets/modals/modal_chrome.dart';
@@ -42,9 +42,8 @@ class TokenStepViewport extends InheritedWidget {
   final double height;
 
   /// The height given by the nearest [TokenStepViewport], if there is one.
-  static double? maybeOf(BuildContext context) => context
-      .dependOnInheritedWidgetOfExactType<TokenStepViewport>()
-      ?.height;
+  static double? maybeOf(BuildContext context) =>
+      context.dependOnInheritedWidgetOfExactType<TokenStepViewport>()?.height;
 
   @override
   bool updateShouldNotify(TokenStepViewport oldWidget) =>
@@ -100,45 +99,75 @@ class _TokenStepFrameState extends State<TokenStepFrame>
   // and finds the first of them, the other finds the main action.
   final FocusNode _fields = FocusNode(debugLabel: 'token step fields');
   final FocusNode _primary = FocusNode(debugLabel: 'token step action');
+  final FocusNode _frameFocus = FocusNode(debugLabel: 'token step');
   final GlobalKey _actionsKey = GlobalKey();
+  bool _stepAllowsInput = true;
+  bool _interactive = false;
+  int _focusGeneration = 0;
 
-  // Runs while the step opens. The stepper grows the step over
-  // `Durations.medium1`, so where the actions end up is not known until
-  // then; they are followed for a little longer than that.
-  late final AnimationController _opening = AnimationController(
-    vsync: this,
-    duration: Durations.medium2,
-  )..addListener(_followActions);
+  // Follow the actions after the shared-axis gate opens. Focusing before
+  // then would target a field that is still invisible or excluded.
+  late final AnimationController _opening;
 
   @override
   void initState() {
     super.initState();
-    if (widget.active) {
-      _open();
-    }
+    // Never-selected steps still dispose this controller with the flow.
+    _opening = AnimationController(
+      vsync: this,
+      duration: StepSwitcher.retainedDuration,
+      animationBehavior: AnimationBehavior.preserve,
+    )..addListener(_followActions);
+  }
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    _stepAllowsInput = StepInteraction.of(context);
+    _syncActivity();
   }
 
   @override
   void didUpdateWidget(TokenStepFrame oldWidget) {
     super.didUpdateWidget(oldWidget);
-    if (widget.active && !oldWidget.active) {
+    _syncActivity();
+  }
+
+  void _syncActivity() {
+    final bool interactive = widget.active && _stepAllowsInput;
+    if (interactive == _interactive) {
+      return;
+    }
+    _interactive = interactive;
+    if (interactive) {
       _open();
+    } else {
+      _focusGeneration++;
+      _opening.stop();
+      if (_frameFocus.hasFocus) {
+        _frameFocus.unfocus();
+      }
     }
   }
 
   void _open() {
+    final int generation = ++_focusGeneration;
     _opening.forward(from: 0);
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (mounted && widget.active) {
-        _focusFirst();
+      if (!mounted ||
+          !_interactive ||
+          generation != _focusGeneration ||
+          _frameFocus.hasFocus) {
+        return;
       }
+      _findFirstControl()?.requestFocus();
     });
   }
 
-  /// Focuses the first control of the step in reading order: the topmost,
+  /// Finds the first control of the step in reading order: the topmost,
   /// and of two on one line the one at the start. A step with no field
   /// focuses its main action.
-  void _focusFirst() {
+  FocusNode? _findFirstControl() {
     final TextDirection direction = Directionality.of(context);
     FocusNode? first;
     for (final FocusNode node in _fields.traversalDescendants) {
@@ -146,8 +175,7 @@ class _TokenStepFrameState extends State<TokenStepFrame>
         first = node;
       }
     }
-    first ??= _primary.traversalDescendants.firstOrNull;
-    first?.requestFocus();
+    return first ?? _primary.traversalDescendants.firstOrNull;
   }
 
   static bool _isBefore(Rect a, Rect b, TextDirection direction) {
@@ -163,7 +191,7 @@ class _TokenStepFrameState extends State<TokenStepFrame>
   void _followActions() {
     WidgetsBinding.instance.addPostFrameCallback((_) {
       final BuildContext? actions = _actionsKey.currentContext;
-      if (!mounted || !widget.active || actions == null) {
+      if (!mounted || !_interactive || actions == null) {
         return;
       }
       Scrollable.ensureVisible(
@@ -178,16 +206,32 @@ class _TokenStepFrameState extends State<TokenStepFrame>
         event.logicalKey != LogicalKeyboardKey.numpadEnter) {
       return KeyEventResult.ignored;
     }
+    if (!_interactive) {
+      return KeyEventResult.handled;
+    }
     // A button inside a field, such as Paste, keeps Enter for itself.
     if (_isOnButton()) {
       return KeyEventResult.ignored;
     }
-    if (event is KeyDownEvent && widget.active) {
+    if (event is KeyDownEvent) {
       widget.onSubmit?.call();
     }
     // The repeats of a held key are taken too: they must not run on through
     // the next step, nor toggle the box the focus has just moved to.
     return KeyEventResult.handled;
+  }
+
+  KeyEventResult _onFrameKey(FocusNode node, KeyEvent event) {
+    final LogicalKeyboardKey key = event.logicalKey;
+    // A review without fields focuses its action. A key held from the
+    // previous step must be released before that action can be activated.
+    if (event is KeyRepeatEvent &&
+        (key == LogicalKeyboardKey.enter ||
+            key == LogicalKeyboardKey.numpadEnter ||
+            key == LogicalKeyboardKey.space)) {
+      return KeyEventResult.handled;
+    }
+    return KeyEventResult.ignored;
   }
 
   /// Whether the focus is on a button between the fields.
@@ -210,14 +254,33 @@ class _TokenStepFrameState extends State<TokenStepFrame>
 
   @override
   void dispose() {
+    _focusGeneration++;
     _opening.dispose();
     _fields.dispose();
     _primary.dispose();
+    _frameFocus.dispose();
     super.dispose();
   }
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context) => IgnorePointer(
+    ignoring: !_interactive,
+    child: ExcludeSemantics(
+      excluding: !_interactive,
+      child: ExcludeFocus(
+        excluding: !_interactive,
+        child: Focus(
+          focusNode: _frameFocus,
+          canRequestFocus: false,
+          skipTraversal: true,
+          onKeyEvent: _onFrameKey,
+          child: _buildFrame(context),
+        ),
+      ),
+    ),
+  );
+
+  Widget _buildFrame(BuildContext context) {
     final double? card = TokenStepViewport.maybeOf(context);
     final double room = card != null && card.isFinite
         ? card

@@ -383,8 +383,8 @@ class CardFieldAction extends StatelessWidget {
   }
 }
 
-/// The look of an action that is not the card's main one: the raised surface
-/// with a line round it, as the Receive and Swap buttons of the home page.
+/// A small secondary card or row action on the raised surface with a line.
+/// Ordinary actions and xs table controls supply their own size and type.
 ///
 /// [line] colours the border; pass the error colour for an action that
 /// undoes something (revoke, cancel, undelegate).
@@ -399,9 +399,10 @@ ButtonStyle cardSecondaryButtonStyle(BuildContext context, {Color? line}) {
     disabledBackgroundColor: Colors.transparent,
     side: BorderSide(color: line ?? cardLineColor(context)),
     shape: const StadiumBorder(),
-    minimumSize: const Size(0, 32),
-    padding: const EdgeInsets.symmetric(horizontal: 14),
+    minimumSize: Size(0, AppTokens.of(context).compactButtonHeight),
+    padding: const EdgeInsets.symmetric(horizontal: 12),
     tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+    visualDensity: VisualDensity.standard,
     textStyle: kTextButtonTextStyle,
   );
 }

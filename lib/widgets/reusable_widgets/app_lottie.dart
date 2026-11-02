@@ -3,9 +3,12 @@ import 'dart:convert';
 import 'dart:isolate';
 import 'dart:ui' as ui;
 
+import 'package:cryptography/dart.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter/widgets.dart';
+import 'package:hex/hex.dart';
 import 'package:lottie/lottie.dart';
+import 'package:zenon_syrius_wallet_flutter/utils/reference_artwork_source.dart';
 
 /// The animations the wallet ships, and every Lottie the wallet draws.
 ///
@@ -30,6 +33,9 @@ import 'package:lottie/lottie.dart';
 ///    launch animation alone is 826 MB decoded, and the package's own cache
 ///    held on to it for the life of the process.
 enum AppLottieAsset {
+  /// The globe turning on Welcome.
+  globe('ic_anim_welcome'),
+
   /// The ZTS coin.
   zts('ic_anim_zts', smallEdge: 128),
 
@@ -74,24 +80,29 @@ enum AppLottieAsset {
   static const double _kSmallStretch = 1.3;
 
   /// The file to draw at [edge] logical pixels on a display of
-  /// [devicePixelRatio]. The full file when [edge] is null.
+  /// [devicePixelRatio]. The full file when [edge] is null. The 48 px strip
+  /// always uses the small file, including on a high-density display.
   String path(double? edge, double devicePixelRatio) {
     final int? small = smallEdge;
     final bool fits =
         small != null &&
         edge != null &&
-        edge * devicePixelRatio <= small * _kSmallStretch;
+        (edge <= 48 || edge * devicePixelRatio <= small * _kSmallStretch);
     return 'assets/lottie/$_name${fits ? '_small' : ''}.json';
   }
 
   bool _keeps(String path) => keep || path.endsWith('_small.json');
+
+  bool get _isObject => this == zts || this == pillar || this == sentinel;
+
+  bool get _loops => this == globe || this == map || this == plasmaGeneration;
 }
 
 /// One of the wallet's animations, on its own layer.
 ///
 /// Until the file is loaded it is an empty box of the same size, so nothing
 /// round it moves when the first frame arrives.
-class AppLottie extends StatefulWidget {
+class AppLottie extends StatelessWidget {
   /// Draws [asset] in a square of [size], or as large as its parent allows
   /// when [size] is null.
   const AppLottie(
@@ -110,10 +121,14 @@ class AppLottie extends StatefulWidget {
   /// Its width and height, in logical pixels.
   final double? size;
 
-  /// Drives the animation when given; it plays by itself otherwise.
+  /// Drives the animation when given; it plays by itself otherwise. The
+  /// caller owns a supplied controller, including its timing and lifetime.
   final Animation<double>? controller;
 
-  /// Whether it starts again when it ends. Ignored with a [controller].
+  /// Whether a loop starts again when it ends. Only the globe, map and
+  /// plasma-generation bolt can loop. Objects play once and replay on
+  /// hover, so an assembly never keeps moving beside an amount. Ignored
+  /// with a [controller].
   final bool repeat;
 
   /// How it fills its box.
@@ -163,28 +178,190 @@ class AppLottie extends StatefulWidget {
   }
 
   @override
-  State<AppLottie> createState() => _AppLottieState();
+  Widget build(BuildContext context) {
+    return SizedBox(
+      width: size,
+      height: size,
+      child: LayoutBuilder(
+        builder: (BuildContext context, BoxConstraints constraints) {
+          // Read the space the parent actually grants: a 48 px request in
+          // a 24 px slot is still too small to show an assembling object.
+          final double? edge;
+          if (constraints.hasBoundedWidth && constraints.hasBoundedHeight) {
+            edge = constraints.maxWidth < constraints.maxHeight
+                ? constraints.maxWidth
+                : constraints.maxHeight;
+          } else if (constraints.hasBoundedWidth) {
+            edge = constraints.maxWidth;
+          } else if (constraints.hasBoundedHeight) {
+            edge = constraints.maxHeight;
+          } else {
+            edge = null;
+          }
+          // The eye and no-data mark are functional at smaller sizes. The
+          // assembling objects become noise below this edge, so do not
+          // load or decode them just to paint that noise.
+          if (asset._isObject && edge != null && edge < 40) {
+            return const SizedBox();
+          }
+          return _Player(configuration: this, edge: edge);
+        },
+      ),
+    );
+  }
 }
 
-class _AppLottieState extends State<AppLottie> {
+class _Player extends StatefulWidget {
+  const _Player({required this.configuration, required this.edge});
+
+  final AppLottie configuration;
+  final double? edge;
+
+  @override
+  State<_Player> createState() => _PlayerState();
+}
+
+class _PlayerState extends State<_Player>
+    with SingleTickerProviderStateMixin, WidgetsBindingObserver
+    implements ReferenceArtworkSource {
+  late final AnimationController _clock = AnimationController(
+    vsync: this,
+    // The composition keeps its own length even when platform animation
+    // effects are off. Motion is how the wallet reports a state change.
+    animationBehavior: AnimationBehavior.preserve,
+  );
   _Entry? _entry;
   LottieComposition? _composition;
+  bool _pageEnabled = false;
+  bool _foreground = true;
+  bool _looping = false;
+  ReferenceArtworkFrame? _referenceFrame;
+  Animation<double>? _referenceProgress;
+  Animation<double>? _paintedController;
+  int _referenceEpoch = 0;
+
+  @override
+  ReferenceArtworkKind get referenceArtworkKind =>
+      ReferenceArtworkKind.welcomeGlobe;
+
+  @override
+  Object get referenceArtworkGeneration => _entry ?? this;
+
+  @override
+  Future<Object?>? get referenceArtworkReadiness => _entry?.future;
+
+  @override
+  ReferenceArtworkFrame? captureReferenceArtwork() {
+    final _Entry? entry = _entry;
+    final LottieComposition? composition = _composition;
+    if (!mounted || !_active || !_clock.isAnimating || entry == null ||
+        composition == null || _referenceFrame != null ||
+        _configuration.asset != AppLottieAsset.globe ||
+        _configuration.controller != null) {
+      return null;
+    }
+    // The parser subtracts .01 from op. Match lottie-web's integer frame,
+    // then avoid the default composition-rate rounding during this sample.
+    final double duration = composition.durationFrames;
+    if (!duration.isFinite || duration <= 0) return null;
+    final int count = (duration + 0.01).floor();
+    final int index = (count * 0.4).floor();
+    final double progress = index / duration;
+    if (count <= 0 || count > 1000000 ||
+        !progress.isFinite || progress < 0 || progress > 1) {
+      return null;
+    }
+    final AnimationController original = _clock;
+    final int epoch = _referenceEpoch;
+    final Animation<double> sample = AlwaysStoppedAnimation<double>(progress);
+    bool originalCurrent() => mounted && _active &&
+        _referenceEpoch == epoch &&
+        identical(_entry, entry) && identical(_composition, composition) &&
+        identical(_clock, original) && _configuration.controller == null &&
+        _configuration.asset == AppLottieAsset.globe;
+    late final ReferenceArtworkFrame frame;
+    frame = ReferenceArtworkFrame(
+      owner: this, generation: entry, kind: referenceArtworkKind,
+      observation: <String, Object>{
+        'kind': 'welcome_globe', 'frame': index, 'frame_count': count,
+      },
+      current: () => originalCurrent() && original.isAnimating &&
+          identical(_referenceFrame, frame) &&
+          identical(_referenceProgress, sample),
+      observed: () => identical(_paintedController, sample),
+      restore: () => setState(() {
+        _referenceFrame = null;
+        _referenceProgress = null;
+      }),
+      restoration: () => originalCurrent() && _referenceFrame == null &&
+          _referenceProgress == null &&
+          identical(_paintedController, original),
+    );
+    setState(() {
+      _referenceFrame = frame;
+      _referenceProgress = sample;
+    });
+    return frame;
+  }
+
+  AppLottie get _configuration => widget.configuration;
+
+  bool get _active => _pageEnabled && _foreground;
+
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addObserver(this);
+    final AppLifecycleState? lifecycle = WidgetsBinding.instance.lifecycleState;
+    _foreground = lifecycle == null || lifecycle == AppLifecycleState.resumed;
+  }
 
   @override
   void didChangeDependencies() {
     super.didChangeDependencies();
-    _resolve();
+    _pageEnabled = TickerMode.valuesOf(context).enabled;
+    if (_active) {
+      _resolve();
+    }
+    _followPlayback();
   }
 
   @override
-  void didUpdateWidget(AppLottie oldWidget) {
+  void didUpdateWidget(_Player oldWidget) {
     super.didUpdateWidget(oldWidget);
-    _resolve();
+    final AppLottie old = oldWidget.configuration;
+    if (old.asset != _configuration.asset ||
+        !identical(old.controller, _configuration.controller)) {
+      _referenceEpoch++;
+      _referenceFrame = null;
+      _referenceProgress = null;
+      _clock
+        ..stop()
+        ..value = 0;
+      _looping = false;
+    }
+    if (_active) {
+      _resolve();
+    }
+    _followPlayback();
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    _foreground = state == AppLifecycleState.resumed;
+    if (_active) {
+      // A widget mounted on a hidden page does not start loading until
+      // that page appears. A resumed one keeps the frame it had reached.
+      // A cached composition can resolve synchronously; lifecycle changes
+      // do not otherwise rebuild the placeholder that was showing.
+      setState(_resolve);
+    }
+    _followPlayback();
   }
 
   void _resolve() {
-    final String path = widget.asset.path(
-      widget.size,
+    final String path = _configuration.asset.path(
+      widget.edge,
       MediaQuery.devicePixelRatioOf(context),
     );
     if (_entry?.path == path) {
@@ -193,12 +370,13 @@ class _AppLottieState extends State<AppLottie> {
     final _Entry entry = _Entry.of(
       path,
       DefaultAssetBundle.of(context),
-      keep: widget.asset._keeps(path),
+      keep: _configuration.asset._keeps(path),
     )..users += 1;
     _entry?.release();
     _entry = entry;
     _composition = entry.composition;
     if (_composition != null) {
+      _followPlayback();
       // Not from inside a build: what it calls may rebuild its caller.
       WidgetsBinding.instance.addPostFrameCallback((_) => _announce(entry));
       return;
@@ -207,6 +385,7 @@ class _AppLottieState extends State<AppLottie> {
       entry.future.then((LottieComposition composition) {
         if (mounted && identical(_entry, entry)) {
           setState(() => _composition = composition);
+          _followPlayback();
           _announce(entry);
         }
       }, onError: (Object _) {}),
@@ -216,12 +395,38 @@ class _AppLottieState extends State<AppLottie> {
   void _announce(_Entry entry) {
     final LottieComposition? composition = entry.composition;
     if (mounted && identical(_entry, entry) && composition != null) {
-      widget.onLoaded?.call(composition);
+      _configuration.onLoaded?.call(composition);
+    }
+  }
+
+  void _followPlayback() {
+    final LottieComposition? composition = _composition;
+    if (!_active || composition == null || _configuration.controller != null) {
+      _clock.stop();
+      return;
+    }
+    _clock.duration = composition.duration;
+    final bool loop = _configuration.repeat && _configuration.asset._loops;
+    if (loop) {
+      if (!_clock.isAnimating || !_looping) {
+        _clock.repeat();
+      }
+    } else if (_clock.value < 1 && (!_clock.isAnimating || _looping)) {
+      _clock.forward();
+    }
+    _looping = loop;
+  }
+
+  void _replay() {
+    if (_active && _composition != null && _configuration.controller == null) {
+      _clock.forward(from: 0);
     }
   }
 
   @override
   void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
+    _clock.dispose();
     _entry?.release();
     super.dispose();
   }
@@ -230,23 +435,128 @@ class _AppLottieState extends State<AppLottie> {
   Widget build(BuildContext context) {
     final LottieComposition? composition = _composition;
     if (composition == null) {
-      return SizedBox(width: widget.size, height: widget.size);
+      return SizedBox(
+        width: _configuration.size,
+        height: _configuration.size,
+      );
     }
     // Lottie puts a RepaintBoundary round itself, so a frame of the
     // animation repaints this box and not the page.
-    return Lottie(
+    final Animation<double> paintedController =
+        _referenceProgress ?? _configuration.controller ?? _clock;
+    _paintedController = paintedController;
+    final Widget animation = Lottie(
       composition: composition,
-      controller: widget.controller,
-      width: widget.size,
-      height: widget.size,
-      repeat: widget.repeat,
-      fit: widget.fit,
+      controller: paintedController,
+      frameRate: _referenceProgress == null ? null : FrameRate.max,
+      width: _configuration.size,
+      height: _configuration.size,
+      // Playback belongs to the preserving clock above. A second internal
+      // controller would hide its duration and keep ticking while hidden.
+      animate: false,
+      repeat: false,
+      fit: _configuration.fit,
       // Medium is the one setting that samples a mipmap. Low takes four
       // texels wherever the pixel lands, and high is a bicubic for
       // enlarging: both alias when the frame is drawn smaller than it is.
       filterQuality: FilterQuality.medium,
     );
+    if (_configuration.asset._isObject && _configuration.controller == null) {
+      return MouseRegion(
+        opaque: false,
+        onEnter: (_) => _replay(),
+        child: animation,
+      );
+    }
+    return animation;
   }
+}
+
+const String _welcomePath = 'assets/lottie/ic_anim_welcome.json';
+const String _welcomeOriginalSha =
+    'cb655bfa87969f8c91fd45f57fb03e1c592cc524f7e11bced97b03f4b69114af';
+
+bool _welcomeShapeTypes(List<dynamic> items, List<String> expected) {
+  if (items.length != expected.length) return false;
+  for (int index = 0; index < items.length; index++) {
+    final Object? item = items[index];
+    if (item is! Map<String, dynamic> || item['ty'] != expected[index]) {
+      return false;
+    }
+  }
+  return true;
+}
+
+bool _welcomeIdentity(Map<String, dynamic> value) {
+  if (value['ty'] != 'tr') return false;
+  const Map<String, Object> identity = <String, Object>{
+    'p': <int>[0, 0], 'a': <int>[0, 0], 's': <int>[100, 100],
+    'r': 0, 'o': 100, 'sk': 0, 'sa': 0,
+  };
+  for (final MapEntry<String, Object> part in identity.entries) {
+    final Object? channel = value[part.key];
+    if (channel is! Map<String, dynamic> || channel['a'] != 0) return false;
+    final Object? actual = channel['k'];
+    final Object expected = part.value;
+    if (actual is List<Object?> && expected is List<Object?>) {
+      if (actual.length != expected.length) return false;
+      for (int index = 0; index < actual.length; index++) {
+        if (actual[index] != expected[index]) return false;
+      }
+    } else if (actual != expected) {
+      return false;
+    }
+  }
+  return true;
+}
+
+// The Dart renderer ignores these nested individual trims without a sibling
+// stroke. Scope compatibility to the exact bundled original. Its bytes, image
+// data, keyframe curves, duration and application playback owner stay intact.
+Uint8List _welcomeTrimCompatibility(Uint8List bytes, String path) {
+  if (path != _welcomePath || bytes.length != 2189249 ||
+      HEX.encode(const DartSha256().hashSync(bytes).bytes) !=
+          _welcomeOriginalSha) {
+    return bytes;
+  }
+  final Map<String, dynamic> value =
+      jsonDecode(utf8.decode(bytes)) as Map<String, dynamic>;
+  final List<dynamic> layers = value['layers'] as List<dynamic>;
+  for (int layerIndex = 0; layerIndex < 2; layerIndex++) {
+    final Map<String, dynamic> layer =
+        layers[layerIndex] as Map<String, dynamic>;
+    final List<dynamic> shapes = layer['shapes'] as List<dynamic>;
+    final Map<String, dynamic> target =
+        shapes[layerIndex == 0 ? 1 : 0] as Map<String, dynamic>;
+    if (target['nm'] != 'animatred line') return bytes;
+    final List<dynamic> outer = target['it'] as List<dynamic>;
+    if (!_welcomeShapeTypes(outer, <String>['gr', 'gr', 'st', 'tr'])) {
+      return bytes;
+    }
+    final Map<String, dynamic> stroke = outer[2] as Map<String, dynamic>;
+    for (int index = 0; index < 2; index++) {
+      final Map<String, dynamic> group = outer[index] as Map<String, dynamic>;
+      final List<dynamic> items = group['it'] as List<dynamic>;
+      if (!_welcomeShapeTypes(items, <String>['gr', 'tm', 'tr'])) return bytes;
+      final Map<String, dynamic> inner = items[0] as Map<String, dynamic>;
+      final List<dynamic> paths = inner['it'] as List<dynamic>;
+      if (!_welcomeShapeTypes(paths, <String>['el', 'el', 'tr']) ||
+          !_welcomeIdentity(paths[2] as Map<String, dynamic>) ||
+          !_welcomeIdentity(items[2] as Map<String, dynamic>)) {
+        return bytes;
+      }
+      final Map<String, dynamic> trim = items[1] as Map<String, dynamic>;
+      if (trim['m'] != 2) return bytes;
+      final dynamic start = trim['s'];
+      trim['s'] = trim['e'];
+      trim['e'] = start;
+      group['it'] = <dynamic>[
+        ...paths.take(2), trim, jsonDecode(jsonEncode(stroke)), items[2],
+      ];
+    }
+    target['it'] = <dynamic>[outer[0], outer[1], outer[3]];
+  }
+  return Uint8List.fromList(utf8.encode(jsonEncode(value)));
 }
 
 /// One loaded file and who is showing it.
@@ -308,7 +618,7 @@ class _Entry {
       data.lengthInBytes,
     );
     final (LottieComposition composition, Map<String, Uint8List> frames) =
-        await Isolate.run(_parser(bytes), debugName: 'lottie-parse');
+        await Isolate.run(_parser(bytes, path), debugName: 'lottie-parse');
     // The engine decodes on its own threads, several at a time; waiting for
     // each before asking for the next made 46 frames take 46 turns.
     await Future.wait(<Future<void>>[
@@ -321,18 +631,20 @@ class _Entry {
   }
 
   // Built here, not inline in [_load], so the closure sent to the isolate
-  // holds the bytes and nothing else.
+  // holds the bytes and their original asset path, and nothing else.
   static (LottieComposition, Map<String, Uint8List>) Function() _parser(
-    Uint8List bytes,
+    Uint8List bytes, String path,
   ) =>
-      () => _parse(bytes);
+      () => _parse(bytes, path);
 
   /// The composition, and its embedded images as bytes. The images go into
   /// the composition without their base64 text, which is otherwise kept, a
   /// third larger than the image, for as long as the composition is.
-  static (LottieComposition, Map<String, Uint8List>) _parse(Uint8List bytes) {
+  static (LottieComposition, Map<String, Uint8List>) _parse(
+    Uint8List bytes, String path,
+  ) {
     final LottieComposition composition = LottieComposition.parseJsonBytes(
-      bytes,
+      _welcomeTrimCompatibility(bytes, path),
     );
     final Map<String, Uint8List> frames = <String, Uint8List>{};
     for (final LottieImageAsset image in composition.images.values.toList()) {

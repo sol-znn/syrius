@@ -1,10 +1,11 @@
 import 'dart:async';
 
-import 'package:material_ui/material_ui.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:material_ui/material_ui.dart';
 import 'package:zenon_syrius_wallet_flutter/model/model.dart';
 import 'package:zenon_syrius_wallet_flutter/rearchitecture/features/card_parts/card_parts.dart';
 import 'package:zenon_syrius_wallet_flutter/rearchitecture/features/features.dart';
+import 'package:zenon_syrius_wallet_flutter/rearchitecture/features/registration_success/registration_confirmation.dart';
 import 'package:zenon_syrius_wallet_flutter/rearchitecture/utils/utils.dart';
 import 'package:zenon_syrius_wallet_flutter/rearchitecture/utils/widgets/ltr.dart';
 import 'package:zenon_syrius_wallet_flutter/utils/utils.dart';
@@ -25,6 +26,9 @@ class IssueTokenStep extends StatefulWidget {
     required this.onIssuePressed,
     required this.tokenData,
     this.active = true,
+    this.onPublished,
+    this.isCurrent,
+    this.registrationRun = 0,
     super.key,
   });
 
@@ -33,6 +37,15 @@ class IssueTokenStep extends StatefulWidget {
 
   /// Called after the issue operation succeeds.
   final VoidCallback onIssueDone;
+
+  /// Retains the original result before optional favorite persistence yields.
+  final ValueChanged<RegistrationPublication>? onPublished;
+
+  /// The originating registration context can suppress stale optional display.
+  final bool Function()? isCurrent;
+
+  /// Changes only on the explicit Create another token action.
+  final int registrationRun;
 
   /// Called when the user presses create.
   final VoidCallback onIssuePressed;
@@ -48,12 +61,25 @@ class IssueTokenStep extends StatefulWidget {
 }
 
 class _IssueTokenStepState extends State<IssueTokenStep> {
-  final GlobalKey<LoadingButtonState> _createButtonKey = GlobalKey();
+  GlobalKey<LoadingButtonState> _createButtonKey = GlobalKey();
 
   // From the press until the bloc has failed, or the stepper has moved on.
   // The bloc's own state will not do: it still says done when the stepper
   // is run a second time.
   bool _isSending = false;
+  bool _accepted = false;
+  String? _submittedName;
+
+  @override
+  void didUpdateWidget(IssueTokenStep oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.registrationRun != widget.registrationRun) {
+      _accepted = false;
+      _isSending = false;
+      _createButtonKey = GlobalKey<LoadingButtonState>();
+      _submittedName = null;
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -67,7 +93,7 @@ class _IssueTokenStepState extends State<IssueTokenStep> {
             active: widget.active,
             busy: _isSending,
             onBack: widget.onBackPressed,
-            onSubmit: _isSending ? null : _onIssuePressed,
+            onSubmit: _isSending || _accepted ? null : _onIssuePressed,
             body: Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
               mainAxisSize: MainAxisSize.min,
@@ -98,7 +124,7 @@ class _IssueTokenStepState extends State<IssueTokenStep> {
             primary: KeyedSubtree(
               key: const Key('token_create_button'),
               child: LoadingButton(
-                onPressed: _onIssuePressed,
+                onPressed: _accepted ? null : _onIssuePressed,
                 text: context.l10n.create,
                 circularBorderRadius: kLoadingButtonMinSize.height / 2,
                 key: _createButtonKey,
@@ -111,9 +137,13 @@ class _IssueTokenStepState extends State<IssueTokenStep> {
   }
 
   void _onIssuePressed() {
-    if (_isSending) {
+    if (_isSending ||
+        _accepted ||
+        !widget.active ||
+        !(widget.isCurrent?.call() ?? true)) {
       return;
     }
+    _submittedName = widget.tokenData.value.tokenName;
     setState(() {
       _isSending = true;
     });
@@ -121,16 +151,36 @@ class _IssueTokenStepState extends State<IssueTokenStep> {
   }
 
   void _onIssueTokenStateChanged(IssueTokenState state) {
+    if (_accepted) return;
     if (state is IssueTokenLoading) {
       _createButtonKey.currentState?.animateForward();
       setState(() {
         _isSending = true;
       });
     } else if (state is IssueTokenDone) {
+      _accepted = true;
+      final String name = _submittedName ?? widget.tokenData.value.tokenName;
+      final bool Function()? isCurrent = widget.isCurrent;
+      try {
+        widget.onPublished?.call(
+          RegistrationPublication(accountBlock: state.accountBlock, name: name),
+        );
+      } on Object {
+        // Receipt display cannot replace the accepted result in the bloc.
+      }
+      _createButtonKey.currentState?.animateReverse();
+      setState(() => _isSending = false);
+      try {
+        widget.onIssueDone();
+      } on Object {
+        // An optional UI callback cannot turn acceptance into a send failure.
+      }
       unawaited(
         _onIssueTokenDone(
           context: context,
           tokenStandard: state.newTokenStandard,
+          tokenName: name,
+          isCurrent: isCurrent,
         ),
       );
     } else if (state is IssueTokenFailure) {
@@ -150,25 +200,24 @@ class _IssueTokenStepState extends State<IssueTokenStep> {
   Future<void> _onIssueTokenDone({
     required BuildContext context,
     required TokenStandard tokenStandard,
+    required String tokenName,
+    required bool Function()? isCurrent,
   }) async {
     try {
+      if (!context.mounted || !(isCurrent?.call() ?? true)) return;
       await context.read<FavoriteTokensRepository>().add(tokenStandard);
     } on Object catch (error) {
-      if (context.mounted) {
-        await NotificationUtils.sendNotificationError(
-          error,
-          context.l10n.errorAddingTokenToFavorites(
-            widget.tokenData.value.tokenName,
-          ),
-        );
-      }
-    } finally {
-      if (context.mounted) {
-        _createButtonKey.currentState?.animateReverse();
-        setState(() {
-          _isSending = false;
-        });
-        widget.onIssueDone();
+      if (context.mounted && (isCurrent?.call() ?? true)) {
+        try {
+          await NotificationUtils.sendNotificationError(
+            error,
+            context.l10n.errorAddingTokenToFavorites(
+              tokenName,
+            ),
+          );
+        } on Object {
+          // A favorite error display cannot replace accepted issuance.
+        }
       }
     }
   }

@@ -4,6 +4,7 @@ import 'dart:ui' show lerpDouble;
 import 'package:flutter/rendering.dart';
 import 'package:flutter/services.dart';
 import 'package:material_ui/material_ui.dart';
+import 'package:zenon_syrius_wallet_flutter/seams/seam.dart';
 import 'package:zenon_syrius_wallet_flutter/utils/app_theme.dart';
 
 /// Between the track's line and a segment. No token names a gap this small
@@ -24,11 +25,28 @@ const double _kIconGap = 6;
 /// that taking the focus moves nothing.
 const double _kFocusRingWidth = 2;
 
+/// The surface shared by the choices in a [Segment].
+enum SegmentAppearance {
+  /// A filled track and a rounded sliding thumb.
+  pill,
+
+  /// Flat card headings with one sliding underline.
+  heading,
+}
+
 /// One choice of a [Segment].
 @immutable
 class SegmentItem<T> {
   /// Creates the choice [value], shown as [label].
-  const SegmentItem({required this.value, required this.label, this.icon});
+  const SegmentItem({
+    required this.value,
+    required this.label,
+    this.icon,
+    this.count,
+    this.enabled = true,
+    this.seam,
+    this.labelStyle,
+  });
 
   /// What [Segment.onChanged] is given when this is picked.
   final T value;
@@ -38,10 +56,23 @@ class SegmentItem<T> {
 
   /// Drawn before the label, in the label's colour.
   final IconData? icon;
+
+  /// A reported total beside the label. Unknown totals are absent.
+  final int? count;
+
+  /// A drawn choice can be unavailable without changing the other choices.
+  final bool enabled;
+
+  /// Missing backing behavior denies direct callbacks as well as input.
+  final Seam? seam;
+
+  /// Numeric preferences use the same mono role as the values they select.
+  final TextStyle? labelStyle;
 }
 
-/// A choice between a few values on one pill-shaped track, with one thumb
-/// that slides to whichever is picked.
+/// A choice between a few values, with one thumb that slides to whichever
+/// is picked. [SegmentAppearance.pill] is the default; card headings use
+/// [SegmentAppearance.heading] on the same measured track.
 ///
 /// It is the only control of its kind in the interface: Send, Receive and
 /// Zap on Transfer, the filters over a list, the choices in Settings. A
@@ -77,6 +108,8 @@ class Segment<T> extends StatefulWidget {
     required this.items,
     required this.selected,
     required this.onChanged,
+    this.appearance = SegmentAppearance.pill,
+    this.pillPadding,
     this.keyPrefix,
     super.key,
   });
@@ -97,6 +130,12 @@ class Segment<T> extends StatefulWidget {
   /// Called with the value picked, once per pick, and never with the value
   /// already in effect.
   final ValueChanged<T> onChanged;
+
+  /// The track and thumb's surface. Selection and keyboard behavior are shared.
+  final SegmentAppearance appearance;
+
+  /// Optional pill label spacing; heading tabs keep their existing tokens.
+  final EdgeInsetsGeometry? pillPadding;
 
   /// When given, each segment carries [keyOf] of it and its value, which is
   /// how the UI harness finds one.
@@ -119,6 +158,12 @@ class _MoveIntent extends Intent {
   final bool right;
 }
 
+class _EdgeIntent extends Intent {
+  const _EdgeIntent({required this.last});
+
+  final bool last;
+}
+
 class _SegmentState<T> extends State<Segment<T>>
     with SingleTickerProviderStateMixin {
   static const Map<ShortcutActivator, Intent> _shortcuts =
@@ -129,6 +174,8 @@ class _SegmentState<T> extends State<Segment<T>>
         SingleActivator(LogicalKeyboardKey.arrowRight): _MoveIntent(
           right: true,
         ),
+        SingleActivator(LogicalKeyboardKey.home): _EdgeIntent(last: false),
+        SingleActivator(LogicalKeyboardKey.end): _EdgeIntent(last: true),
       };
 
   // At rest the controller sits at 1, with the thumb on the selected
@@ -149,6 +196,7 @@ class _SegmentState<T> extends State<Segment<T>>
 
   late final Map<Type, Action<Intent>> _actions = <Type, Action<Intent>>{
     _MoveIntent: CallbackAction<_MoveIntent>(onInvoke: _move),
+    _EdgeIntent: CallbackAction<_EdgeIntent>(onInvoke: _edge),
   };
 
   /// How lit each label was when the slide under way began, 0 dim to 1
@@ -193,9 +241,38 @@ class _SegmentState<T> extends State<Segment<T>>
   }
 
   void _pick(T value) {
-    if (value != widget.selected) {
-      widget.onChanged(value);
+    if (!mounted || value == widget.selected) {
+      return;
     }
+    for (final SegmentItem<T> item in widget.items) {
+      if (item.value == value) {
+        if (item.enabled) {
+          runUnlessSeamed(
+            seam: item.seam,
+            action: () => widget.onChanged(value),
+          );
+        }
+        return;
+      }
+    }
+  }
+
+  bool _available(int index) =>
+      widget.items[index].enabled && widget.items[index].seam == null;
+
+  Object? _edge(_EdgeIntent intent) {
+    final int step = intent.last ? -1 : 1;
+    for (
+      int index = intent.last ? widget.items.length - 1 : 0;
+      index >= 0 && index < widget.items.length;
+      index += step
+    ) {
+      if (_available(index)) {
+        _pick(widget.items[index].value);
+        break;
+      }
+    }
+    return null;
   }
 
   Object? _move(_MoveIntent intent) {
@@ -207,11 +284,14 @@ class _SegmentState<T> extends State<Segment<T>>
     // the right under a right-to-left interface.
     final bool forward =
         intent.right == (Directionality.of(context) == TextDirection.ltr);
-    final int next = index < 0
-        ? 0
-        : (index + (forward ? 1 : -1)).clamp(0, widget.items.length - 1);
-    if (next != index) {
-      widget.onChanged(widget.items[next].value);
+    final int step = index < 0 || forward ? 1 : -1;
+    int next = index < 0 ? 0 : index + step;
+    while (next >= 0 && next < widget.items.length) {
+      if (_available(next)) {
+        _pick(widget.items[next].value);
+        break;
+      }
+      next += step;
     }
     return null;
   }
@@ -221,54 +301,62 @@ class _SegmentState<T> extends State<Segment<T>>
     final ThemeData theme = Theme.of(context);
     final AppTokens tokens = AppTokens.of(context);
     final String? prefix = widget.keyPrefix;
+    final bool heading = widget.appearance == SegmentAppearance.heading;
 
     return Align(
       alignment: AlignmentDirectional.centerStart,
       widthFactor: 1,
       heightFactor: 1,
       child: FocusableActionDetector(
+        enabled: widget.items.any(
+          (SegmentItem<T> item) => item.enabled && item.seam == null,
+        ),
         shortcuts: _shortcuts,
         actions: _actions,
         onShowFocusHighlight: (bool show) => setState(() => _showRing = show),
         child: DecoratedBox(
-          decoration: ShapeDecoration(
-            color: theme.colorScheme.primaryContainer,
-            shape: StadiumBorder(side: BorderSide(color: _lineOf(theme))),
-          ),
+          decoration: heading
+              ? const BoxDecoration()
+              : ShapeDecoration(
+                  color: theme.colorScheme.primaryContainer,
+                  shape: StadiumBorder(side: BorderSide(color: _lineOf(theme))),
+                ),
           child: DecoratedBox(
             position: DecorationPosition.foreground,
-            decoration: ShapeDecoration(
-              shape: StadiumBorder(
-                side: _showRing
-                    ? BorderSide(
-                        color: tokens.focusRing,
-                        width: _kFocusRingWidth,
-                      )
-                    : BorderSide.none,
-              ),
-            ),
+            decoration: heading
+                ? BoxDecoration(
+                    border: _showRing
+                        ? Border.all(
+                            color: tokens.focusRing,
+                            width: _kFocusRingWidth,
+                          )
+                        : null,
+                  )
+                : ShapeDecoration(
+                    shape: StadiumBorder(
+                      side: _showRing
+                          ? BorderSide(
+                              color: tokens.focusRing,
+                              width: _kFocusRingWidth,
+                            )
+                          : BorderSide.none,
+                    ),
+                  ),
             child: Padding(
               // The track's own line takes the first pixel.
-              padding: const EdgeInsets.all(_kTrackPadding + 1),
+              padding: heading
+                  ? EdgeInsets.zero
+                  : const EdgeInsets.all(_kTrackPadding + 1),
               child: _SegmentRow(
                 selectedIndex: _indexIn(widget),
                 slide: _slide,
                 textDirection: Directionality.of(context),
+                gap: heading ? tokens.tabGap : 0,
+                minHeight: heading ? tokens.panelHeaderHeight : 0,
                 children: <Widget>[
-                  const SegmentThumb(),
+                  SegmentThumb(appearance: widget.appearance),
                   for (final SegmentItem<T> item in widget.items)
-                    _SegmentCell(
-                      key: prefix == null
-                          ? null
-                          : Segment.keyOf(prefix, item.value),
-                      label: item.label,
-                      icon: item.icon,
-                      selected: item.value == widget.selected,
-                      slide: _slide,
-                      ink: () =>
-                          _inkAt(item.value, widget.selected, _slide.value),
-                      onTap: () => _pick(item.value),
-                    ),
+                    _cell(item, prefix),
                 ],
               ),
             ),
@@ -277,21 +365,56 @@ class _SegmentState<T> extends State<Segment<T>>
       ),
     );
   }
+
+  Widget _cell(SegmentItem<T> item, String? prefix) {
+    final Widget cell = _SegmentCell(
+      key: prefix == null ? null : Segment.keyOf(prefix, item.value),
+      label: item.label,
+      icon: item.icon,
+      count: item.count,
+      appearance: widget.appearance,
+      selected: item.value == widget.selected,
+      enabled: item.enabled && item.seam == null,
+      labelStyle: item.labelStyle,
+      pillPadding: widget.pillPadding,
+      slide: _slide,
+      ink: () => _inkAt(item.value, widget.selected, _slide.value),
+      onTap: () => _pick(item.value),
+    );
+    final Seam? seam = item.seam;
+    return seam == null ? cell : SeamGate(seam: seam, child: cell);
+  }
 }
 
 Color _lineOf(ThemeData theme) =>
     theme.dividerTheme.color ?? theme.dividerColor;
 
-/// The pill under the selected label of a [Segment].
+/// The pill or underline under the selected label of a [Segment].
 ///
 /// A segment has exactly one, for as long as it lives: picking another value
 /// moves and resizes this widget, it does not build a second.
 class SegmentThumb extends StatelessWidget {
   /// Creates the thumb. [Segment] does; nothing else needs to.
-  const SegmentThumb({super.key});
+  const SegmentThumb({this.appearance = SegmentAppearance.pill, super.key});
+
+  /// Follows the track's appearance without changing its measured rectangle.
+  final SegmentAppearance appearance;
 
   @override
   Widget build(BuildContext context) {
+    final AppTokens tokens = AppTokens.of(context);
+    if (appearance == SegmentAppearance.heading) {
+      return DecoratedBox(
+        decoration: BoxDecoration(
+          border: Border(
+            bottom: BorderSide(
+              color: tokens.znn,
+              width: tokens.tabUnderlineThickness,
+            ),
+          ),
+        ),
+      );
+    }
     final ThemeData theme = Theme.of(context);
     return DecoratedBox(
       decoration: ShapeDecoration(
@@ -299,7 +422,7 @@ class SegmentThumb extends StatelessWidget {
         // tint laid over the track lands within three steps of it in both
         // themes, and stays a step above the track if either is retuned.
         color: Color.alphaBlend(
-          AppTokens.of(context).hover,
+          tokens.hover,
           theme.colorScheme.primaryContainer,
         ),
         shape: StadiumBorder(side: BorderSide(color: _lineOf(theme))),
@@ -312,7 +435,12 @@ class _SegmentCell extends StatefulWidget {
   const _SegmentCell({
     required this.label,
     required this.icon,
+    required this.count,
+    required this.appearance,
     required this.selected,
+    required this.enabled,
+    required this.labelStyle,
+    required this.pillPadding,
     required this.slide,
     required this.ink,
     required this.onTap,
@@ -321,7 +449,12 @@ class _SegmentCell extends StatefulWidget {
 
   final String label;
   final IconData? icon;
+  final int? count;
+  final SegmentAppearance appearance;
   final bool selected;
+  final bool enabled;
+  final TextStyle? labelStyle;
+  final EdgeInsetsGeometry? pillPadding;
 
   /// Ticks while the thumb moves, which is when [ink] changes.
   final Listenable slide;
@@ -342,40 +475,59 @@ class _SegmentCellState extends State<_SegmentCell> {
   Widget build(BuildContext context) {
     final ThemeData theme = Theme.of(context);
     final AppTokens tokens = AppTokens.of(context);
+    final bool heading = widget.appearance == SegmentAppearance.heading;
     // Medium, the weight of the compact buttons: the mockup's segments take
     // whatever weight surrounds them, 600 in a card's header and 400 in a
     // settings row, and one control cannot be both.
-    final TextStyle style = theme.textTheme.bodyMedium!.copyWith(
-      fontWeight: FontWeight.w500,
-    );
+    final TextStyle style =
+        widget.labelStyle ??
+        (heading ? tokens.bodyText : theme.textTheme.bodyMedium!).copyWith(
+          fontWeight: FontWeight.w500,
+        );
     final Color lit = style.color ?? theme.colorScheme.onSurface;
-    final Color dim = theme.textTheme.titleMedium?.color ?? tokens.faint;
+    final Color dim = heading
+        ? tokens.dim
+        : theme.textTheme.titleMedium?.color ?? tokens.faint;
     final IconData? icon = widget.icon;
+    final int? count = widget.count;
 
     return Semantics(
       container: true,
       button: true,
       selected: widget.selected,
+      enabled: widget.enabled ? null : false,
       inMutuallyExclusiveGroup: true,
-      label: widget.label,
-      onTap: widget.onTap,
+      label: count == null ? widget.label : '${widget.label}, $count',
+      onTap: widget.enabled ? widget.onTap : null,
       excludeSemantics: true,
       child: MouseRegion(
-        cursor: widget.selected ? MouseCursor.defer : SystemMouseCursors.click,
+        cursor: !widget.enabled
+            ? SystemMouseCursors.basic
+            : widget.selected
+            ? MouseCursor.defer
+            : SystemMouseCursors.click,
         onEnter: (_) => setState(() => _hovered = true),
         onExit: (_) => setState(() => _hovered = false),
         child: GestureDetector(
           behavior: HitTestBehavior.opaque,
-          onTap: widget.onTap,
+          onTap: widget.enabled ? widget.onTap : null,
           child: DecoratedBox(
-            decoration: ShapeDecoration(
-              // Not on the selected one: the thumb is already there, and a
-              // tint over it would read as a third state.
-              color: _hovered && !widget.selected ? tokens.hover : null,
-              shape: const StadiumBorder(),
-            ),
+            // Not on the selected one: the thumb is already there, and a
+            // tint over it would read as a third state.
+            decoration: heading
+                ? BoxDecoration(
+                    color: _hovered && !widget.selected ? tokens.hover : null,
+                  )
+                : ShapeDecoration(
+                    color: _hovered && !widget.selected ? tokens.hover : null,
+                    shape: const StadiumBorder(),
+                  ),
             child: Padding(
-              padding: _kSegmentPadding,
+              padding: heading
+                  ? tokens.tabPadding.add(
+                      EdgeInsets.only(bottom: tokens.tabUnderlineThickness),
+                    )
+                  : widget.pillPadding ?? _kSegmentPadding,
               // Sized to the label when the row asks what it needs, centred
               // when the row hands it a taller or a narrower box.
               child: Align(
@@ -387,7 +539,7 @@ class _SegmentCellState extends State<_SegmentCell> {
                     final TextStyle inked = style.copyWith(
                       color: Color.lerp(dim, lit, widget.ink()),
                     );
-                    if (icon == null) {
+                    if (icon == null && count == null) {
                       return Text(
                         widget.label,
                         style: inked,
@@ -403,20 +555,48 @@ class _SegmentCellState extends State<_SegmentCell> {
                     return Text.rich(
                       TextSpan(
                         children: <InlineSpan>[
-                          WidgetSpan(
-                            alignment: PlaceholderAlignment.middle,
-                            child: Padding(
-                              padding: const EdgeInsetsDirectional.only(
-                                end: _kIconGap,
-                              ),
-                              child: Icon(
-                                icon,
-                                size: _kIconSize,
-                                color: inked.color,
+                          if (icon != null)
+                            WidgetSpan(
+                              alignment: PlaceholderAlignment.middle,
+                              child: Padding(
+                                padding: const EdgeInsetsDirectional.only(
+                                  end: _kIconGap,
+                                ),
+                                child: Icon(
+                                  icon,
+                                  size: _kIconSize,
+                                  color: inked.color,
+                                ),
                               ),
                             ),
-                          ),
                           TextSpan(text: widget.label),
+                          if (count != null && heading)
+                            WidgetSpan(
+                              alignment: PlaceholderAlignment.middle,
+                              child: SizedBox(
+                                width:
+                                    tokens.tabCountGap +
+                                    tokens.tabCountPadding.start,
+                              ),
+                            ),
+                          if (count != null)
+                            TextSpan(
+                              text: heading ? '$count' : ' $count',
+                              style: tokens.dataText.copyWith(
+                                fontSize: heading ? 11 : inked.fontSize,
+                                fontWeight: inked.fontWeight,
+                                height: inked.height,
+                                letterSpacing: inked.letterSpacing,
+                                color: heading ? tokens.faint : inked.color,
+                              ),
+                            ),
+                          if (count != null && heading)
+                            WidgetSpan(
+                              alignment: PlaceholderAlignment.middle,
+                              child: SizedBox(
+                                width: tokens.tabCountPadding.end,
+                              ),
+                            ),
                         ],
                       ),
                       style: inked,
@@ -449,18 +629,24 @@ class _SegmentRow extends MultiChildRenderObjectWidget {
     required this.selectedIndex,
     required this.slide,
     required this.textDirection,
+    required this.gap,
+    required this.minHeight,
     required super.children,
   });
 
   final int selectedIndex;
   final Animation<double> slide;
   final TextDirection textDirection;
+  final double gap;
+  final double minHeight;
 
   @override
   RenderObject createRenderObject(BuildContext context) => _RenderSegmentRow(
     selectedIndex: selectedIndex,
     slide: slide,
     textDirection: textDirection,
+    gap: gap,
+    minHeight: minHeight,
   );
 
   @override
@@ -471,7 +657,9 @@ class _SegmentRow extends MultiChildRenderObjectWidget {
     renderObject
       ..selectedIndex = selectedIndex
       ..slide = slide
-      ..textDirection = textDirection;
+      ..textDirection = textDirection
+      ..gap = gap
+      ..minHeight = minHeight;
   }
 }
 
@@ -485,6 +673,8 @@ class _RenderSegmentRow extends RenderBox
     required this._selectedIndex,
     required this._slide,
     required this._textDirection,
+    required this._gap,
+    required this._minHeight,
   });
 
   /// Where the thumb was last laid out, and where the slide under way set
@@ -531,6 +721,22 @@ class _RenderSegmentRow extends RenderBox
     markNeedsLayout();
   }
 
+  double get gap => _gap;
+  double _gap;
+  set gap(double value) {
+    if (value == _gap) return;
+    _gap = value;
+    markNeedsLayout();
+  }
+
+  double get minHeight => _minHeight;
+  double _minHeight;
+  set minHeight(double value) {
+    if (value == _minHeight) return;
+    _minHeight = value;
+    markNeedsLayout();
+  }
+
   @override
   void attach(PipelineOwner owner) {
     super.attach(owner);
@@ -560,6 +766,9 @@ class _RenderSegmentRow extends RenderBox
     return segments;
   }
 
+  double _gapFor(int count, BoxConstraints constraints) =>
+      count < 2 ? 0 : math.min(_gap, constraints.maxWidth / (count - 1));
+
   /// The size of each segment under [constraints]: what its label asks for,
   /// or the same share less of each where the labels do not fit, and one
   /// height for all. A hovered pill a pixel shorter than its neighbour
@@ -575,14 +784,20 @@ class _RenderSegmentRow extends RenderBox
       for (final RenderBox child in segments) child.getDryLayout(natural),
     ];
     double width = 0;
-    double height = 0;
+    double height = _minHeight == 0
+        ? 0
+        : constraints.constrainHeight(_minHeight);
     for (final Size size in asked) {
       width += size.width;
       height = math.max(height, size.height);
     }
-    final double squeeze = width > constraints.maxWidth
-        ? constraints.maxWidth / width
-        : 1;
+    final double available = math.max(
+      0,
+      constraints.maxWidth -
+          _gapFor(segments.length, constraints) *
+              math.max(0, segments.length - 1),
+    );
+    final double squeeze = width > available ? available / width : 1;
     return <Size>[
       for (final Size size in asked) Size(size.width * squeeze, height),
     ];
@@ -591,33 +806,41 @@ class _RenderSegmentRow extends RenderBox
   Size _sizeOf(List<Size> sizes, BoxConstraints constraints) =>
       constraints.constrain(
         Size(
-          sizes.fold(0, (double sum, Size size) => sum + size.width),
+          sizes.fold<double>(0, (double sum, Size size) => sum + size.width) +
+              _gapFor(sizes.length, constraints) *
+                  math.max(0, sizes.length - 1),
           sizes.isEmpty ? 0 : sizes.first.height,
         ),
       );
 
   @override
-  double computeMinIntrinsicWidth(double height) => _segments.fold(
-    0,
-    (double sum, RenderBox child) => sum + child.getMinIntrinsicWidth(height),
-  );
+  double computeMinIntrinsicWidth(double height) =>
+      _segments.fold<double>(
+        0,
+        (double sum, RenderBox child) =>
+            sum + child.getMinIntrinsicWidth(height),
+      ) +
+      _gap * math.max(0, _segments.length - 1);
 
   @override
-  double computeMaxIntrinsicWidth(double height) => _segments.fold(
-    0,
-    (double sum, RenderBox child) => sum + child.getMaxIntrinsicWidth(height),
-  );
+  double computeMaxIntrinsicWidth(double height) =>
+      _segments.fold<double>(
+        0,
+        (double sum, RenderBox child) =>
+            sum + child.getMaxIntrinsicWidth(height),
+      ) +
+      _gap * math.max(0, _segments.length - 1);
 
   @override
   double computeMinIntrinsicHeight(double width) => _segments.fold(
-    0,
+    _minHeight,
     (double tallest, RenderBox child) =>
         math.max(tallest, child.getMinIntrinsicHeight(double.infinity)),
   );
 
   @override
   double computeMaxIntrinsicHeight(double width) => _segments.fold(
-    0,
+    _minHeight,
     (double tallest, RenderBox child) =>
         math.max(tallest, child.getMaxIntrinsicHeight(double.infinity)),
   );
@@ -663,6 +886,7 @@ class _RenderSegmentRow extends RenderBox
 
     final bool rtl = _textDirection == TextDirection.rtl;
     final List<Rect> rects = <Rect>[];
+    final double spacing = _gapFor(segments.length, constraints);
     double edge = rtl ? size.width : 0;
     for (int i = 0; i < segments.length; i++) {
       segments[i].layout(BoxConstraints.tight(sizes[i]));
@@ -672,9 +896,7 @@ class _RenderSegmentRow extends RenderBox
       final Offset offset = Offset(edge, 0);
       (segments[i].parentData! as _SegmentParentData).offset = offset;
       rects.add(offset & sizes[i]);
-      if (!rtl) {
-        edge += sizes[i].width;
-      }
+      edge += rtl ? -spacing : sizes[i].width + spacing;
     }
 
     // With nothing selected the thumb closes on the spot it held, and it

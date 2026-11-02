@@ -97,7 +97,7 @@ Future<Object?> showCustomDialog({
 }) => Navigator.of(context, rootNavigator: true).push<Object?>(
   FrostedDialogRoute<Object?>(
     barrierLabel: '',
-    transitionDuration: Durations.medium1,
+    transitionDuration: const Duration(milliseconds: 240),
     transitionBuilder:
         (
           BuildContext context,
@@ -108,7 +108,7 @@ Future<Object?> showCustomDialog({
           // A driven animation holds no listener of its own, so building one
           // per rebuild leaks nothing.
           final Animation<double> curve = animation.drive(
-            CurveTween(curve: Easing.emphasizedDecelerate),
+            CurveTween(curve: AppTokens.of(context).spring),
           );
           return FadeTransition(
             opacity: curve,

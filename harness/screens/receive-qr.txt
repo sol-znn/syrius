@@ -1,0 +1,18 @@
+# prerequisite: unlocked-home
+# Uses the isolated profile's address. No transfer or image export is submitted.
+goto transfer
+tap --key transfer_mode_receive
+wait --key receive_form_ready
+key escape
+key escape
+tap --key receive_qr_toggle
+tap --key receive_request_toggle
+type --key receive_amount_field 100
+tap --key receive_token_picker
+tap QSR --exact
+assert "Hide QR" --exact
+assert --key receive_share_image
+assert --key receive_save_image
+assert --key receive_qr_screen_marker
+# after-capture: goto dashboard
+# after-capture: wait --key home_hero --timeout 5

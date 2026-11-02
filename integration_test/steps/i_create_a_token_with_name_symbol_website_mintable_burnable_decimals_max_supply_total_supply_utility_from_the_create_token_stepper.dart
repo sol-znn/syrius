@@ -1,21 +1,28 @@
 // BDD Usage comments intentionally mirror Gherkin placeholders.
-// ignore_for_file: unintended_html_in_doc_comment, non_constant_identifier_names
+// ignore_for_file: non_constant_identifier_names
 
 import 'dart:async';
 
-import 'package:material_ui/material_ui.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:material_ui/material_ui.dart';
 import 'package:zenon_syrius_wallet_flutter/l10n/app_localizations.dart';
 import 'package:zenon_syrius_wallet_flutter/main.dart' as app;
 import 'package:zenon_syrius_wallet_flutter/rearchitecture/features/features.dart';
-import 'package:zenon_syrius_wallet_flutter/widgets/widgets.dart';
 import 'package:znn_sdk_dart/znn_sdk_dart.dart';
 
+import '../support/devnet_registration_host.dart';
 import '../support/devnet_test_context.dart';
+import '../support/devnet_token_stepper_form.dart';
 
-/// Usage: I create a token with name <token_name>, symbol <token_symbol>, website <website>, mintable <mintable>, burnable <burnable>, decimals <decimals>, max supply <max_supply>, total supply <total_supply>, utility <utility> from the Create Token stepper
+/// Usage: I create a token with name `<token_name>`, symbol `<token_symbol>`,
+/// website `<website>`, mintable `<mintable>`, burnable `<burnable>`,
+/// decimals `<decimals>`, max supply `<max_supply>`,
+/// total supply `<total_supply>`, utility `<utility>`
+/// from the Create Token stepper.
 Future<void>
+// The BDD generator names this function after its complete step text.
+// ignore: lines_longer_than_80_chars
 iCreateATokenWithNameSymbolWebsiteMintableBurnableDecimalsMaxSupplyTotalSupplyUtilityFromTheCreateTokenStepper(
   WidgetTester tester,
   dynamic token_name,
@@ -44,8 +51,8 @@ iCreateATokenWithNameSymbolWebsiteMintableBurnableDecimalsMaxSupplyTotalSupplyUt
       localizationsDelegates: AppLocalizations.localizationsDelegates,
       supportedLocales: AppLocalizations.supportedLocales,
       home: Scaffold(
-        body: BlocProvider<MultipleBalanceBloc>.value(
-          value: app.sl<MultipleBalanceBloc>(),
+        body: DevnetRegistrationHost(
+          balances: app.sl<MultipleBalanceBloc>(),
           child: BlocProvider<AllTokensBloc>(
             create: (_) => AllTokensBloc(zenon: app.zenon!),
             child: const CreateTokenStepperPage(),
@@ -56,75 +63,17 @@ iCreateATokenWithNameSymbolWebsiteMintableBurnableDecimalsMaxSupplyTotalSupplyUt
   );
   await tester.pumpAndSettle();
 
-  await _tapAndSettle(tester, const Key('token_plasma_next_button'));
-  await _tapAndSettle(tester, const Key('token_znn_next_button'));
-
-  await _enterText(
+  final Finder createButton = await prepareDevnetTokenIssue(
     tester,
-    const Key('token_name_field'),
-    tokenName,
-  );
-  await _enterText(
-    tester,
-    const Key('token_symbol_field'),
-    tokenSymbol,
-  );
-  await _enterText(
-    tester,
-    const Key('token_domain_field'),
-    tokenWebsite,
-  );
-  await _tapAndSettle(tester, const Key('token_details_next_button'));
-
-  await _setCheckbox(
-    tester,
-    const Key('token_mintable_checkbox'),
-    value: isMintable,
-  );
-  await _setCheckbox(
-    tester,
-    const Key('token_burnable_checkbox'),
-    value: isBurnable,
-  );
-  await _tapAndSettle(tester, const Key('token_options_next_button'));
-
-  await _pumpUntilFound(
-    tester,
-    find.byKey(const Key('token_decimals_slider')),
-  );
-  final Slider decimalsSlider = tester.widget<Slider>(
-    find.byKey(const Key('token_decimals_slider')),
-  );
-  decimalsSlider.onChanged!(tokenDecimals.toDouble());
-  await tester.pumpAndSettle();
-
-  await _enterText(
-    tester,
-    const Key('token_max_supply_field'),
-    maxSupply,
-  );
-  await _enterText(
-    tester,
-    const Key('token_total_supply_field'),
-    totalSupply,
-  );
-  await _tapAndSettle(tester, const Key('token_metrics_next_button'));
-
-  await _setCheckbox(
-    tester,
-    const Key('token_utility_checkbox'),
-    value: isUtility,
-  );
-
-  final Finder createButtonContainer = find.byKey(
-    const Key('token_create_button'),
-  );
-  await _pumpUntilFound(tester, createButtonContainer);
-  await tester.ensureVisible(createButtonContainer);
-  await tester.pumpAndSettle();
-  final Finder createButton = find.descendant(
-    of: createButtonContainer,
-    matching: find.byType(LoadingButton),
+    name: tokenName,
+    symbol: tokenSymbol,
+    website: tokenWebsite,
+    mintable: isMintable,
+    burnable: isBurnable,
+    decimals: tokenDecimals,
+    maxSupply: maxSupply,
+    totalSupply: totalSupply,
+    utility: isUtility,
   );
   expect(createButton, findsOneWidget);
 
@@ -155,46 +104,6 @@ iCreateATokenWithNameSymbolWebsiteMintableBurnableDecimalsMaxSupplyTotalSupplyUt
 
   await tester.pump();
   expect(find.byType(TokenCreatedSuccess), findsOneWidget);
-}
-
-Future<void> _enterText(WidgetTester tester, Key key, String value) async {
-  final Finder finder = find.byKey(key);
-  await _pumpUntilFound(tester, finder);
-  await tester.ensureVisible(finder);
-  await tester.enterText(finder, value);
-  await tester.pumpAndSettle();
-}
-
-Future<void> _setCheckbox(
-  WidgetTester tester,
-  Key key, {
-  required bool value,
-}) async {
-  final Finder finder = find.byKey(key);
-  await _pumpUntilFound(tester, finder);
-  await tester.ensureVisible(finder);
-  if (tester.widget<Checkbox>(finder).value != value) {
-    await tester.tap(finder);
-    await tester.pumpAndSettle();
-  }
-  expect(tester.widget<Checkbox>(finder).value, value);
-}
-
-Future<void> _tapAndSettle(WidgetTester tester, Key key) async {
-  final Finder finder = find.byKey(key);
-  await _pumpUntilFound(tester, finder);
-  await tester.ensureVisible(finder);
-  await tester.pumpAndSettle();
-  await tester.tap(finder);
-  await tester.pumpAndSettle();
-}
-
-Future<void> _pumpUntilFound(WidgetTester tester, Finder finder) async {
-  final DateTime deadline = DateTime.now().add(const Duration(seconds: 90));
-  while (finder.evaluate().isEmpty && DateTime.now().isBefore(deadline)) {
-    await tester.pump(const Duration(milliseconds: 100));
-  }
-  expect(finder, findsOneWidget);
 }
 
 Future<T> _pumpUntilComplete<T>(

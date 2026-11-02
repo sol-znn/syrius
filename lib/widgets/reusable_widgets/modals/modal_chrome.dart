@@ -2,6 +2,7 @@ import 'package:material_ui/material_ui.dart';
 import 'package:zenon_syrius_wallet_flutter/rearchitecture/utils/widgets/page/page_widgets.dart';
 import 'package:zenon_syrius_wallet_flutter/utils/app_colors.dart';
 import 'package:zenon_syrius_wallet_flutter/utils/app_theme.dart';
+import 'package:zenon_syrius_wallet_flutter/widgets/reusable_widgets/modals/frosted_route.dart';
 
 /// The widest a dialog gets.
 const double kDialogWidth = 420;
@@ -37,9 +38,11 @@ ButtonStyle quietButtonStyle(BuildContext context) {
   return TextButton.styleFrom(
     backgroundColor: Colors.transparent,
     shape: const StadiumBorder(),
-    minimumSize: const Size(64, 40),
+    minimumSize: Size(64, AppTokens.of(context).buttonHeight),
     padding: const EdgeInsets.symmetric(horizontal: 16),
     textStyle: kOutlinedButtonTextStyle,
+    visualDensity: VisualDensity.standard,
+    tapTargetSize: MaterialTapTargetSize.shrinkWrap,
   ).copyWith(
     foregroundColor: WidgetStateProperty.resolveWith(
       (Set<WidgetState> states) => states.contains(WidgetState.disabled)
@@ -79,9 +82,11 @@ ButtonStyle secondaryButtonStyle(BuildContext context) {
   final Color line = lineColorOf(context);
   return OutlinedButton.styleFrom(
     shape: const StadiumBorder(),
-    minimumSize: const Size(64, 40),
-    padding: const EdgeInsets.symmetric(horizontal: 18),
+    minimumSize: Size(64, AppTokens.of(context).buttonHeight),
+    padding: const EdgeInsets.symmetric(horizontal: 16),
     textStyle: kOutlinedButtonTextStyle,
+    visualDensity: VisualDensity.standard,
+    tapTargetSize: MaterialTapTargetSize.shrinkWrap,
   ).copyWith(
     backgroundColor: WidgetStatePropertyAll<Color>(
       theme.colorScheme.primaryContainer,
@@ -120,7 +125,7 @@ class RiseIn extends StatefulWidget {
   /// What enters.
   final Widget child;
 
-  /// How long it takes; 250 to 300 ms.
+  /// How long the rise takes.
   final Duration duration;
 
   @override
@@ -131,10 +136,9 @@ class _RiseInState extends State<RiseIn> with SingleTickerProviderStateMixin {
   late final AnimationController _controller = AnimationController(
     vsync: this,
     duration: widget.duration,
-  );
-  late final CurvedAnimation _curve = CurvedAnimation(
-    parent: _controller,
-    curve: Easing.emphasizedDecelerate,
+    // This entrance must keep its clock when platform animation effects are
+    // disabled, just like the modal route that carries it.
+    animationBehavior: AnimationBehavior.preserve,
   );
 
   @override
@@ -145,21 +149,23 @@ class _RiseInState extends State<RiseIn> with SingleTickerProviderStateMixin {
 
   @override
   void dispose() {
-    _curve.dispose();
     _controller.dispose();
     super.dispose();
   }
 
   @override
   Widget build(BuildContext context) {
+    final Animation<double> curve = _controller.drive(
+      CurveTween(curve: AppTokens.of(context).spring),
+    );
     return FadeTransition(
-      opacity: _curve,
+      opacity: curve,
       child: AnimatedBuilder(
-        animation: _curve,
+        animation: curve,
         // Built once; only the offset changes per frame.
         child: widget.child,
         builder: (BuildContext context, Widget? child) => Transform.translate(
-          offset: Offset(0, 6 * (1 - _curve.value)),
+          offset: Offset(0, 6 * (1 - curve.value)),
           child: child,
         ),
       ),
@@ -167,7 +173,7 @@ class _RiseInState extends State<RiseIn> with SingleTickerProviderStateMixin {
   }
 }
 
-/// The surface of every dialog: the raised card tone, the card radius, a
+/// The surface of an ordinary dialog: the glass tone, the dialog radius, a
 /// title in the panel title style, a short body, and the actions at the
 /// right with the primary one last.
 class DialogCard extends StatelessWidget {
@@ -178,6 +184,7 @@ class DialogCard extends StatelessWidget {
     this.actions = const <Widget>[],
     this.icon,
     this.width = kDialogWidth,
+    this.radius,
     super.key,
   });
 
@@ -196,65 +203,102 @@ class DialogCard extends StatelessWidget {
   /// The widest the dialog gets.
   final double width;
 
+  /// Transfer dialogs use their shared card shape.
+  final double? radius;
+
   @override
   Widget build(BuildContext context) {
-    final ThemeData theme = Theme.of(context);
+    final AppTokens tokens = AppTokens.of(context);
+    final BorderRadius radius = BorderRadius.circular(
+      this.radius ?? tokens.dialogRadius,
+    );
     return RiseIn(
-      duration: Durations.medium1,
+      duration: const Duration(milliseconds: 240),
       child: Dialog(
-        backgroundColor: theme.colorScheme.primaryContainer,
+        backgroundColor: Colors.transparent,
         surfaceTintColor: Colors.transparent,
         elevation: 0,
         insetPadding: const EdgeInsets.all(24),
         shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(kCardRadius),
-          side: BorderSide(color: lineColorOf(context)),
+          borderRadius: radius,
         ),
         child: ConstrainedBox(
           constraints: BoxConstraints(maxWidth: width),
-          child: Padding(
-            padding: kDialogPadding,
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: <Widget>[
-                Row(
-                  children: <Widget>[
-                    if (icon != null) ...<Widget>[
-                      icon!,
-                      const SizedBox(width: 10),
-                    ],
-                    Expanded(
-                      child: Text(title, style: panelTitleStyle(context)),
-                    ),
-                  ],
+          child: DecoratedBox(
+            decoration: BoxDecoration(
+              borderRadius: radius,
+              boxShadow: <BoxShadow>[tokens.dialogShadow],
+            ),
+            child: FrostedSurface(
+              borderRadius: radius,
+              child: DecoratedBox(
+                position: DecorationPosition.foreground,
+                decoration: BoxDecoration(
+                  borderRadius: radius,
+                  border: Border.all(color: tokens.line),
                 ),
-                const SizedBox(height: 10),
-                Flexible(
-                  child: SingleChildScrollView(
-                    child: DefaultTextStyle.merge(
-                      style: TextStyle(
-                        fontSize: 14,
-                        height: 1.45,
-                        color: dimColorOf(context),
+                child: Padding(
+                  padding: const EdgeInsets.all(1),
+                  child: DecoratedBox(
+                    position: DecorationPosition.foreground,
+                    decoration: BoxDecoration(
+                      border: Border(top: tokens.glassTopEdge),
+                    ),
+                    child: Padding(
+                      padding: kDialogPadding,
+                      child: Column(
+                        mainAxisSize: MainAxisSize.min,
+                        crossAxisAlignment: CrossAxisAlignment.stretch,
+                        children: <Widget>[
+                          Row(
+                            children: <Widget>[
+                              if (icon != null) ...<Widget>[
+                                icon!,
+                                const SizedBox(width: 10),
+                              ],
+                              Expanded(
+                                child: Text(
+                                  title,
+                                  style: panelTitleStyle(context),
+                                ),
+                              ),
+                            ],
+                          ),
+                          const SizedBox(height: 10),
+                          Flexible(
+                            child: SingleChildScrollView(
+                              child: DefaultTextStyle.merge(
+                                style: TextStyle(
+                                  fontSize: 14,
+                                  height: 1.45,
+                                  color: dimColorOf(context),
+                                ),
+                                child: body,
+                              ),
+                            ),
+                          ),
+                          if (actions.isNotEmpty) ...<Widget>[
+                            const SizedBox(height: 20),
+                            Row(
+                              mainAxisAlignment: MainAxisAlignment.end,
+                              children: <Widget>[
+                                for (
+                                  int i = 0;
+                                  i < actions.length;
+                                  i++
+                                ) ...<Widget>[
+                                  if (i > 0) const SizedBox(width: 8),
+                                  actions[i],
+                                ],
+                              ],
+                            ),
+                          ],
+                        ],
                       ),
-                      child: body,
                     ),
                   ),
                 ),
-                if (actions.isNotEmpty) ...<Widget>[
-                  const SizedBox(height: 20),
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.end,
-                    children: <Widget>[
-                      for (int i = 0; i < actions.length; i++) ...<Widget>[
-                        if (i > 0) const SizedBox(width: 8),
-                        actions[i],
-                      ],
-                    ],
-                  ),
-                ],
-              ],
+              ),
             ),
           ),
         ),
