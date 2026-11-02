@@ -9,12 +9,14 @@ import subprocess
 import time
 
 try:
-    from . import dart_test_failure, font_metrics_observation, welcome_trim_metrics
+    from . import dart_test_failure, dart_test_progress
+    from . import font_metrics_observation, welcome_trim_metrics
     from . import welcome_path_metrics
     from . import windows_debug_loop as debug
     from .windows_baseline import fresh_environment, run_bounded, test_counts
 except ImportError:
     import dart_test_failure
+    import dart_test_progress
     import font_metrics_observation
     import welcome_trim_metrics
     import welcome_path_metrics
@@ -111,6 +113,7 @@ def main():
     caption_observation = None
     trim_observation = None
     path_observation = None
+    progress_observation = None
     report = dict(schema=1, scope='wallet_tour_controller_tests', success=False,
                   wallet_qualified=False, native_wallet_executions=0, counts=None,
                   command=None, entry_refusal=None, inspection_entry_refusal=None,
@@ -154,8 +157,7 @@ def main():
             report['startup_checks'].append(check)
             debug.need(check['passed'], 'TESTS_FAILED')
         packages = Path(parent['FLUTTER_ROOT']) / 'packages/flutter_tools/.dart_tool/package_config.json'
-        outcome = run_bounded([str(dart), '--packages=' + str(packages), str(snapshot),
-            'test', '--no-pub', '--reporter', 'json', '--concurrency=1',
+        selected_tests = [
             'test/harness/wallet_tour_test.dart', 'test/harness/build_output_test.dart',
             'test/harness/agent_input_test.dart',
             'test/harness/logical_capture_test.dart',
@@ -222,10 +224,21 @@ def main():
             'test/receive/receive_populated_test.dart',
             'test/harness/selection_context_revision_test.dart',
             'test/harness/wallet_recipe_test.dart',
-            *(['test/launch_film/launch_asset_test.dart'] if asset_fidelity else [])], cwd=repo,
+            *(['test/launch_film/launch_asset_test.dart'] if asset_fidelity else [])
+        ]
+        outcome = run_bounded([str(dart), '--packages=' + str(packages), str(snapshot),
+            'test', '--no-pub', '--reporter', 'json', '--concurrency=1',
+            *selected_tests], cwd=repo,
             env=fresh_environment(repo, parent), timeout=240, cap=4 * 1024**2)
         report['command'] = dict(**outcome.public(),
             output_sha256=hashlib.sha256(outcome.output).hexdigest())
+        progress_observation = dart_test_progress.project(
+            outcome.output, suite_paths=selected_tests, repo=str(repo))
+        progress_observation.update(source_sha=source, source_tree=tree,
+            run_id=parent['GITHUB_RUN_ID'],
+            run_attempt=parent['GITHUB_RUN_ATTEMPT'],
+            test_output_sha256=hashlib.sha256(outcome.output).hexdigest(),
+            transport_complete=outcome.transport_complete)
         if not outcome.success:
             report['test_failures'] = dart_test_failure.project(outcome.output)
         font_observation = font_metrics_observation.project(
@@ -294,6 +307,10 @@ def main():
         observation = json.dumps(path_observation, sort_keys=True, separators=(',', ':'))
         if len(observation.encode('ascii')) <= 3800:
             print('::notice title=Original Welcome path metrics::' + observation)
+    if progress_observation is not None:
+        observation = json.dumps(progress_observation, sort_keys=True, separators=(',', ':'))
+        if len(observation.encode('ascii')) <= 3800:
+            print('::notice title=Selected test progress::' + observation)
     return 0 if report['success'] else 1
 
 
