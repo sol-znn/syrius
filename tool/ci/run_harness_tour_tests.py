@@ -3,6 +3,7 @@
 import hashlib
 import json
 import os
+import re
 from pathlib import Path
 import secrets
 import subprocess
@@ -108,15 +109,71 @@ def startup_check(repo, parent, dart, kind):
     return value
 
 
+def selected_groups(paths):
+    """Keep the complete ordered selection in two nonempty serial groups."""
+    debug.need(type(paths) is list and 2 <= len(paths) <= 256 and
+        all(type(path) is str and re.fullmatch(
+            r'test/(?:[A-Za-z0-9_]+/)*[A-Za-z0-9_]+_test[.]dart', path)
+            for path in paths) and len(set(paths)) == len(paths), 'SOURCE_REFUSED')
+    middle = (len(paths) + 1) // 2
+    return [paths[:middle], paths[middle:]]
+
+
+def valid_group_counts(row):
+    """Require actual normal process completion and every terminal test gate."""
+    command, counts = row.get('command'), row.get('counts')
+    debug.need(type(command) is dict and type(counts) is dict, 'TESTS_FAILED')
+    debug.need(command.get('success') is True and
+        type(command.get('exit_code')) is int and command['exit_code'] == 0 and
+        command.get('exit_observed') is True and command.get('forced_kill') is False and
+        command.get('output_complete') is True and command.get('output_overflow') is False and
+        command.get('error_codes') == [] and
+        type(command.get('seconds')) in (int, float) and 0 <= command['seconds'] <= 240 and
+        type(command.get('output_bytes')) is int and 0 < command['output_bytes'] <= 4 * 1024**2 and
+        type(command.get('output_sha256')) is str and
+        re.fullmatch('[a-f0-9]{64}', command['output_sha256']), 'TESTS_FAILED')
+    keys = ('passed', 'failed', 'skipped', 'hidden', 'terminal_events', 'error_events')
+    debug.need(all(type(counts.get(key)) is int and 0 <= counts[key] <= 20000
+        for key in keys) and counts.get('terminal_success') is True and
+        counts['passed'] > 0 and counts['failed'] == counts['skipped'] ==
+        counts['error_events'] == 0 and counts['terminal_events'] ==
+        counts['passed'] + counts['hidden'], 'TESTS_FAILED')
+    return counts
+
+
+def combined_counts(rows, paths):
+    """Admit neither an incomplete group nor a replayed stream as the whole suite."""
+    groups = selected_groups(paths)
+    debug.need(type(rows) is list and len(rows) == len(groups) == 2, 'TESTS_FAILED')
+    keys = ('passed', 'failed', 'skipped', 'hidden', 'terminal_events', 'error_events')
+    result = dict.fromkeys(keys, 0)
+    seen, first = set(), 1
+    for index, (row, group) in enumerate(zip(rows, groups), 1):
+        debug.need(type(row) is dict and type(row.get('index')) is int and
+            row['index'] == index and type(row.get('first_suite_index')) is int and
+            row['first_suite_index'] == first and type(row.get('selected_suites')) is int and
+            row['selected_suites'] == len(group) and row.get('status') == 'SUCCESS',
+            'TESTS_FAILED')
+        counts = valid_group_counts(row)
+        digest = row['command']['output_sha256']
+        debug.need(digest not in seen, 'TEST_EVENTS_INVALID')
+        seen.add(digest)
+        for key in keys:
+            result[key] += counts[key]
+        first += len(group)
+    result['terminal_success'] = True
+    return result
+
+
 def main():
-    font_observation = None
-    caption_observation = None
-    trim_observation = None
-    path_observation = None
-    progress_observation = None
-    report = dict(schema=1, scope='wallet_tour_controller_tests', success=False,
+    metric_observations = []
+    progress_observations = []
+    report = dict(schema=2, scope='wallet_tour_controller_tests', success=False,
                   wallet_qualified=False, native_wallet_executions=0, counts=None,
-                  command=None, entry_refusal=None, inspection_entry_refusal=None,
+                  commands=[], groups_expected=2, worker_count=1,
+                  command_limit_seconds=240, total_command_limit_seconds=480,
+                  command_output_cap=4 * 1024**2,
+                  entry_refusal=None, inspection_entry_refusal=None,
                   startup_checks=[], code=None)
     try:
         parent, source = debug.entry.require_ci(os.environ, None, platform=os.name)
@@ -226,56 +283,45 @@ def main():
             'test/harness/wallet_recipe_test.dart',
             *(['test/launch_film/launch_asset_test.dart'] if asset_fidelity else [])
         ]
-        outcome = run_bounded([str(dart), '--packages=' + str(packages), str(snapshot),
-            'test', '--no-pub', '--reporter', 'json', '--concurrency=1',
-            *selected_tests], cwd=repo,
-            env=fresh_environment(repo, parent), timeout=240, cap=4 * 1024**2)
-        report['command'] = dict(**outcome.public(),
-            output_sha256=hashlib.sha256(outcome.output).hexdigest())
-        progress_observation = dart_test_progress.project(
-            outcome.output, suite_paths=selected_tests, repo=str(repo))
-        progress_observation.update(source_sha=source, source_tree=tree,
-            run_id=parent['GITHUB_RUN_ID'],
-            run_attempt=parent['GITHUB_RUN_ATTEMPT'],
-            test_output_sha256=hashlib.sha256(outcome.output).hexdigest(),
-            transport_complete=outcome.transport_complete)
-        if not outcome.success:
-            report['test_failures'] = dart_test_failure.project(outcome.output)
-        font_observation = font_metrics_observation.project(
-            outcome.output, complete=outcome.transport_complete)
-        if font_observation is not None:
-            font_observation.update(source_sha=source, source_tree=tree,
-                run_id=parent['GITHUB_RUN_ID'],
-                run_attempt=parent['GITHUB_RUN_ATTEMPT'],
-                test_output_sha256=hashlib.sha256(outcome.output).hexdigest())
-        caption_observation = font_metrics_observation.project_caption(
-            outcome.output, complete=outcome.transport_complete)
-        if caption_observation is not None:
-            caption_observation.update(source_sha=source, source_tree=tree,
-                run_id=parent['GITHUB_RUN_ID'],
-                run_attempt=parent['GITHUB_RUN_ATTEMPT'],
-                test_output_sha256=hashlib.sha256(outcome.output).hexdigest())
-        trim_observation = welcome_trim_metrics.project(
-            outcome.output, complete=outcome.transport_complete)
-        if trim_observation is not None:
-            trim_observation.update(source_sha=source, source_tree=tree,
-                run_id=parent['GITHUB_RUN_ID'],
-                run_attempt=parent['GITHUB_RUN_ATTEMPT'],
-                test_output_sha256=hashlib.sha256(outcome.output).hexdigest())
-        path_observation = welcome_path_metrics.project(
-            outcome.output, complete=outcome.transport_complete)
-        if path_observation is not None:
-            path_observation.update(source_sha=source, source_tree=tree,
-                run_id=parent['GITHUB_RUN_ID'],
-                run_attempt=parent['GITHUB_RUN_ATTEMPT'],
-                test_output_sha256=hashlib.sha256(outcome.output).hexdigest())
-        debug.need(outcome.transport_complete, 'OUTPUT_REFUSED')
-        counts = test_counts(outcome.output)
+        first = 1
+        for index, group in enumerate(selected_groups(selected_tests), 1):
+            row = dict(index=index, first_suite_index=first,
+                       selected_suites=len(group), status='UNKNOWN', command=None, counts=None)
+            report['commands'].append(row)
+            outcome = run_bounded([str(dart), '--packages=' + str(packages), str(snapshot),
+                'test', '--no-pub', '--reporter', 'json', '--concurrency=1', *group],
+                cwd=repo, env=fresh_environment(repo, parent), timeout=240, cap=4 * 1024**2)
+            row['command'] = dict(**outcome.public(),
+                output_sha256=hashlib.sha256(outcome.output).hexdigest())
+            row['status'] = 'FAILURE'
+            metadata = dict(source_sha=source, source_tree=tree,
+                run_id=parent['GITHUB_RUN_ID'], run_attempt=parent['GITHUB_RUN_ATTEMPT'],
+                test_output_sha256=hashlib.sha256(outcome.output).hexdigest(), group_index=index)
+            observed = dart_test_progress.project(outcome.output,
+                suite_paths=selected_tests, repo=str(repo))
+            observed.update(metadata, transport_complete=outcome.transport_complete)
+            progress_observations.append(observed)
+            for observe in (font_metrics_observation.project,
+                            font_metrics_observation.project_caption,
+                            welcome_trim_metrics.project, welcome_path_metrics.project):
+                metric = observe(outcome.output, complete=outcome.transport_complete)
+                if metric is not None:
+                    metric.update(metadata)
+                    metric_observations.append(metric)
+            if not outcome.success:
+                report['test_failures'] = dart_test_failure.project(outcome.output)
+                report['failed_group'] = index
+            debug.need(outcome.transport_complete, 'OUTPUT_REFUSED')
+            row['counts'] = test_counts(outcome.output)
+            valid_group_counts(row)
+            row['status'] = 'SUCCESS'
+            if index == 1:
+                debug.bounded.verify_source(repo, source, parent)
+                debug.need(debug.entry.source_tree(repo, parent) == tree, 'SOURCE_REFUSED')
+            first += len(group)
+        counts = combined_counts(report['commands'], selected_tests)
+        debug.need(counts['passed'] == (819 if asset_fidelity else 817), 'TESTS_FAILED')
         report['counts'] = counts
-        debug.need(outcome.success and counts['terminal_success'] is True
-            and counts['passed'] == (819 if asset_fidelity else 817)
-            and counts['skipped'] == counts['failed'] == counts['error_events'] == 0,
-            'TESTS_FAILED')
         if asset_fidelity:
             report['launch_asset_fidelity'] = True
         debug.bounded.verify_source(repo, source, parent)
@@ -286,31 +332,27 @@ def main():
                  'TOOL_REFUSED', 'OUTPUT_REFUSED', 'TESTS_FAILED', 'TEST_EVENTS_INVALID'}
         code = getattr(error, 'code', None) or str(error)
         report['code'] = code if code in known else 'INTERNAL_ERROR'
+    eligible_metrics = []
+    for metric in metric_observations:
+        encoded = json.dumps(metric, sort_keys=True, separators=(',', ':'))
+        if len(encoded.encode('ascii')) <= 3800:
+            eligible_metrics.append(encoded)
+    budget = 10 - 1 - len(progress_observations)
+    report['metrics_without_notice'] = max(0, len(eligible_metrics) - budget)
     public = json.dumps(report, sort_keys=True, separators=(',', ':'))
     print(public)
     if len(public.encode()) <= 3800:
         print('::notice title=Wallet tour controller tests::' + public)
-    if font_observation is not None:
-        observation = json.dumps(font_observation, sort_keys=True, separators=(',', ':'))
-        if len(observation.encode('ascii')) <= 3800:
-            print('::notice title=Bundled interface font metrics::' + observation)
-    if caption_observation is not None:
-        observation = json.dumps(caption_observation, sort_keys=True, separators=(',', ':'))
-        if len(observation.encode('ascii')) <= 3800:
-            print('::notice title=Caption wordmark engine metrics::' + observation)
-
-    if trim_observation is not None:
-        observation = json.dumps(trim_observation, sort_keys=True, separators=(',', ':'))
-        if len(observation.encode('ascii')) <= 3800:
-            print('::notice title=Original Welcome trim metrics::' + observation)
-    if path_observation is not None:
-        observation = json.dumps(path_observation, sort_keys=True, separators=(',', ':'))
-        if len(observation.encode('ascii')) <= 3800:
-            print('::notice title=Original Welcome path metrics::' + observation)
-    if progress_observation is not None:
-        observation = json.dumps(progress_observation, sort_keys=True, separators=(',', ':'))
-        if len(observation.encode('ascii')) <= 3800:
-            print('::notice title=Selected test progress::' + observation)
+    for observed in progress_observations:
+        encoded = json.dumps(observed, sort_keys=True, separators=(',', ':'))
+        if len(encoded.encode('ascii')) <= 3800:
+            print('::notice title=Selected test progress::' + encoded)
+    for index, encoded in enumerate(eligible_metrics):
+        # Every closed metric remains in the job log. Keep notices within
+        # the per-step annotation budget without discarding test outcomes.
+        print(encoded)
+        if index < budget:
+            print('::notice title=Original grouped test metrics::' + encoded)
     return 0 if report['success'] else 1
 
 

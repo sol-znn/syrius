@@ -90,3 +90,5 @@ A prior successful run remains bound to its original source and scope.
 - 2026-11-02: [Source313 route fixture cascade](source313-route-fixture-cascade.md) preserves Source312's original information-only refusal and zero Dart execution. Fresh hosted qualification remains pending.
 
 - 2026-11-02: [Source314 selected test progress](source314-selected-test-progress.md) preserves Source313's unretried timeout and unavailable counts, with bounded non-qualifying observations and unchanged SDK arguments/limits. Fresh hosted qualification remains pending.
+
+- 2026-11-02: [Source315 complete serial groups](source315-serial-test-groups.md) preserves Source314's original timeout and cutoff while requiring both bounded commands, exact total coverage and unchanged source. Fresh hosted qualification remains pending.
