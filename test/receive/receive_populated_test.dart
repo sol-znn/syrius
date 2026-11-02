@@ -248,8 +248,7 @@ void main() {
         case 'route cycle':
           final NavigatorState navigator = Navigator.of(
             tester.element(find.byType(ReceivePopulated)),
-          );
-          navigator.push<void>(
+          )..push<void>(
             MaterialPageRoute<void>(
               builder: (_) => const Scaffold(body: Text('Covered')),
             ),

@@ -86,3 +86,5 @@ A prior successful run remains bound to its original source and scope.
 - 2026-11-02: [Source310 Windows/catalog outcomes](source310-windows-and-catalog-outcomes.md) and [actual Details review](source310-details-actual-review.md) preserve both failures. [Source311 Receive header](source311-receive-header.md) adds owner-bound selection and QR revocation with fresh hosted qualification pending.
 
 - 2026-11-02: [Source311 original header analysis failure](source311-original-header-analysis-failure.md) retains zero Dart execution. [Source312 header analysis corrections](source312-header-analysis-corrections.md) keeps all guards and nine regressions with fresh hosted qualification pending.
+
+- 2026-11-02: [Source313 route fixture cascade](source313-route-fixture-cascade.md) preserves Source312's original information-only refusal and zero Dart execution. Fresh hosted qualification remains pending.
