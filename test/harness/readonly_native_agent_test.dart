@@ -360,21 +360,28 @@ void main() {
       // One agent owns its mouse device across both theme renders.
       for (final bool light in <bool>[false, true]) {
         final OriginalsController discovery = OriginalsController();
+        // Keep fixture source identities stable across gallery insertion.
+        int registryReads = 0;
+        final Future<AboutInformation> Function() loadInformation =
+            () async => AboutInformation(version: 'fixture');
+        final Stream<LicenseEntry> Function() loadLicences = () {
+          registryReads++;
+          return Stream<LicenseEntry>.value(
+            about_fixture.FixtureLicence(<String>[
+              'fixture-package',
+              for (int index = 0; index < 120; index++)
+                'fixture-registry-$index',
+            ], const <LicenseParagraph>[
+              LicenseParagraph('Complete fixture licence.', 0),
+            ]),
+          );
+        };
         await tester.pumpWidget(about_fixture.aboutHost(
           ListenableBuilder(
             listenable: discovery,
             builder: (BuildContext context, Widget? _) => AboutCard(
-              loadInformation: () async =>
-                  AboutInformation(version: 'fixture'),
-              loadLicences: () => Stream<LicenseEntry>.value(
-                about_fixture.FixtureLicence(<String>[
-                  'fixture-package',
-                  for (int index = 0; index < 120; index++)
-                    'fixture-registry-$index',
-                ], const <LicenseParagraph>[
-                  LicenseParagraph('Complete fixture licence.', 0),
-                ]),
-              ),
+              loadInformation: loadInformation,
+              loadLicences: loadLicences,
               licencesTrailingBuilder: (BuildContext context) =>
                   OriginalsDiscovery(
                     controller: discovery,
@@ -467,6 +474,7 @@ void main() {
           },
         ));
         expect(discovery.revealed, isTrue);
+        expect(registryReads, 1);
         await tester.pump();
         expect(find.byKey(const Key('originals_card')), findsOneWidget);
         await expectLater(agent.commandForTest(<String, dynamic>{
@@ -477,6 +485,13 @@ void main() {
             <String, Object?>{'cmd': 'scroll', 'dy': 1000000},
           ));
         }
+        final Rect gallery = tester.getRect(
+          find.byKey(const Key('originals_card')),
+        );
+        expect(section.contains(gallery.topLeft), isTrue);
+        expect(section.contains(gallery.bottomRight - const Offset(1, 1)),
+          isTrue);
+        expect(registryReads, 1);
         final Map<String, Object?> cardReady = await _driveCatalogCommand(
           tester, cli.waitForTarget(inspection, cli.Args(<String>[
             '--key', 'originals_card', '--timeout', '30',
